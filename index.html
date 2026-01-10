@@ -1524,7 +1524,11 @@ const Router = {
         const user = DB.getSession();
         if (user) {
             const church = DB.getChurch(user.churchId);
-            State.set({ screen: 'app', user, church, activeNav: 'dashboard' });
+            // Check if returning from external tool
+            const savedNav = localStorage.getItem('rooted_nav');
+            const activeNav = savedNav || 'dashboard';
+            localStorage.removeItem('rooted_nav'); // Clear after use
+            State.set({ screen: 'app', user, church, activeNav });
         } else {
             State.set({ screen: 'welcome' });
         }
@@ -2284,10 +2288,10 @@ function openTool(toolId) {
 let quizState = { screen: 'start', questionIndex: 0, selectedAnswer: null, scores: {}, result: null, expandedSection: null };
 
 function renderSeasonsTool() {
-    return `<div style="min-height:100vh;background:linear-gradient(145deg,var(--bg-primary),var(--slate-900))"><div class="quiz-container" style="max-width:600px;margin:0 auto;padding:var(--space-lg)"><button class="btn btn-ghost" onclick="backToApp()" style="margin-bottom:var(--space-lg)">← Back to Dashboard</button><div id="quizContent"></div></div></div>`;
+    return `<div style="min-height:100vh;background:linear-gradient(145deg,var(--bg-primary),var(--slate-900))"><div class="quiz-container" style="max-width:600px;margin:0 auto;padding:var(--space-lg)"><button class="btn btn-ghost" onclick="backToTools()" style="margin-bottom:var(--space-lg)">← Back to Growth Tools</button><div id="quizContent"></div></div></div>`;
 }
 
-function backToApp() { State.set({ screen: 'app', activeNav: 'dashboard' }); }
+function backToTools() { State.set({ screen: 'app', activeNav: 'tools' }); }
 
 function initQuiz() {
     const { user } = State.current;
