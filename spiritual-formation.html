@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spiritual Formation Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { min-height: 100vh; background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); font-family: Georgia, serif; color: #f8fafc; }
+    .content { max-width: 900px; margin: 0 auto; padding: 20px; }
+    .header { text-align: center; margin-bottom: 30px; }
+    .title { font-size: 1.8rem; font-weight: 300; color: #fbbf24; margin-bottom: 5px; }
+    .subtitle { font-size: 0.9rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; }
+    .card { background: rgba(30, 41, 59, 0.9); border-radius: 16px; border: 1px solid rgba(148, 163, 184, 0.1); padding: 24px; margin-bottom: 20px; }
+    .btn { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #0f172a; border: none; padding: 12px 28px; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; font-family: Georgia, serif; }
+    .btn:hover { opacity: 0.9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary { background: transparent; color: #fbbf24; border: 1px solid #fbbf24; padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; cursor: pointer; font-family: Georgia, serif; }
+    .btn-small { padding: 8px 14px; font-size: 0.85rem; }
+    .nav-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+    .user-badge { background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .tabs { display: flex; gap: 0; margin-bottom: 20px; border-radius: 10px; overflow: hidden; border: 1px solid rgba(148, 163, 184, 0.2); }
+    .tab { flex: 1; padding: 12px 16px; background: rgba(15, 23, 42, 0.6); color: #94a3b8; border: none; cursor: pointer; font-family: Georgia, serif; font-size: 0.9rem; transition: all 0.2s; }
+    .tab:hover { background: rgba(15, 23, 42, 0.8); }
+    .tab.active { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+    .phase-card { background: rgba(15, 23, 42, 0.6); border-radius: 12px; padding: 16px; border: 1px solid rgba(148, 163, 184, 0.15); margin-bottom: 12px; cursor: pointer; transition: all 0.2s; position: relative; }
+    .phase-card:hover:not(.locked) { border-color: rgba(251, 191, 36, 0.4); }
+    .phase-card.completed { border-color: #10b981; }
+    .phase-card.locked { opacity: 0.6; cursor: not-allowed; }
+    .phase-card.locked:hover { border-color: rgba(148, 163, 184, 0.15); }
+    .phase-card.in-progress { border-color: #f59e0b; }
+    .lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.7); border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+    .lock-message { background: rgba(239, 68, 68, 0.2); color: #fca5a5; padding: 8px 16px; border-radius: 8px; font-size: 0.8rem; text-align: center; }
+    .phase-title { color: #fbbf24; font-size: 1.05rem; font-weight: 500; margin-bottom: 4px; }
+    .phase-subtitle { color: #94a3b8; font-size: 0.85rem; margin-bottom: 10px; }
+    .phase-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; }
+    .phase-badge.available { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+    .phase-badge.completed { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+    .phase-badge.locked { background: rgba(148, 163, 184, 0.2); color: #64748b; }
+    .phase-badge.in-progress { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+    .category-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .cat-tag { background: rgba(148, 163, 184, 0.1); color: #94a3b8; padding: 3px 8px; border-radius: 8px; font-size: 0.7rem; }
+    .meter { height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; margin-top: 10px; overflow: hidden; }
+    .meter-fill { height: 100%; border-radius: 3px; }
+    .score-circle { width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; }
+    .score-inner { width: 80px; height: 80px; border-radius: 50%; background: #1e293b; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .score-value { font-size: 1.5rem; font-weight: 300; }
+    .score-label { font-size: 0.7rem; color: #94a3b8; }
+    .progress-bar { height: 4px; background: rgba(148, 163, 184, 0.2); border-radius: 2px; margin-bottom: 25px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #fbbf24, #f59e0b); transition: width 0.3s; }
+    .question-info { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+    .question-icon { font-size: 1.8rem; }
+    .question-category { color: #fbbf24; font-size: 0.75rem; letter-spacing: 0.05em; }
+    .question-name { font-size: 1rem; color: #e2e8f0; }
+    .question-text { font-size: 1.15rem; line-height: 1.5; margin-bottom: 25px; color: #f1f5f9; }
+    .option { background: rgba(15, 23, 42, 0.6); border: 2px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px; }
+    .option:hover { border-color: rgba(251, 191, 36, 0.4); }
+    .option.selected { background: rgba(251, 191, 36, 0.15); border-color: #fbbf24; }
+    .radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(148, 163, 184, 0.4); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .option.selected .radio { border-color: #fbbf24; background: #fbbf24; }
+    .radio-dot { width: 8px; height: 8px; border-radius: 50%; background: #0f172a; display: none; }
+    .option.selected .radio-dot { display: block; }
+    .nav-buttons { display: flex; justify-content: space-between; gap: 12px; margin-top: 25px; flex-wrap: wrap; }
+    .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; margin-bottom: 25px; }
+    .result-card { background: rgba(15, 23, 42, 0.6); border-radius: 10px; padding: 14px; cursor: pointer; }
+    .result-card:hover { background: rgba(15, 23, 42, 0.8); }
+    .info-box { border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+    .info-box.warning { background: rgba(251, 191, 36, 0.1); }
+    .info-box.error { background: rgba(239, 68, 68, 0.1); }
+    .info-box.success { background: rgba(16, 185, 129, 0.1); }
+    .info-box h3 { margin-bottom: 8px; font-size: 1rem; }
+    .info-box.warning h3 { color: #fbbf24; }
+    .info-box.error h3 { color: #ef4444; }
+    .info-box.success h3 { color: #10b981; }
+    .study-section { background: rgba(15, 23, 42, 0.6); border-radius: 10px; padding: 16px; margin-bottom: 16px; border-left: 3px solid #f59e0b; }
+    .study-section h4 { color: #fbbf24; margin-bottom: 10px; }
+    .verse-tag { display: inline-block; background: rgba(59, 130, 246, 0.1); color: #60a5fa; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; margin: 3px; }
+    .wrong-item { background: rgba(239, 68, 68, 0.1); border-radius: 8px; padding: 12px; margin-bottom: 10px; border-left: 3px solid #ef4444; }
+    .correct { color: #10b981; }
+    .incorrect { color: #ef4444; text-decoration: line-through; }
+    .center-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 25px; }
+    .history-item { background: rgba(15, 23, 42, 0.6); border-radius: 10px; padding: 16px; margin-bottom: 12px; cursor: pointer; border: 1px solid rgba(148, 163, 184, 0.1); transition: all 0.2s; }
+    .history-item:hover { border-color: rgba(251, 191, 36, 0.3); }
+    .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+    .history-date { color: #94a3b8; font-size: 0.8rem; }
+    .history-score { font-size: 1.2rem; font-weight: 500; }
+    .tier-section { margin-bottom: 30px; }
+    .tier-title { color: #fbbf24; font-size: 1.1rem; margin-bottom: 12px; padding-left: 10px; border-left: 3px solid #fbbf24; }
+    .tier-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    .stat-card { background: rgba(15, 23, 42, 0.6); border-radius: 10px; padding: 14px; cursor: pointer; transition: all 0.2s; }
+    .stat-card:hover { background: rgba(15, 23, 42, 0.8); }
+    .level-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+    .level-box { border-radius: 8px; padding: 12px; }
+    .level-box.low { background: rgba(239, 68, 68, 0.1); border-left: 3px solid #ef4444; }
+    .level-box.high { background: rgba(16, 185, 129, 0.1); border-left: 3px solid #10b981; }
+    .tag { display: inline-block; padding: 5px 12px; border-radius: 12px; font-size: 0.8rem; margin: 3px; }
+    .tag.gold { background: rgba(251, 191, 36, 0.1); color: #fbbf24; }
+    .tag.blue { background: rgba(59, 130, 246, 0.1); color: #60a5fa; }
+    .login-input { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid rgba(148, 163, 184, 0.3); background: rgba(15, 23, 42, 0.6); color: #f8fafc; font-size: 1rem; font-family: Georgia, serif; text-align: center; }
+    .login-input:focus { outline: none; border-color: #fbbf24; }
+    .empty-state { text-align: center; padding: 40px 20px; color: #64748b; }
+    .empty-state .icon { font-size: 3rem; display: block; margin-bottom: 15px; }
+    .resume-banner { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 14px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .resume-info { color: #fbbf24; }
+    .resume-info small { color: #94a3b8; display: block; margin-top: 4px; }
+    @media (max-width: 600px) { .level-grid { grid-template-columns: 1fr; } .nav-buttons { flex-direction: column; } .tabs { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <div class="content">
+    <!-- LOGIN -->
+    <div id="login-screen" class="screen active">
+      <div class="header"><h1 class="title">Spiritual Formation Dashboard</h1><p class="subtitle">Know Yourself • Grow Intentionally</p></div>
+      <div class="card" style="max-width: 450px; margin: 0 auto; text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: 15px;">📖</div>
+        <h2 style="color: #fbbf24; font-weight: 400; margin-bottom: 20px;">Welcome</h2>
+        <input type="text" id="username-input" placeholder="Enter your name" class="login-input" onkeypress="if(event.key==='Enter')login()">
+        <button class="btn" onclick="login()" style="width: 100%; margin-top: 15px;">Continue to Dashboard</button>
+        <p style="color: #64748b; font-size: 0.8rem; margin-top: 12px;">Progress saved locally</p>
+      </div>
+    </div>
+
+    <!-- HOME -->
+    <div id="home-screen" class="screen">
+      <div class="nav-bar"><div class="user-badge"><span id="user-display">User</span></div><button class="btn-secondary btn-small" onclick="logout()">Sign Out</button></div>
+      <div class="header"><h1 class="title">Spiritual Formation Dashboard</h1><p class="subtitle">25 Categories • 5 Phases • 100 Questions</p></div>
+      
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('take-quiz')">Take Quiz</button>
+        <button class="tab" onclick="switchTab('results')">My Results</button>
+        <button class="tab" onclick="switchTab('categories')">Categories</button>
+      </div>
+
+      <!-- Take Quiz Tab -->
+      <div id="take-quiz-tab" class="tab-content">
+        <div id="resume-container"></div>
+        <div class="card">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <div class="score-circle" id="overall-circle"><div class="score-inner"><span class="score-value" id="overall-score">0%</span><span class="score-label">Overall</span></div></div>
+            <p style="color: #94a3b8; font-size: 0.9rem;">Complete phases in order to unlock</p>
+          </div>
+          <h3 style="color: #fbbf24; margin-bottom: 15px;">Assessment Phases</h3>
+          <div id="phases-container"></div>
+        </div>
+      </div>
+
+      <!-- Results Tab -->
+      <div id="results-tab" class="tab-content" style="display: none;">
+        <div class="card">
+          <h3 style="color: #fbbf24; margin-bottom: 15px;">Test History</h3>
+          <div id="history-container"></div>
+        </div>
+      </div>
+
+      <!-- Categories Tab -->
+      <div id="categories-tab" class="tab-content" style="display: none;">
+        <div id="dashboard-content"></div>
+      </div>
+    </div>
+
+    <!-- ASSESSMENT -->
+    <div id="assessment-screen" class="screen">
+      <div class="nav-bar"><button class="btn-secondary btn-small" onclick="saveAndExit()">Save & Exit</button><button class="btn-secondary btn-small" onclick="goHome()">Home</button></div>
+      <div class="header"><h1 class="title" style="font-size: 1.5rem;" id="phase-title">Phase 1</h1><p class="subtitle" id="q-counter">Question 1 of 20</p></div>
+      <div class="card">
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="question-info"><span class="question-icon" id="cat-icon">📖</span><div><div class="question-category" id="cat-tier">Tier</div><div class="question-name" id="cat-name">Category</div></div></div>
+        <div class="question-text" id="q-text">Loading...</div>
+        <div id="options-container"></div>
+        <div class="nav-buttons"><button class="btn-secondary" id="prev-btn" onclick="prevQ()" disabled>Previous</button><button class="btn" id="next-btn" onclick="nextQ()" disabled>Next</button></div>
+      </div>
+    </div>
+
+    <!-- RESULTS DETAIL -->
+    <div id="results-screen" class="screen">
+      <div class="nav-bar"><button class="btn-secondary btn-small" onclick="goHome()">Home</button></div>
+      <div class="header"><h1 class="title" id="results-title">Phase Complete</h1><p class="subtitle" id="results-sub">Results</p></div>
+      <div class="card">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div class="score-circle" id="phase-circle"><div class="score-inner"><span class="score-value" id="phase-score">0%</span><span class="score-label">Phase Score</span></div></div>
+          <p style="color: #64748b; font-size: 0.8rem;" id="result-date"></p>
+        </div>
+        <div class="results-grid" id="results-cats"></div>
+        <div id="study-section"></div>
+        <div id="wrong-section"></div>
+        <div class="center-btns">
+          <button class="btn" id="next-phase-btn" onclick="nextPhase()">Next Phase</button>
+          <button class="btn-secondary" onclick="retake()">Retake Phase</button>
+          <button class="btn-secondary" onclick="goHome()">Dashboard</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CATEGORY DETAIL -->
+    <div id="category-screen" class="screen">
+      <div class="nav-bar"><button class="btn-secondary btn-small" onclick="goHome()">Back</button><button class="btn-secondary btn-small" onclick="goHome()">Home</button></div>
+      <div class="card" id="cat-detail"></div>
+    </div>
+  </div>
+
+<script>
+const CATS={1:{name:"God the Father",sub:"Character of God",desc:"Everything starts here.",low:"Views God as distant",high:"Sees God as relational",areas:["Divine attributes","Fatherhood"],phase:1,tier:"Foundational Core",icon:"🌟",tips:["Study Exodus 34:6-7","Learn attributes: holiness, love, justice"],verses:["Exodus 34:6-7","John 14:9","1 John 4:8"],resources:["Knowing God - Packer"],guide:"Start with Exodus 34:6-7 where God describes Himself."},2:{name:"Christology",sub:"Who Jesus Is",desc:"Who He is, not just what He does.",low:"Views Jesus as teacher only",high:"Understands fully God, fully man",areas:["Titles of Christ","Divine nature"],phase:1,tier:"Foundational Core",icon:"👑",tips:["Study I AM statements","Learn OT prophecies fulfilled"],verses:["John 1:1-14","Colossians 1:15-20"],resources:["Jesus the King - Keller"],guide:"Begin with John 1:1-18 and Colossians 1:15-20."},3:{name:"Salvation Theology",sub:"Understanding Redemption",desc:"What Christ accomplished.",low:"Basic awareness",high:"Understands justification & sanctification",areas:["Grace vs works","Faith response"],phase:1,tier:"Foundational Core",icon:"💎",tips:["Study Romans 3-8","Learn justification vs sanctification"],verses:["Ephesians 2:8-9","Romans 8:29-30"],resources:["The Cross of Christ - Stott"],guide:"Work through Romans 3-8 systematically."},4:{name:"Biblical Authority",sub:"Scripture's Foundation",desc:"Why Scripture carries weight.",low:"Views Bible as human writing",high:"Understands Scripture as God-breathed",areas:["Inspiration","Canon"],phase:1,tier:"Foundational Core",icon:"📕",tips:["Study what Jesus believed about Scripture","Learn canon formation"],verses:["2 Timothy 3:16-17","2 Peter 1:20-21"],resources:["Can We Trust the Bible? - Sproul"],guide:"Study 2 Timothy 3:16-17."},5:{name:"Biblical Covenants",sub:"Covenant Progression",desc:"God's consistent storyline.",low:"Confusion about OT vs NT",high:"Sees progression to Christ",areas:["Covenant promises","Fulfillment"],phase:1,tier:"Foundational Core",icon:"🤝",tips:["Study each covenant","See how each builds on previous"],verses:["Genesis 12:1-3","Jeremiah 31:31-34"],resources:["God's Big Picture - Roberts"],guide:"Trace each major covenant through Scripture."},6:{name:"Holy Spirit",sub:"Role of the Spirit",desc:"The active agent of transformation.",low:"Confusion about Spirit's role",high:"Understands empowerment & guidance",areas:["Spirit in Scripture","Daily walk"],phase:2,tier:"Spiritual Formation",icon:"🕊️",tips:["Study John 14-16","Understand indwelling vs filling"],verses:["John 14:16-17","Acts 1:8"],resources:["Forgotten God - Chan"],guide:"Study John 14-16 thoroughly."},7:{name:"Repentance",sub:"Response to Sin",desc:"The posture of ongoing change.",low:"Guilt-driven shame",high:"Fruit-producing repentance",areas:["Godly vs worldly sorrow"],phase:2,tier:"Spiritual Formation",icon:"🔄",tips:["Distinguish godly from worldly sorrow","Practice specific confession"],verses:["2 Corinthians 7:10","1 John 1:9"],resources:["Pursuit of Holiness - Bridges"],guide:"Study 2 Corinthians 7:10."},8:{name:"Obedience & Lordship",sub:"Submission to Christ",desc:"Where belief becomes submission.",low:"Jesus as Savior only",high:"Submits all areas to Christ",areas:["Cost of discipleship","Daily surrender"],phase:2,tier:"Spiritual Formation",icon:"🎯",tips:["Study Luke 9, 14","Practice daily surrender"],verses:["Luke 6:46","Romans 12:1-2"],resources:["Cost of Discipleship - Bonhoeffer"],guide:"Study Luke 9:23-26."},9:{name:"Fruit of the Spirit",sub:"Evidence of Formation",desc:"Evidence of real formation.",low:"Knowledge without fruit",high:"Growing character",areas:["Nine fruits","Growth areas"],phase:2,tier:"Spiritual Formation",icon:"🍇",tips:["Study Galatians 5:22-23","Identify weakest fruit"],verses:["Galatians 5:22-23","John 15:4-5"],resources:["Spirit of the Disciplines - Willard"],guide:"Study Galatians 5:22-23 in context."},10:{name:"Prayer Theology",sub:"Understanding Prayer",desc:"Relational alignment with God.",low:"Prayer as wish list",high:"Prayer as communion",areas:["Biblical prayer models","Kingdom focus"],phase:2,tier:"Spiritual Formation",icon:"🙏",tips:["Study the Lord's Prayer","Learn from biblical prayers"],verses:["Matthew 6:9-13","James 5:16"],resources:["Prayer - Keller"],guide:"Dissect the Lord's Prayer."},11:{name:"Biblical Literacy",sub:"Foundational Knowledge",desc:"Knowing what's in the Bible.",low:"Knows stories not placement",high:"Navigates confidently",areas:["Books of Bible","Divisions"],phase:3,tier:"Scripture Engagement",icon:"📖",tips:["Use a reading plan","Learn divisions"],verses:["2 Timothy 3:16-17","Psalm 119:105"],resources:["How to Read the Bible - Fee"],guide:"Create a Bible book chart."},12:{name:"Hermeneutics",sub:"How Scripture Is Read",desc:"Prevents misuse of Scripture.",low:"Isolates verses",high:"Considers context & audience",areas:["Contextual reading","Author's intent"],phase:3,tier:"Scripture Engagement",icon:"🔍",tips:["Always read in context","Ask: Who? To whom? Why?"],verses:["2 Timothy 2:15","Acts 17:11"],resources:["Grasping God's Word - Duvall"],guide:"Learn observation, interpretation, application."},13:{name:"Biblical Genres",sub:"Literary Awareness",desc:"Reading poetry vs policy.",low:"Treats all text the same",high:"Recognizes different genres",areas:["Genre identification","Literary devices"],phase:3,tier:"Scripture Engagement",icon:"📚",tips:["Learn genre characteristics","Adjust interpretation by genre"],verses:["Psalm 1:1-3","Luke 1:1-4"],resources:["Bible Project genre videos"],guide:"Study each genre's characteristics."},14:{name:"OT Narrative",sub:"Story Arc",desc:"Roots of the New Testament.",low:"Knows isolated stories",high:"Sees covenant progression",areas:["Patriarchs","Exodus","Exile"],phase:3,tier:"Scripture Engagement",icon:"📜",tips:["Read Genesis-Deuteronomy","Trace Messianic promise"],verses:["Genesis 12:1-3","Isaiah 53"],resources:["Bible Project OT Overview"],guide:"Create an OT timeline."},15:{name:"NT Narrative",sub:"Jesus to Church",desc:"How the Church was formed.",low:"Familiar with Gospels only",high:"Sees Acts-to-Epistles flow",areas:["Gospel narratives","Early Church"],phase:3,tier:"Scripture Engagement",icon:"✝️",tips:["Read all four Gospels","Map Paul's journeys"],verses:["Matthew 28:18-20","Acts 1:8"],resources:["Bible Project NT Overview"],guide:"Study each Gospel's perspective."},16:{name:"Spiritual Disciplines",sub:"Practice-Based Faith",desc:"Habits that shape character.",low:"Occasional practices",high:"Intentional rhythms",areas:["Fasting","Solitude","Sabbath"],phase:4,tier:"Discipleship Practices",icon:"🏃",tips:["Start with one discipline","Create rhythms"],verses:["1 Timothy 4:7-8","Mark 1:35"],resources:["Celebration of Discipline - Foster"],guide:"Study Jesus' practice of solitude, prayer, fasting."},17:{name:"Law and Grace",sub:"Understanding Both",desc:"Against legalism and license.",low:"Tends toward extremes",high:"Sees law fulfilled, grace empowering",areas:["Purpose of Law","Christian liberty"],phase:4,tier:"Discipleship Practices",icon:"⚖️",tips:["Study Galatians","Learn threefold use of law"],verses:["Romans 6:14-15","Galatians 3:23-25"],resources:["Transforming Grace - Bridges"],guide:"Study Galatians and Romans 6-8."},18:{name:"Biblical Ethics",sub:"Decision Framework",desc:"How Scripture governs decisions.",low:"Culture shapes decisions",high:"Scripture shapes conscience",areas:["Moral reasoning","Cultural discernment"],phase:4,tier:"Discipleship Practices",icon:"🧭",tips:["Study principles not just proof texts","Develop Christian mind"],verses:["Romans 12:2","Micah 6:8"],resources:["Ethics - Bonhoeffer"],guide:"Learn biblical framework for ethics."},19:{name:"Suffering",sub:"Theology of Hardship",desc:"Faith that survives pressure.",low:"Believes God = comfort only",high:"Understands growth through trials",areas:["Suffering theology","Perseverance"],phase:4,tier:"Discipleship Practices",icon:"⚓",tips:["Study Job, 1 Peter","Learn to lament with hope"],verses:["Romans 5:3-5","James 1:2-4"],resources:["Walking with God through Pain - Keller"],guide:"Study Job for suffering questions."},20:{name:"Church & Community",sub:"Theology of Church",desc:"Christianity is communal.",low:"Church as Sunday attendance",high:"Church as body, family, mission",areas:["Purpose of gathering","Body function"],phase:5,tier:"Community & Mission",icon:"⛪",tips:["Study 'one another' commands","Move from consumer to contributor"],verses:["Acts 2:42-47","Hebrews 10:24-25"],resources:["Life Together - Bonhoeffer"],guide:"Study the 'one another' commands."},21:{name:"Spiritual Gifts",sub:"Understanding Gifting",desc:"Function within the body.",low:"Confused about gifting",high:"Uses gifts purposefully",areas:["Gifts vs fruit","Purpose of gifts"],phase:5,tier:"Community & Mission",icon:"🎁",tips:["Study gift lists","Discover through service"],verses:["1 Corinthians 12:4-7","1 Peter 4:10-11"],resources:["Body Life - Stedman"],guide:"Study Romans 12, 1 Cor 12-14, Eph 4."},22:{name:"Discipleship",sub:"Reproducible Faith",desc:"Faith that reproduces.",low:"Personal growth only",high:"Actively reproducing faith",areas:["Great Commission","Multiplication"],phase:5,tier:"Community & Mission",icon:"🌱",tips:["Study Jesus' method","Find someone to invest in"],verses:["Matthew 28:18-20","2 Timothy 2:2"],resources:["Master Plan of Evangelism - Coleman"],guide:"Study how Jesus made disciples."},23:{name:"Mission & Evangelism",sub:"Gospel Outward",desc:"The gospel moving outward.",low:"Passive faith",high:"Lives with sent identity",areas:["Gospel articulation","Intentional relationships"],phase:5,tier:"Community & Mission",icon:"🌍",tips:["Learn 2-3 minute testimony","Practice gospel clearly"],verses:["Acts 1:8","1 Peter 3:15"],resources:["Tactics - Koukl"],guide:"Learn to articulate the gospel clearly."},24:{name:"End Times & Hope",sub:"Eschatological Awareness",desc:"Hope, not speculation or fear.",low:"Fear or avoidance",high:"Hopeful expectancy",areas:["Resurrection hope","Return of Christ"],phase:5,tier:"Hope & Integration",icon:"🌅",tips:["Focus on what's clear","Let hope shape present"],verses:["1 Thessalonians 4:13-18","Revelation 21:1-5"],resources:["Surprised by Hope - Wright"],guide:"Study what's clear: Christ returns, resurrection, new creation."},25:{name:"Biblical Worldview",sub:"Life Integration",desc:"Scripture governs everything.",low:"Faith compartmentalized",high:"Scripture shapes all life",areas:["Daily integration","Vocational calling"],phase:5,tier:"Hope & Integration",icon:"🌐",tips:["See all life under Christ","Understand work as worship"],verses:["Colossians 3:17","1 Corinthians 10:31"],resources:["Every Good Endeavor - Keller"],guide:"Learn Creation-Fall-Redemption-Restoration framework."}};
+
+const PHASES={1:{name:"Foundational Core",sub:"Who God Is",cats:[1,2,3,4,5]},2:{name:"Spiritual Formation",sub:"Inner Transformation",cats:[6,7,8,9,10]},3:{name:"Scripture Engagement",sub:"Knowing & Applying",cats:[11,12,13,14,15]},4:{name:"Discipleship Practices",sub:"Lived Faith",cats:[16,17,18,19]},5:{name:"Community & Hope",sub:"Outward Expression",cats:[20,21,22,23,24,25]}};
+
+const QS={1:[{id:1,cat:1,q:"In Exodus 34:6, God describes Himself as:",opts:[{t:"All-powerful and terrifying",s:1},{t:"Compassionate, gracious, slow to anger",s:3},{t:"Distant and mysterious",s:1}]},{id:2,cat:1,q:"1 John 4:8 says 'God is ___'",opts:[{t:"Power",s:1},{t:"Love",s:3},{t:"Knowledge",s:1}]},{id:3,cat:1,q:"Jesus: 'Anyone who has seen me has seen ___' (John 14:9)",opts:[{t:"The truth",s:1},{t:"The Father",s:3},{t:"The way",s:1}]},{id:4,cat:1,q:"Malachi 3:6 says God:",opts:[{t:"Changes with circumstances",s:1},{t:"Does not change",s:3},{t:"Evolves over time",s:1}]},{id:5,cat:2,q:"John 1:1: 'The Word was with God, and the Word was ___'",opts:[{t:"Holy",s:1},{t:"God",s:3},{t:"Eternal",s:1}]},{id:6,cat:2,q:"The title 'Christ' means:",opts:[{t:"Savior",s:2},{t:"The Anointed One",s:3},{t:"Son of Man",s:1}]},{id:7,cat:2,q:"Colossians 1:15: Jesus is 'the ___ of the invisible God'",opts:[{t:"Image",s:3},{t:"Son",s:2},{t:"Servant",s:1}]},{id:8,cat:2,q:"Philippians 2:6-7: Jesus:",opts:[{t:"Became God at baptism",s:1},{t:"Being God, took form of servant",s:3},{t:"Was created first",s:1}]},{id:9,cat:3,q:"Ephesians 2:8-9: We are saved by:",opts:[{t:"Faith plus works",s:1},{t:"Grace through faith",s:3},{t:"Keeping commandments",s:1}]},{id:10,cat:3,q:"Romans 6:23: 'The gift of God is ___'",opts:[{t:"Forgiveness",s:2},{t:"Eternal life in Christ",s:3},{t:"Peace",s:1}]},{id:11,cat:3,q:"Justification means:",opts:[{t:"Made gradually holy",s:2},{t:"Declared righteous",s:3},{t:"Given power",s:1}]},{id:12,cat:3,q:"Titus 3:5: God saved us because of:",opts:[{t:"Our faith",s:2},{t:"His mercy",s:3},{t:"Our potential",s:1}]},{id:13,cat:4,q:"2 Timothy 3:16: 'All Scripture is ___'",opts:[{t:"Helpful",s:1},{t:"God-breathed",s:3},{t:"Written by holy men",s:2}]},{id:14,cat:4,q:"2 Peter 1:21: Prophecy came by:",opts:[{t:"Human understanding",s:1},{t:"The Holy Spirit",s:3},{t:"Church tradition",s:1}]},{id:15,cat:4,q:"Jesus said 'Scripture cannot be ___' (John 10:35)",opts:[{t:"Changed",s:2},{t:"Broken",s:3},{t:"Understood",s:1}]},{id:16,cat:4,q:"Bible books were:",opts:[{t:"Voted by popularity",s:1},{t:"Recognized by apostolic authority",s:3},{t:"Chosen by emperors",s:1}]},{id:17,cat:5,q:"Sign of Noah's covenant:",opts:[{t:"Circumcision",s:1},{t:"The rainbow",s:3},{t:"The Sabbath",s:1}]},{id:18,cat:5,q:"God promised Abraham:",opts:[{t:"Israel would rule",s:1},{t:"All nations blessed",s:3},{t:"Temple built",s:1}]},{id:19,cat:5,q:"New Covenant (Jer 31): God would:",opts:[{t:"Give military victory",s:1},{t:"Write law on hearts",s:3},{t:"Restore throne immediately",s:1}]},{id:20,cat:5,q:"Sign of Abrahamic covenant:",opts:[{t:"Baptism",s:1},{t:"Circumcision",s:3},{t:"Sacrifice",s:1}]}],2:[{id:21,cat:6,q:"John 14:16: Holy Spirit is 'another ___'",opts:[{t:"Power",s:1},{t:"Helper/Advocate",s:3},{t:"Angel",s:1}]},{id:22,cat:6,q:"The Holy Spirit is:",opts:[{t:"Impersonal force",s:1},{t:"Person who can be grieved",s:3},{t:"God's energy",s:1}]},{id:23,cat:6,q:"At Pentecost (Acts 2):",opts:[{t:"Jesus ascended",s:1},{t:"Spirit came on disciples",s:3},{t:"Church elected leaders",s:1}]},{id:24,cat:6,q:"Romans 8:9: Without Spirit of Christ:",opts:[{t:"Need to pray harder",s:1},{t:"Don't belong to Christ",s:3},{t:"Still learning",s:1}]},{id:25,cat:7,q:"2 Cor 7:10: Godly sorrow produces:",opts:[{t:"Guilt and shame",s:1},{t:"Repentance to salvation",s:3},{t:"Fear",s:1}]},{id:26,cat:7,q:"Metanoia (repentance) means:",opts:[{t:"Feeling sorry",s:1},{t:"Change of mind",s:3},{t:"Making amends",s:2}]},{id:27,cat:7,q:"1 John 1:9: If we confess, God will:",opts:[{t:"Consider excuses",s:1},{t:"Forgive and cleanse",s:3},{t:"Remember if we fail",s:1}]},{id:28,cat:7,q:"Romans 2:4: What leads to repentance?",opts:[{t:"Fear",s:1},{t:"God's kindness",s:3},{t:"Guilt",s:1}]},{id:29,cat:8,q:"Luke 6:46: 'Why call me Lord and not ___?'",opts:[{t:"Believe",s:1},{t:"Do what I say",s:3},{t:"Worship",s:1}]},{id:30,cat:8,q:"Luke 9:23: To follow Jesus:",opts:[{t:"Attend church",s:1},{t:"Deny self, take up cross daily",s:3},{t:"Give all money",s:1}]},{id:31,cat:8,q:"Romans 10:9: Confess 'Jesus is ___'",opts:[{t:"Savior",s:2},{t:"Lord",s:3},{t:"Teacher",s:1}]},{id:32,cat:8,q:"Matt 7:21: Who enters kingdom?",opts:[{t:"Who calls 'Lord'",s:1},{t:"Who does Father's will",s:3},{t:"Most faith",s:1}]},{id:33,cat:9,q:"Fruits of Spirit in Gal 5:22-23:",opts:[{t:"Seven",s:1},{t:"Nine",s:3},{t:"Twelve",s:1}]},{id:34,cat:9,q:"Fruit is produced by:",opts:[{t:"Our hard work",s:1},{t:"Spirit working in us",s:3},{t:"Church attendance",s:1}]},{id:35,cat:9,q:"John 15:5: 'Apart from me you can ___'",opts:[{t:"Do some things",s:1},{t:"Do nothing",s:3},{t:"Bear fruit",s:1}]},{id:36,cat:9,q:"NOT a fruit of the Spirit:",opts:[{t:"Patience",s:1},{t:"Prosperity",s:3},{t:"Gentleness",s:1}]},{id:37,cat:10,q:"Lord's Prayer: 'Our Father, ___ be your name'",opts:[{t:"Blessed",s:1},{t:"Hallowed",s:3},{t:"Praised",s:1}]},{id:38,cat:10,q:"1 John 5:14: God hears when we ask per:",opts:[{t:"Our desires",s:1},{t:"His will",s:3},{t:"Our faith",s:1}]},{id:39,cat:10,q:"James 5:16: Righteous prayer is:",opts:[{t:"Quiet",s:1},{t:"Powerful",s:3},{t:"Simple",s:1}]},{id:40,cat:10,q:"Phil 4:6: Present requests with:",opts:[{t:"Persistence",s:1},{t:"Thanksgiving",s:3},{t:"Fasting",s:1}]}],3:[{id:41,cat:11,q:"Books in the Bible:",opts:[{t:"39",s:1},{t:"66",s:3},{t:"73",s:2}]},{id:42,cat:11,q:"Psalms & Proverbs are in:",opts:[{t:"The Law",s:1},{t:"Poetry/Wisdom",s:3},{t:"Prophets",s:1}]},{id:43,cat:11,q:"Most NT letters written by:",opts:[{t:"Peter",s:1},{t:"Paul",s:3},{t:"John",s:1}]},{id:44,cat:11,q:"Romans is in:",opts:[{t:"Gospels",s:1},{t:"Epistles",s:3},{t:"Acts",s:1}]},{id:45,cat:12,q:"2 Tim 2:15: Handle word of truth:",opts:[{t:"Creatively",s:1},{t:"Correctly",s:3},{t:"Always literally",s:1}]},{id:46,cat:12,q:"Bereans (Acts 17:11) were noble because:",opts:[{t:"Accepted everything",s:1},{t:"Examined Scriptures daily",s:3},{t:"Great faith",s:1}]},{id:47,cat:12,q:"Good interpretation requires:",opts:[{t:"Only English",s:1},{t:"Context, audience, intent",s:3},{t:"Just the verse",s:1}]},{id:48,cat:12,q:"Out of context proof text is:",opts:[{t:"Always helpful",s:1},{t:"Potentially misleading",s:3},{t:"Best method",s:1}]},{id:49,cat:13,q:"Psalms are primarily:",opts:[{t:"Historical",s:1},{t:"Poetry/Song",s:3},{t:"Prophecy",s:1}]},{id:50,cat:13,q:"Revelation is:",opts:[{t:"Historical",s:1},{t:"Apocalyptic",s:3},{t:"Epistle",s:1}]},{id:51,cat:13,q:"Proverbs should be read as:",opts:[{t:"Absolute promises",s:1},{t:"Wisdom principles",s:3},{t:"Legal commands",s:1}]},{id:52,cat:13,q:"Gospels are:",opts:[{t:"Theological narratives",s:3},{t:"Myths",s:1},{t:"Poetry",s:1}]},{id:53,cat:14,q:"Who received 'all nations blessed' promise?",opts:[{t:"Moses",s:2},{t:"Abraham",s:3},{t:"David",s:2}]},{id:54,cat:14,q:"Israel exiled because:",opts:[{t:"Lost battle",s:1},{t:"Broke covenant",s:3},{t:"Wanted new land",s:1}]},{id:55,cat:14,q:"Exodus is story of:",opts:[{t:"Creation",s:1},{t:"Deliverance from Egypt",s:3},{t:"David as king",s:1}]},{id:56,cat:14,q:"Israel in Egypt because:",opts:[{t:"Joseph brought family",s:3},{t:"Moses led them",s:1},{t:"David conquered",s:1}]},{id:57,cat:15,q:"Acts records:",opts:[{t:"Jesus' life",s:1},{t:"Early church growth",s:3},{t:"Letters",s:1}]},{id:58,cat:15,q:"Great Commission is in:",opts:[{t:"Matthew 28:18-20",s:3},{t:"John 1:1",s:1},{t:"Romans 8:28",s:1}]},{id:59,cat:15,q:"Paul's letters written to:",opts:[{t:"Future generations",s:1},{t:"Specific churches",s:3},{t:"Roman government",s:1}]},{id:60,cat:15,q:"Gospels in NT:",opts:[{t:"Three",s:1},{t:"Four",s:3},{t:"Five",s:1}]}],4:[{id:61,cat:16,q:"1 Tim 4:7: Train to be:",opts:[{t:"Successful",s:1},{t:"Godly",s:3},{t:"Happy",s:1}]},{id:62,cat:16,q:"Jesus withdrew to:",opts:[{t:"Avoid crowds",s:1},{t:"Pray in solitude",s:3},{t:"Plan teaching",s:1}]},{id:63,cat:16,q:"Matt 6:16 is about:",opts:[{t:"Tithing",s:1},{t:"Fasting",s:3},{t:"Baptism",s:1}]},{id:64,cat:16,q:"Psalm 1:2: Meditate on law:",opts:[{t:"Once a week",s:1},{t:"Day and night",s:3},{t:"On Sabbath",s:1}]},{id:65,cat:16,q:"Disciplines are:",opts:[{t:"Earning favor",s:1},{t:"Experiencing grace",s:3},{t:"For mature only",s:1}]},{id:66,cat:17,q:"Gal 3:24: Law was to:",opts:[{t:"Save us",s:1},{t:"Lead us to Christ",s:3},{t:"Replace faith",s:1}]},{id:67,cat:17,q:"Jesus came to ___ the Law (Matt 5:17):",opts:[{t:"Abolish",s:1},{t:"Fulfill",s:3},{t:"Add to",s:1}]},{id:68,cat:17,q:"Rom 6:14: Not under law but:",opts:[{t:"Rules",s:1},{t:"Grace",s:3},{t:"Judgment",s:1}]},{id:69,cat:17,q:"Gal 5:13: Don't use freedom for:",opts:[{t:"Testimony",s:1},{t:"The flesh",s:3},{t:"Rest",s:1}]},{id:70,cat:17,q:"Grace teaches us to say No to:",opts:[{t:"Good things",s:1},{t:"Ungodliness",s:3},{t:"Helping",s:1}]},{id:71,cat:18,q:"Rom 12:2: Transformed by:",opts:[{t:"Church rules",s:1},{t:"Renewing of mind",s:3},{t:"Avoiding sinners",s:1}]},{id:72,cat:18,q:"Micah 6:8: God requires:",opts:[{t:"Temple daily",s:1},{t:"Act justly, love mercy, walk humbly",s:3},{t:"Many sacrifices",s:1}]},{id:73,cat:18,q:"Heb 5:14: Mature distinguish:",opts:[{t:"Friends from enemies",s:1},{t:"Good from evil",s:3},{t:"Truth from tradition",s:2}]},{id:74,cat:18,q:"Ethics based on:",opts:[{t:"Culture",s:1},{t:"Biblical principles",s:3},{t:"Feelings",s:1}]},{id:75,cat:18,q:"Prov 3:5: Don't lean on:",opts:[{t:"Others",s:1},{t:"Own understanding",s:3},{t:"Tradition",s:1}]},{id:76,cat:19,q:"James 1:2-4: Consider trials:",opts:[{t:"Punishment",s:1},{t:"Pure joy",s:3},{t:"Bad luck",s:1}]},{id:77,cat:19,q:"Rom 5:3-4: Suffering produces:",opts:[{t:"Bitterness",s:1},{t:"Perseverance, character, hope",s:3},{t:"Weakness",s:1}]},{id:78,cat:19,q:"1 Pet 4:12: Don't be ___ at trials:",opts:[{t:"Angry",s:1},{t:"Surprised",s:3},{t:"Patient",s:1}]},{id:79,cat:19,q:"2 Cor 4:17: Troubles are:",opts:[{t:"Unbearable",s:1},{t:"Light and momentary",s:3},{t:"God's displeasure",s:1}]},{id:80,cat:19,q:"God uses suffering to make us:",opts:[{t:"Weaker",s:1},{t:"More like Christ",s:3},{t:"Independent",s:1}]}],5:[{id:81,cat:20,q:"Acts 2:42: Early church devoted to:",opts:[{t:"Building programs",s:1},{t:"Teaching, fellowship, breaking bread, prayer",s:3},{t:"Politics",s:1}]},{id:82,cat:20,q:"Heb 10:25 warns against:",opts:[{t:"Meeting too often",s:1},{t:"Giving up meeting",s:3},{t:"Large gatherings",s:1}]},{id:83,cat:20,q:"Church is ___ of Christ (Eph 5):",opts:[{t:"Army",s:1},{t:"Bride",s:3},{t:"Building",s:2}]},{id:84,cat:21,q:"1 Pet 4:10: Use gifts to:",opts:[{t:"Promote self",s:1},{t:"Serve others",s:3},{t:"Gain recognition",s:1}]},{id:85,cat:21,q:"1 Cor 12: Gifts given for:",opts:[{t:"Personal enjoyment",s:1},{t:"Common good",s:3},{t:"Proving spirituality",s:1}]},{id:86,cat:21,q:"Gifts differ from:",opts:[{t:"Nothing - same as talents",s:1},{t:"Fruit (character)",s:3},{t:"Disciplines",s:2}]},{id:87,cat:22,q:"Great Commission: Make:",opts:[{t:"Converts",s:2},{t:"Disciples",s:3},{t:"Members",s:1}]},{id:88,cat:22,q:"2 Tim 2:2: ___ generations:",opts:[{t:"Two",s:1},{t:"Four",s:3},{t:"One",s:1}]},{id:89,cat:22,q:"Jesus invested most in:",opts:[{t:"Crowds",s:1},{t:"Twelve disciples",s:3},{t:"Religious leaders",s:1}]},{id:90,cat:22,q:"Mark 3:14: Twelve appointed to:",opts:[{t:"Run synagogues",s:1},{t:"Be with Him and be sent",s:3},{t:"Write Bible",s:1}]},{id:91,cat:23,q:"Acts 1:8: Witnesses in:",opts:[{t:"Jerusalem only",s:1},{t:"Jerusalem to ends of earth",s:3},{t:"Heaven",s:1}]},{id:92,cat:23,q:"1 Pet 3:15: Be prepared to give:",opts:[{t:"Money",s:1},{t:"Reason for hope",s:3},{t:"Advice",s:1}]},{id:93,cat:23,q:"Rom 10:14: 'How hear without ___?'",opts:[{t:"Praying",s:1},{t:"Preaching",s:3},{t:"Building",s:1}]},{id:94,cat:23,q:"2 Cor 5:20: We are Christ's:",opts:[{t:"Servants",s:2},{t:"Ambassadors",s:3},{t:"Students",s:1}]},{id:95,cat:24,q:"1 Thess 4:13: Don't grieve like those with:",opts:[{t:"Little faith",s:1},{t:"No hope",s:3},{t:"Many sins",s:1}]},{id:96,cat:24,q:"Rev 21 describes:",opts:[{t:"Destruction",s:1},{t:"New heaven and earth",s:3},{t:"Floating souls",s:1}]},{id:97,cat:24,q:"Titus 2:13: Christ's return is our:",opts:[{t:"Fear",s:1},{t:"Blessed hope",s:3},{t:"Distant future",s:1}]},{id:98,cat:25,q:"Col 3:17: Do all:",opts:[{t:"For own glory",s:1},{t:"In name of Lord Jesus",s:3},{t:"As little as possible",s:1}]},{id:99,cat:25,q:"1 Cor 10:31: Eat, drink, do all:",opts:[{t:"In moderation",s:1},{t:"To glory of God",s:3},{t:"With friends",s:1}]},{id:100,cat:25,q:"Biblical worldview means Scripture shapes:",opts:[{t:"Only Sundays",s:1},{t:"All of life",s:3},{t:"Just religious matters",s:1}]}]};
+
+let user=null,data={},phase=1,qIdx=0,answers={},selIdx={},shuffled=[],viewingResult=null;
+
+function load(){const s=localStorage.getItem('sfd3');if(s)data=JSON.parse(s);}
+function save(){localStorage.setItem('sfd3',JSON.stringify(data));}
+function prog(){return user&&data[user]?data[user]:{history:[],highestPhase:0,inProgress:null};}
+
+function saveInProgress(){
+  if(!user)return;
+  if(!data[user])data[user]={history:[],highestPhase:0,inProgress:null};
+  data[user].inProgress={phase:phase,qIdx:qIdx,answers:answers,selIdx:selIdx,shuffled:shuffled,savedAt:new Date().toISOString()};
+  save();
+}
+
+function clearInProgress(){
+  if(!user||!data[user])return;
+  data[user].inProgress=null;
+  save();
+}
+
+function saveProg(p,ans,wrong){
+  if(!user)return;
+  if(!data[user])data[user]={history:[],highestPhase:0,inProgress:null};
+  const qs=QS[p],cs={};
+  PHASES[p].cats.forEach(c=>{const cq=qs.filter(q=>q.cat===c);let t=0,n=0;cq.forEach(q=>{if(ans[q.id]!==undefined){t+=ans[q.id];n++;}});cs[c]=n?Math.round((t/(n*3))*100):0;});
+  const avg=Math.round(Object.values(cs).reduce((a,b)=>a+b,0)/Object.values(cs).length);
+  const result={phase:p,date:new Date().toISOString(),scores:cs,avg:avg,wrong:wrong,answers:ans};
+  data[user].history.unshift(result);
+  if(p>data[user].highestPhase)data[user].highestPhase=p;
+  data[user].inProgress=null;
+  save();
+  return result;
+}
+
+function shuffle(a){const s=[...a];for(let i=s.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[s[i],s[j]]=[s[j],s[i]];}return s;}
+function scoreLabel(s){if(s>=90)return{l:"Mastery",c:"#10b981"};if(s>=70)return{l:"Strong",c:"#3b82f6"};if(s>=50)return{l:"Growing",c:"#f59e0b"};if(s>=30)return{l:"Developing",c:"#f97316"};return{l:"Beginning",c:"#ef4444"};}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
+function formatDate(iso){const d=new Date(iso);return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});}
+
+function overall(){
+  const p=prog();
+  if(!p.history||!p.history.length)return 0;
+  const latest={};
+  p.history.forEach(h=>{if(!latest[h.phase])latest[h.phase]=h;});
+  let t=0,n=0;
+  Object.values(latest).forEach(h=>{t+=h.avg;n++;});
+  return n?Math.round(t/n):0;
+}
+
+function isPhaseUnlocked(p){
+  const pr=prog();
+  if(p===1)return true;
+  return pr.highestPhase>=p-1;
+}
+
+function login(){const inp=document.getElementById('username-input');const name=inp.value.trim()||'Demo User';user=name.toLowerCase().replace(/\s+/g,'_');load();if(!data[user])data[user]={history:[],highestPhase:0,inProgress:null};save();document.getElementById('user-display').textContent=name;goHome();}
+function logout(){user=null;show('login-screen');}
+function goHome(){show('home-screen');switchTab('take-quiz');renderHome();}
+
+function saveAndExit(){
+  saveInProgress();
+  goHome();
+}
+
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.style.display='none');
+  document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+  document.getElementById(tab+'-tab').style.display='block';
+  if(tab==='take-quiz')renderPhases();
+  if(tab==='results')renderHistory();
+  if(tab==='categories')renderDashboard();
+}
+
+function renderHome(){renderPhases();}
+
+function renderResumeBanner(){
+  const p=prog();
+  const rc=document.getElementById('resume-container');
+  if(p.inProgress){
+    const inf=PHASES[p.inProgress.phase];
+    const answered=Object.keys(p.inProgress.answers).filter(k=>!k.includes('_t')).length;
+    rc.innerHTML=`<div class="resume-banner">
+      <div class="resume-info"><strong>Continue Phase ${p.inProgress.phase}: ${inf.name}</strong><small>${answered}/20 questions answered</small></div>
+      <div style="display:flex;gap:8px;"><button class="btn btn-small" onclick="resumeQuiz()">Resume</button><button class="btn-secondary btn-small" onclick="discardProgress()">Discard</button></div>
+    </div>`;
+  }else{
+    rc.innerHTML='';
+  }
+}
+
+function resumeQuiz(){
+  const p=prog();
+  if(!p.inProgress)return;
+  phase=p.inProgress.phase;
+  qIdx=p.inProgress.qIdx;
+  answers=p.inProgress.answers;
+  selIdx=p.inProgress.selIdx;
+  shuffled=p.inProgress.shuffled;
+  show('assessment-screen');
+  renderQ();
+}
+
+function discardProgress(){
+  clearInProgress();
+  renderPhases();
+}
+
+function renderPhases(){
+  renderResumeBanner();
+  const p=prog(),o=overall(),oi=scoreLabel(o);
+  document.getElementById('overall-score').textContent=o+'%';
+  document.getElementById('overall-circle').style.background=`conic-gradient(${oi.c} ${o*3.6}deg, rgba(148,163,184,0.2) 0deg)`;
+  const c=document.getElementById('phases-container');c.innerHTML='';
+  for(let i=1;i<=5;i++){
+    const inf=PHASES[i];
+    const latestResult=p.history.find(h=>h.phase===i);
+    const done=!!latestResult;
+    const unlocked=isPhaseUnlocked(i);
+    const inProg=p.inProgress&&p.inProgress.phase===i;
+    const ps=done?latestResult.avg:null;
+    const d=document.createElement('div');
+    d.className='phase-card'+(done?' completed':'')+(unlocked?'':' locked')+(inProg?' in-progress':'');
+    if(unlocked&&!inProg){d.onclick=()=>startPhase(i);}
+    else if(inProg){d.onclick=()=>resumeQuiz();}
+    let badgeClass=inProg?'in-progress':(done?'completed':(unlocked?'available':'locked'));
+    let badgeText=inProg?'In Progress':(done?ps+'%':(unlocked?'20 Questions':'Locked'));
+    d.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:8px;">
+        <div><div class="phase-title">Phase ${i}: ${inf.name}</div><div class="phase-subtitle">${inf.sub}</div></div>
+        <span class="phase-badge ${badgeClass}">${badgeText}</span>
+      </div>
+      <div class="category-tags">${inf.cats.map(ct=>`<span class="cat-tag">${CATS[ct].name}</span>`).join('')}</div>
+      ${done?`<div class="meter"><div class="meter-fill" style="width:${ps}%;background:${scoreLabel(ps).c}"></div></div>`:''}
+      ${!unlocked?`<div class="lock-overlay"><div class="lock-message">Complete Phase ${i-1}: ${PHASES[i-1].name} first</div></div>`:''}
+    `;
+    c.appendChild(d);
+  }
+}
+
+function renderHistory(){
+  const p=prog();
+  const c=document.getElementById('history-container');
+  if(!p.history||!p.history.length){
+    c.innerHTML=`<div class="empty-state"><span class="icon">📋</span><p>No test results yet.</p><p style="font-size:0.9rem;margin-top:8px;">Complete a phase to see your results here.</p></div>`;
+    return;
+  }
+  c.innerHTML=p.history.map((h,idx)=>{
+    const si=scoreLabel(h.avg);
+    const inf=PHASES[h.phase];
+    return`<div class="history-item" onclick="viewResult(${idx})">
+      <div class="history-header">
+        <div><strong style="color:#fbbf24;">Phase ${h.phase}: ${inf.name}</strong><div class="history-date">${formatDate(h.date)}</div></div>
+        <div class="history-score" style="color:${si.c}">${h.avg}%</div>
+      </div>
+      <div class="meter"><div class="meter-fill" style="width:${h.avg}%;background:${si.c}"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:0.8rem;color:#64748b;">
+        <span>${si.l}</span>
+        <span>${h.wrong.length} missed</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function viewResult(idx){
+  const p=prog();
+  viewingResult=p.history[idx];
+  showResultDetail(viewingResult);
+}
+
+function renderDashboard(){
+  const c=document.getElementById('dashboard-content');c.innerHTML='';
+  const p=prog();
+  const latestScores={};
+  p.history.forEach(h=>{Object.entries(h.scores).forEach(([cat,sc])=>{if(!latestScores[cat])latestScores[cat]=sc;});});
+  const tiers=['Foundational Core','Spiritual Formation','Scripture Engagement','Discipleship Practices','Community & Mission','Hope & Integration'];
+  tiers.forEach(tier=>{
+    const cats=Object.entries(CATS).filter(([_,ct])=>ct.tier===tier);
+    if(!cats.length)return;
+    const sec=document.createElement('div');sec.className='tier-section card';
+    sec.innerHTML=`<h2 class="tier-title">${tier}</h2>`;
+    const g=document.createElement('div');g.className='tier-grid';
+    cats.forEach(([cid,cat])=>{
+      const sc=latestScores[cid],has=sc!==undefined,si=has?scoreLabel(sc):{l:'Not assessed',c:'#64748b'};
+      const d=document.createElement('div');d.className='stat-card';d.style.opacity=has?'1':'0.6';
+      d.onclick=()=>showCat(cid);
+      d.innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><span style="font-size:1.3rem;">${cat.icon}</span><div><div style="font-weight:500;font-size:0.95rem;">${cat.name}</div><div style="font-size:0.7rem;color:#64748b;">${cat.sub}</div></div></div>${has?`<div class="meter"><div class="meter-fill" style="width:${sc}%;background:${si.c}"></div></div><div style="display:flex;justify-content:space-between;margin-top:8px;font-size:0.8rem;"><span style="color:${si.c};">${si.l}</span><span style="color:#64748b;">${sc}%</span></div>`:`<div style="color:#64748b;font-size:0.8rem;margin-top:8px;">Phase ${cat.phase}</div>`}`;
+      g.appendChild(d);
+    });
+    sec.appendChild(g);c.appendChild(sec);
+  });
+}
+
+function startPhase(p){
+  const pr=prog();
+  if(pr.inProgress&&pr.inProgress.phase!==p){
+    if(!confirm('You have an in-progress quiz for Phase '+pr.inProgress.phase+'. Starting a new phase will discard that progress. Continue?'))return;
+    clearInProgress();
+  }
+  phase=p;qIdx=0;answers={};selIdx={};shuffled=QS[p].map(q=>({...q,opts:shuffle(q.opts)}));
+  show('assessment-screen');renderQ();
+}
+
+function retake(){startPhase(phase);}
+function nextPhase(){if(phase<5&&isPhaseUnlocked(phase+1))startPhase(phase+1);else goHome();}
+
+function renderQ(){
+  const inf=PHASES[phase],q=shuffled[qIdx],cat=CATS[q.cat];
+  document.getElementById('phase-title').textContent=`Phase ${phase}: ${inf.name}`;
+  document.getElementById('q-counter').textContent=`Question ${qIdx+1} of ${shuffled.length}`;
+  document.getElementById('progress-fill').style.width=`${((qIdx+1)/shuffled.length)*100}%`;
+  document.getElementById('cat-icon').textContent=cat.icon;
+  document.getElementById('cat-tier').textContent=cat.tier;
+  document.getElementById('cat-name').textContent=cat.name;
+  document.getElementById('q-text').textContent=q.q;
+  const c=document.getElementById('options-container');c.innerHTML='';
+  q.opts.forEach((o,i)=>{
+    const d=document.createElement('div');d.className='option'+(selIdx[q.id]===i?' selected':'');
+    d.innerHTML=`<div class="radio"><div class="radio-dot"></div></div><span>${o.t}</span>`;
+    d.onclick=()=>selectAns(q.id,o.s,o.t,i);c.appendChild(d);
+  });
+  document.getElementById('prev-btn').disabled=qIdx===0;
+  document.getElementById('next-btn').disabled=answers[q.id]===undefined;
+  document.getElementById('next-btn').textContent=qIdx===shuffled.length-1?'Complete':'Next';
+}
+
+function selectAns(id,s,t,i){answers[id]=s;answers[id+'_t']=t;selIdx[id]=i;renderQ();}
+function nextQ(){if(qIdx<shuffled.length-1){qIdx++;renderQ();}else complete();}
+function prevQ(){if(qIdx>0){qIdx--;renderQ();}}
+
+function complete(){
+  const wrong=[];
+  shuffled.forEach(q=>{if(answers[q.id]<3){const cor=q.opts.find(o=>o.s===3);wrong.push({id:q.id,cat:q.cat,q:q.q,yours:answers[q.id+'_t'],correct:cor?cor.t:'N/A'});}});
+  const result=saveProg(phase,answers,wrong);
+  viewingResult=result;
+  showResultDetail(result);
+}
+
+function showResultDetail(result){
+  show('results-screen');
+  const inf=PHASES[result.phase],ps=result.scores,wrong=result.wrong;
+  document.getElementById('results-title').textContent=`Phase ${result.phase}: ${inf.name}`;
+  document.getElementById('results-sub').textContent=inf.sub;
+  document.getElementById('result-date').textContent=formatDate(result.date);
+  const si=scoreLabel(result.avg);
+  document.getElementById('phase-score').textContent=result.avg+'%';
+  document.getElementById('phase-circle').style.background=`conic-gradient(${si.c} ${result.avg*3.6}deg, rgba(148,163,184,0.2) 0deg)`;
+  
+  const rc=document.getElementById('results-cats');rc.innerHTML='';
+  inf.cats.forEach(cid=>{
+    const cat=CATS[cid],sc=ps[cid]||0,sci=scoreLabel(sc);
+    const d=document.createElement('div');d.className='result-card';
+    d.onclick=()=>showCat(cid);
+    d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div style="display:flex;align-items:center;gap:8px;"><span>${cat.icon}</span><span style="font-weight:500;">${cat.name}</span></div><span style="color:${sci.c};font-size:0.8rem;">${sci.l}</span></div><div class="meter"><div class="meter-fill" style="width:${sc}%;background:${sci.c}"></div></div><div style="text-align:right;font-size:0.8rem;color:#64748b;margin-top:6px;">${sc}%</div>`;
+    rc.appendChild(d);
+  });
+  
+  const ss=document.getElementById('study-section'),weak=inf.cats.filter(c=>(ps[c]||0)<70);
+  if(weak.length){
+    ss.innerHTML=`<div class="info-box warning"><h3>Study Areas</h3><p style="color:#e2e8f0;">Focus on these categories:</p></div>${weak.map(cid=>{const cat=CATS[cid];return`<div class="study-section"><h4>${cat.icon} ${cat.name}</h4><p style="color:#e2e8f0;margin-bottom:10px;">${cat.guide}</p><div><strong style="color:#fbbf24;">Key Verses:</strong><div style="margin-top:6px;">${cat.verses.map(v=>`<span class="verse-tag">${v}</span>`).join('')}</div></div></div>`;}).join('')}`;
+  }else{ss.innerHTML=`<div class="info-box success"><h3>Excellent!</h3><p style="color:#e2e8f0;">You scored well across all categories!</p></div>`;}
+  
+  const ws=document.getElementById('wrong-section');
+  if(wrong.length){
+    ws.innerHTML=`<div class="info-box error"><h3>Missed Questions (${wrong.length})</h3></div>${wrong.map(w=>{const cat=CATS[w.cat];return`<div class="wrong-item"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span>${cat.icon}</span><span style="color:#94a3b8;font-size:0.8rem;">${cat.name}</span></div><p style="color:#e2e8f0;margin-bottom:6px;"><strong>Q:</strong> ${w.q}</p><p><span class="incorrect">Your answer: ${w.yours}</span></p><p><span class="correct">Correct: ${w.correct}</span></p></div>`;}).join('')}`;
+  }else{ws.innerHTML='';}
+  
+  const nb=document.getElementById('next-phase-btn');
+  if(result.phase>=5){nb.textContent='Back to Dashboard';nb.onclick=goHome;}
+  else if(!isPhaseUnlocked(result.phase+1)){nb.style.display='none';}
+  else{nb.style.display='';nb.textContent=`Phase ${result.phase+1}`;nb.onclick=nextPhase;}
+  
+  phase=result.phase;
+}
+
+function showCat(cid){
+  show('category-screen');
+  const cat=CATS[cid];
+  const p=prog();
+  let sc=null;
+  p.history.forEach(h=>{if(h.scores[cid]!==undefined&&sc===null)sc=h.scores[cid];});
+  const has=sc!==null,si=has?scoreLabel(sc):null;
+  document.getElementById('cat-detail').innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+      <span style="font-size:2.5rem;">${cat.icon}</span>
+      <div>
+        <div style="color:#fbbf24;font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;">${cat.tier} | Phase ${cat.phase}</div>
+        <h1 style="margin:0;font-size:1.5rem;font-weight:400;">${cat.name}</h1>
+        <p style="margin:0;color:#94a3b8;font-size:0.9rem;">${cat.sub}</p>
+      </div>
+    </div>
+    ${has?`<div style="background:rgba(15,23,42,0.6);border-radius:12px;padding:16px;margin-bottom:24px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="color:#e2e8f0;">Your Level</span><span style="color:${si.c};font-weight:500;">${si.l} - ${sc}%</span></div><div class="meter" style="height:10px;"><div class="meter-fill" style="width:${sc}%;background:${si.c};"></div></div></div>`:`<div class="info-box warning"><h3>Not Assessed</h3><p style="color:#e2e8f0;">Complete Phase ${cat.phase} to see your score.</p>${isPhaseUnlocked(cat.phase)?`<button class="btn" style="margin-top:12px;" onclick="startPhase(${cat.phase})">Start Phase ${cat.phase}</button>`:`<p style="color:#fca5a5;font-size:0.85rem;margin-top:8px;">Complete Phase ${cat.phase-1} first</p>`}</div>`}
+    <div style="margin-bottom:24px;"><h3 style="color:#fbbf24;margin-bottom:10px;">What This Measures</h3><p style="color:#e2e8f0;line-height:1.6;">${cat.desc}</p><div class="level-grid"><div class="level-box low"><span style="color:#ef4444;font-size:0.8rem;font-weight:500;">Beginning</span><p style="color:#e2e8f0;font-size:0.85rem;margin:6px 0 0;">${cat.low}</p></div><div class="level-box high"><span style="color:#10b981;font-size:0.8rem;font-weight:500;">Mastery</span><p style="color:#e2e8f0;font-size:0.85rem;margin:6px 0 0;">${cat.high}</p></div></div></div>
+    <div style="margin-bottom:24px;"><h3 style="color:#fbbf24;margin-bottom:10px;">Test Areas</h3><div>${cat.areas.map(a=>`<span class="tag gold">${a}</span>`).join('')}</div></div>
+    <div style="margin-bottom:24px;"><h3 style="color:#fbbf24;margin-bottom:10px;">Study Guide</h3><div style="background:rgba(15,23,42,0.6);border-radius:10px;padding:14px;"><p style="color:#e2e8f0;line-height:1.6;">${cat.guide}</p></div></div>
+    <div style="margin-bottom:24px;"><h3 style="color:#fbbf24;margin-bottom:10px;">Growth Tips</h3><div style="background:rgba(15,23,42,0.6);border-radius:10px;padding:14px;">${cat.tips.map((t,i)=>`<div style="display:flex;gap:10px;margin-bottom:10px;"><span style="color:#fbbf24;font-weight:500;">${i+1}.</span><span style="color:#e2e8f0;">${t}</span></div>`).join('')}</div></div>
+    <div style="margin-bottom:24px;"><h3 style="color:#fbbf24;margin-bottom:10px;">Key Verses</h3><div>${cat.verses.map(v=>`<span class="tag blue">${v}</span>`).join('')}</div></div>
+    <div><h3 style="color:#fbbf24;margin-bottom:10px;">Resources</h3><div style="background:rgba(15,23,42,0.6);border-radius:10px;padding:14px;">${cat.resources.map(r=>`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><span style="color:#fbbf24;">•</span><span style="color:#e2e8f0;">${r}</span></div>`).join('')}</div></div>
+  `;
+}
+
+load();
+</script>
+</body>
+</html>

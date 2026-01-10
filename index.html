@@ -1,0 +1,2476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>Rooted — Grow Where You're Planted</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+    <style>
+/* ========== CSS RESET & VARIABLES ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --root-green: #2d5a47;
+    --root-green-light: #3d7a5f;
+    --root-green-dark: #1e3d30;
+    --leaf-green: #7cb083;
+    --leaf-light: #a8d4af;
+    --earth-brown: #8b7355;
+    --earth-light: #c4a77d;
+    --cream: #faf8f5;
+    --cream-dark: #f0ebe3;
+    --warmth: #e8d5c4;
+    --slate-900: #1a1a2e;
+    --slate-800: #252538;
+    --slate-700: #3d3d56;
+    --slate-600: #5a5a78;
+    --slate-500: #7a7a96;
+    --slate-400: #9e9eb8;
+    --slate-300: #c4c4d4;
+    --slate-200: #e2e2ec;
+    --slate-100: #f4f4f8;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --info: #3b82f6;
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'DM Sans', -apple-system, sans-serif;
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    --space-2xl: 48px;
+    --space-3xl: 64px;
+    --sidebar-width: 280px;
+    --header-height: 64px;
+    --max-content: 1200px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,0.12);
+    --shadow-xl: 0 24px 60px rgba(0,0,0,0.16);
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --transition: 0.2s ease;
+}
+
+[data-theme="dark"] {
+    --bg-primary: var(--slate-900);
+    --bg-secondary: var(--slate-800);
+    --bg-tertiary: var(--slate-700);
+    --text-primary: var(--cream);
+    --text-secondary: var(--slate-300);
+    --text-tertiary: var(--slate-400);
+    --border-color: rgba(255,255,255,0.1);
+    --card-bg: rgba(255,255,255,0.05);
+    --hover-bg: rgba(255,255,255,0.08);
+}
+
+[data-theme="light"] {
+    --bg-primary: var(--cream);
+    --bg-secondary: white;
+    --bg-tertiary: var(--cream-dark);
+    --text-primary: var(--slate-900);
+    --text-secondary: var(--slate-600);
+    --text-tertiary: var(--slate-500);
+    --border-color: rgba(0,0,0,0.08);
+    --card-bg: white;
+    --hover-bg: rgba(0,0,0,0.03);
+}
+
+html { font-size: 16px; -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; }
+
+body {
+    font-family: var(--font-body);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+h1, h2, h3, h4, .display { font-family: var(--font-display); font-weight: 500; }
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+input, textarea, select { font-family: inherit; }
+img { max-width: 100%; display: block; }
+
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+.fade-in { animation: fadeIn 0.3s ease; }
+.fade-up { animation: fadeUp 0.4s ease; }
+.slide-in { animation: slideIn 0.3s ease; }
+.scale-in { animation: scaleIn 0.3s ease; }
+.stagger > * { animation: fadeUp 0.4s ease backwards; }
+.stagger > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger > *:nth-child(2) { animation-delay: 0.1s; }
+.stagger > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger > *:nth-child(4) { animation-delay: 0.2s; }
+.stagger > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger > *:nth-child(6) { animation-delay: 0.3s; }
+
+/* Layout */
+#app { display: flex; min-height: 100vh; }
+
+.sidebar {
+    width: var(--sidebar-width);
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 100;
+    transition: transform 0.3s ease;
+}
+
+.sidebar-header { padding: var(--space-lg); border-bottom: 1px solid var(--border-color); }
+.sidebar-logo { display: flex; align-items: center; gap: var(--space-md); }
+.sidebar-logo-icon {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--root-green), var(--leaf-green));
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.25rem;
+}
+.sidebar-logo-text { font-family: var(--font-display); font-size: 1.5rem; font-weight: 600; }
+.sidebar-church {
+    margin-top: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--hover-bg);
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    display: flex; align-items: center; gap: var(--space-sm);
+}
+
+.sidebar-nav { flex: 1; padding: var(--space-md); overflow-y: auto; }
+.nav-section { margin-bottom: var(--space-lg); }
+.nav-section-title {
+    font-size: 0.7rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--text-tertiary);
+    padding: var(--space-sm) var(--space-md);
+    margin-bottom: var(--space-xs);
+}
+.nav-item {
+    display: flex; align-items: center; gap: var(--space-md);
+    padding: var(--space-md); border-radius: var(--radius-md);
+    color: var(--text-secondary); transition: all var(--transition);
+    cursor: pointer; font-size: 0.95rem;
+}
+.nav-item:hover { background: var(--hover-bg); color: var(--text-primary); }
+.nav-item.active { background: linear-gradient(135deg, var(--root-green), var(--root-green-light)); color: white; }
+.nav-item-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+.nav-item-badge { margin-left: auto; background: var(--error); color: white; font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+
+.sidebar-footer { padding: var(--space-md); border-top: 1px solid var(--border-color); }
+.user-menu { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); border-radius: var(--radius-md); cursor: pointer; transition: background var(--transition); }
+.user-menu:hover { background: var(--hover-bg); }
+.user-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--earth-brown), var(--earth-light)); display: flex; align-items: center; justify-content: center; font-weight: 600; color: white; font-size: 0.9rem; }
+.user-info { flex: 1; min-width: 0; }
+.user-name { font-weight: 500; font-size: 0.95rem; }
+.user-role { font-size: 0.8rem; color: var(--text-tertiary); }
+
+.main-content { flex: 1; margin-left: var(--sidebar-width); min-height: 100vh; display: flex; flex-direction: column; }
+.main-header {
+    height: var(--header-height);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 var(--space-xl);
+    position: sticky; top: 0; z-index: 50;
+}
+.header-left { display: flex; align-items: center; gap: var(--space-lg); }
+.menu-toggle { display: none; width: 40px; height: 40px; align-items: center; justify-content: center; border-radius: var(--radius-md); color: var(--text-secondary); font-size: 1.25rem; }
+.menu-toggle:hover { background: var(--hover-bg); }
+.page-title { font-family: var(--font-display); font-size: 1.25rem; font-weight: 500; }
+.header-right { display: flex; align-items: center; gap: var(--space-md); }
+.header-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); color: var(--text-secondary); transition: all var(--transition); position: relative; font-size: 1.1rem; }
+.header-btn:hover { background: var(--hover-bg); color: var(--text-primary); }
+.header-btn .badge { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; background: var(--error); border-radius: 50%; }
+.search-bar { display: flex; align-items: center; gap: var(--space-sm); background: var(--hover-bg); border-radius: var(--radius-lg); padding: var(--space-sm) var(--space-md); width: 280px; transition: all var(--transition); }
+.search-bar:focus-within { background: var(--bg-tertiary); box-shadow: 0 0 0 2px var(--root-green); }
+.search-bar input { flex: 1; background: none; border: none; outline: none; color: var(--text-primary); font-size: 0.9rem; }
+.search-bar input::placeholder { color: var(--text-tertiary); }
+.main-body { flex: 1; padding: var(--space-xl); max-width: var(--max-content); width: 100%; margin: 0 auto; }
+
+/* Cards & Components */
+.card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: var(--space-lg); transition: all var(--transition); }
+.card-elevated { box-shadow: var(--shadow-md); }
+.card-interactive:hover { border-color: var(--root-green); box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-sm); padding: var(--space-md) var(--space-lg); border-radius: var(--radius-md); font-weight: 500; font-size: 0.95rem; transition: all var(--transition); white-space: nowrap; }
+.btn-primary { background: linear-gradient(135deg, var(--root-green), var(--root-green-light)); color: white; }
+.btn-primary:hover { box-shadow: 0 4px 20px rgba(45, 90, 71, 0.4); transform: translateY(-1px); }
+.btn-secondary { background: var(--hover-bg); color: var(--text-primary); border: 1px solid var(--border-color); }
+.btn-secondary:hover { background: var(--bg-tertiary); border-color: var(--root-green); }
+.btn-ghost { color: var(--text-secondary); }
+.btn-ghost:hover { background: var(--hover-bg); color: var(--text-primary); }
+.btn-sm { padding: var(--space-sm) var(--space-md); font-size: 0.85rem; }
+.btn-lg { padding: var(--space-lg) var(--space-xl); font-size: 1.05rem; }
+.btn-block { width: 100%; }
+
+/* Inputs */
+.input-group { margin-bottom: var(--space-lg); }
+.input-label { display: block; font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); margin-bottom: var(--space-sm); }
+.input-field { width: 100%; padding: var(--space-md); background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-md); color: var(--text-primary); font-size: 1rem; transition: all var(--transition); }
+.input-field:focus { outline: none; border-color: var(--root-green); box-shadow: 0 0 0 3px rgba(45, 90, 71, 0.15); }
+.input-field::placeholder { color: var(--text-tertiary); }
+
+/* Grid */
+.grid { display: grid; gap: var(--space-lg); }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+/* Tool Cards */
+.tool-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius-xl); padding: var(--space-xl); cursor: pointer; transition: all var(--transition); position: relative; overflow: hidden; }
+.tool-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--root-green), var(--leaf-green)); opacity: 0; transition: opacity var(--transition); }
+.tool-card:hover { border-color: var(--root-green); box-shadow: var(--shadow-lg); transform: translateY(-4px); }
+.tool-card:hover::before { opacity: 1; }
+.tool-icon { width: 56px; height: 56px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 1.75rem; margin-bottom: var(--space-lg); }
+.tool-title { font-family: var(--font-display); font-size: 1.2rem; font-weight: 500; margin-bottom: var(--space-sm); }
+.tool-description { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: var(--space-lg); }
+.tool-meta { display: flex; align-items: center; gap: var(--space-md); font-size: 0.8rem; color: var(--text-tertiary); }
+.tool-tag { padding: var(--space-xs) var(--space-sm); background: var(--hover-bg); border-radius: var(--radius-sm); }
+
+/* Progress */
+.progress-bar { height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--root-green), var(--leaf-green)); border-radius: 4px; transition: width 0.4s ease; }
+
+/* Stats */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-lg); }
+.stat-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: var(--space-lg); }
+.stat-label { font-size: 0.8rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-sm); }
+.stat-value { font-family: var(--font-display); font-size: 2rem; font-weight: 600; }
+.stat-change { font-size: 0.85rem; margin-top: var(--space-sm); }
+.stat-change.positive { color: var(--success); }
+.stat-change.negative { color: var(--error); }
+
+/* Welcome Banner */
+.welcome-banner { background: linear-gradient(135deg, var(--root-green) 0%, var(--root-green-dark) 100%); border-radius: var(--radius-xl); padding: var(--space-2xl); color: white; margin-bottom: var(--space-xl); position: relative; overflow: hidden; }
+.welcome-banner::after { content: '🌱'; position: absolute; right: var(--space-2xl); bottom: -20px; font-size: 8rem; opacity: 0.15; }
+.welcome-title { font-family: var(--font-display); font-size: 1.75rem; font-weight: 500; margin-bottom: var(--space-sm); }
+.welcome-subtitle { opacity: 0.9; font-size: 1rem; max-width: 500px; }
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-lg); }
+.section-title { font-family: var(--font-display); font-size: 1.25rem; font-weight: 500; }
+
+/* Empty State */
+.empty-state { text-align: center; padding: var(--space-3xl); }
+.empty-state-icon { font-size: 4rem; margin-bottom: var(--space-lg); animation: float 3s ease-in-out infinite; }
+.empty-state-title { font-family: var(--font-display); font-size: 1.5rem; font-weight: 500; margin-bottom: var(--space-md); }
+.empty-state-description { color: var(--text-secondary); max-width: 400px; margin: 0 auto var(--space-xl); }
+
+/* Auth Screens */
+.auth-container { min-height: 100vh; display: flex; }
+.auth-left { flex: 1; background: linear-gradient(135deg, var(--root-green) 0%, var(--root-green-dark) 100%); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: var(--space-3xl); color: white; position: relative; overflow: hidden; }
+.auth-left::before { content: ''; position: absolute; inset: 0; background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); }
+.auth-brand { text-align: center; position: relative; z-index: 1; }
+.auth-logo { font-size: 4rem; margin-bottom: var(--space-lg); }
+.auth-brand-name { font-family: var(--font-display); font-size: 3rem; font-weight: 600; margin-bottom: var(--space-md); }
+.auth-tagline { font-size: 1.25rem; opacity: 0.9; }
+.auth-right { flex: 1; display: flex; align-items: center; justify-content: center; padding: var(--space-2xl); background: var(--bg-primary); }
+.auth-form-container { width: 100%; max-width: 400px; }
+.auth-form-title { font-family: var(--font-display); font-size: 2rem; font-weight: 500; margin-bottom: var(--space-sm); text-align: center; }
+.auth-form-subtitle { color: var(--text-secondary); text-align: center; margin-bottom: var(--space-xl); }
+.auth-divider { display: flex; align-items: center; gap: var(--space-md); margin: var(--space-lg) 0; color: var(--text-tertiary); font-size: 0.85rem; }
+.auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border-color); }
+.auth-link { color: var(--root-green); font-weight: 500; }
+.auth-link:hover { text-decoration: underline; }
+
+/* Church Finder */
+.church-search { position: relative; margin-bottom: var(--space-xl); }
+.church-search-input { width: 100%; padding: var(--space-lg); padding-left: 50px; background: var(--bg-secondary); border: 2px solid var(--border-color); border-radius: var(--radius-lg); font-size: 1rem; color: var(--text-primary); transition: all var(--transition); }
+.church-search-input:focus { outline: none; border-color: var(--root-green); }
+.church-search-icon { position: absolute; left: var(--space-lg); top: 50%; transform: translateY(-50%); color: var(--text-tertiary); }
+.church-list { max-height: 400px; overflow-y: auto; }
+.church-item { display: flex; align-items: center; gap: var(--space-lg); padding: var(--space-lg); border: 1px solid var(--border-color); border-radius: var(--radius-lg); margin-bottom: var(--space-md); cursor: pointer; transition: all var(--transition); }
+.church-item:hover { border-color: var(--root-green); background: var(--hover-bg); }
+.church-item.selected { border-color: var(--root-green); background: rgba(45, 90, 71, 0.1); }
+.church-avatar { width: 56px; height: 56px; border-radius: var(--radius-md); background: linear-gradient(135deg, var(--root-green), var(--leaf-green)); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
+.church-info h3 { font-weight: 500; margin-bottom: 4px; }
+.church-info p { font-size: 0.9rem; color: var(--text-tertiary); }
+
+/* Toast */
+.toast-container { position: fixed; bottom: var(--space-lg); right: var(--space-lg); z-index: 2000; display: flex; flex-direction: column; gap: var(--space-sm); }
+.toast { background: var(--slate-800); color: white; padding: var(--space-md) var(--space-lg); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); display: flex; align-items: center; gap: var(--space-md); animation: slideIn 0.3s ease; min-width: 280px; }
+.toast.success { border-left: 4px solid var(--success); }
+.toast.error { border-left: 4px solid var(--error); }
+.toast.warning { border-left: 4px solid var(--warning); }
+.toast.info { border-left: 4px solid var(--info); }
+
+/* Sidebar Overlay */
+.sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; display: none; }
+.sidebar-overlay.show { display: block; }
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(2, 1fr); }
+    .auth-left { display: none; }
+    .auth-right { flex: none; width: 100%; }
+}
+
+@media (max-width: 768px) {
+    :root { --sidebar-width: 100%; --header-height: 56px; }
+    .sidebar { transform: translateX(-100%); width: 85%; max-width: 320px; }
+    .sidebar.open { transform: translateX(0); }
+    .main-content { margin-left: 0; }
+    .menu-toggle { display: flex; }
+    .main-body { padding: var(--space-md); }
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    .search-bar { display: none; }
+    .welcome-banner { padding: var(--space-lg); }
+    .welcome-title { font-size: 1.25rem; }
+    .welcome-banner::after { display: none; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .header-right .btn span { display: none; }
+}
+
+@media (max-width: 480px) {
+    .stat-grid { grid-template-columns: 1fr; }
+    .tool-card { padding: var(--space-lg); }
+}
+
+/* Quiz Specific Styles */
+.quiz-container { max-width: 600px; margin: 0 auto; }
+.quiz-progress { margin-bottom: var(--space-lg); }
+.quiz-progress-text { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-tertiary); margin-bottom: var(--space-sm); }
+.quiz-question { font-family: var(--font-display); font-size: 1.4rem; font-weight: 500; margin-bottom: var(--space-xl); line-height: 1.4; }
+.quiz-options { display: flex; flex-direction: column; gap: var(--space-md); margin-bottom: var(--space-xl); }
+.quiz-option { width: 100%; text-align: left; padding: var(--space-lg); border-radius: var(--radius-lg); border: 2px solid var(--border-color); background: var(--card-bg); color: var(--text-secondary); cursor: pointer; transition: all var(--transition); font-size: 0.95rem; line-height: 1.5; display: flex; align-items: flex-start; gap: var(--space-md); }
+.quiz-option:hover { background: var(--hover-bg); border-color: rgba(45, 90, 71, 0.3); }
+.quiz-option.selected { background: rgba(45, 90, 71, 0.15); border-color: var(--root-green); color: var(--text-primary); }
+.quiz-radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--text-tertiary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all var(--transition); }
+.quiz-option.selected .quiz-radio { border-color: var(--root-green); background: var(--root-green); }
+.quiz-radio-dot { width: 8px; height: 8px; border-radius: 50%; background: white; opacity: 0; transition: opacity var(--transition); }
+.quiz-option.selected .quiz-radio-dot { opacity: 1; }
+
+/* Result Styles */
+.result-header { text-align: center; padding: var(--space-2xl); }
+.result-icon { width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; margin: 0 auto var(--space-lg); }
+.result-season { color: var(--root-green); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: var(--space-sm); }
+.result-name { font-family: var(--font-display); font-size: 2.5rem; font-weight: 600; margin-bottom: var(--space-sm); }
+.result-title { color: var(--leaf-green); font-size: 1.2rem; margin-bottom: var(--space-lg); }
+.result-description { color: var(--text-secondary); font-size: 1rem; line-height: 1.6; max-width: 500px; margin: 0 auto; }
+
+.accordion { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: var(--space-md); }
+.accordion-header { width: 100%; padding: var(--space-lg); background: transparent; border: none; color: var(--text-primary); font-family: var(--font-body); font-weight: 600; font-size: 1rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background var(--transition); }
+.accordion-header:hover { background: var(--hover-bg); }
+.accordion-content { padding: 0 var(--space-lg) var(--space-lg); }
+
+.scripture-block { border-left: 3px solid var(--root-green); background: linear-gradient(90deg, rgba(45, 90, 71, 0.1), transparent); padding: var(--space-md); border-radius: 0 var(--radius-md) var(--radius-md) 0; margin: var(--space-md) 0; }
+.scripture-text { color: var(--text-secondary); font-style: italic; margin-bottom: var(--space-sm); }
+.scripture-ref { color: var(--root-green); font-size: 0.85rem; }
+
+.day-card { background: rgba(255,255,255,0.03); border-radius: var(--radius-lg); padding: var(--space-lg); margin-bottom: var(--space-md); }
+.day-header { display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md); }
+.day-number { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0; color: white; }
+.day-title { font-weight: 600; }
+.day-passage { color: var(--root-green); font-size: 0.85rem; margin-bottom: var(--space-sm); }
+.day-question { font-style: italic; color: var(--text-tertiary); background: rgba(255,255,255,0.03); padding: var(--space-md); border-radius: var(--radius-sm); font-size: 0.9rem; }
+
+.share-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-md); margin-bottom: var(--space-lg); }
+.share-btn { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: var(--space-lg); text-align: center; cursor: pointer; transition: all var(--transition); color: var(--text-primary); }
+.share-btn:hover { background: var(--hover-bg); border-color: var(--root-green); }
+.share-btn-icon { font-size: 1.5rem; margin-bottom: var(--space-sm); }
+.share-btn-label { font-size: 0.85rem; font-weight: 500; }
+
+/* Print Styles */
+@media print {
+    .sidebar, .main-header, .no-print { display: none !important; }
+    .main-content { margin-left: 0 !important; }
+    .main-body { padding: 0 !important; max-width: none !important; }
+    body { background: white !important; color: black !important; }
+}
+
+/* Resource Link Cards */
+.resource-link-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-lg);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all var(--transition);
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+}
+.resource-link-card:hover {
+    border-color: var(--root-green);
+    background: var(--hover-bg);
+    transform: translateY(-2px);
+}
+.resource-link-card.empty {
+    border-style: dashed;
+    opacity: 0.7;
+}
+.resource-link-card.empty:hover {
+    opacity: 1;
+}
+.resource-link-icon {
+    font-size: 1.5rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--hover-bg);
+    border-radius: var(--radius-md);
+}
+.resource-link-title {
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+.resource-link-url {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+/* Resources List */
+.resources-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+.resource-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    background: var(--hover-bg);
+    border-radius: var(--radius-md);
+    transition: all var(--transition);
+}
+.resource-item:hover {
+    background: var(--bg-tertiary);
+}
+.resource-item-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+.resource-item-content {
+    flex: 1;
+    min-width: 0;
+}
+.resource-item-title {
+    font-weight: 500;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.resource-item-meta {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+.resource-item-actions {
+    display: flex;
+    gap: var(--space-sm);
+    flex-shrink: 0;
+}
+
+/* Suggestion Cards */
+.suggestion-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-lg);
+    background: var(--hover-bg);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-lg);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+.suggestion-card:hover {
+    background: var(--card-bg);
+    border-color: var(--root-green);
+    border-style: solid;
+    color: var(--text-primary);
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: var(--space-lg);
+    animation: fadeIn 0.2s ease;
+}
+.modal {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-xl);
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: scaleIn 0.3s ease;
+}
+.modal-header {
+    padding: var(--space-lg);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.modal-title {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 500;
+}
+.modal-close {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+.modal-close:hover {
+    background: var(--hover-bg);
+    color: var(--text-primary);
+}
+.modal-body {
+    padding: var(--space-lg);
+}
+.modal-footer {
+    padding: var(--space-lg);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-md);
+}
+
+/* Select Styling */
+select.input-field {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9eb8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    padding-right: 40px;
+}
+    </style>
+</head>
+<body data-theme="dark">
+    <div id="app"></div>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar(false)"></div>
+    <div class="toast-container" id="toastContainer"></div>
+<script>
+// ========== CHARACTER DATA ==========
+const CHARACTERS = {
+    moses: {
+        name: "Moses",
+        title: "The Reluctant Leader",
+        icon: "🔥",
+        gradient: "linear-gradient(135deg, #b45309 0%, #c2410c 100%)",
+        description: "You're in a season of being called to something bigger than yourself, even though you feel inadequate. God is preparing you for leadership through obscurity and intimacy with Him.",
+        season: "Calling mixed with insecurity; leadership formed in obscurity.",
+        legacy: "Intimacy with God sustains leadership.",
+        christConnection: "Foreshadow of Christ as deliverer and mediator.",
+        whyMatch: [
+            "You feel unqualified for what God is asking of you",
+            "You've been through wilderness seasons of preparation",
+            "You make excuses about your limitations",
+            "You have a deep desire to see others set free",
+            "You intercede for people even when they frustrate you"
+        ],
+        scriptures: [
+            { ref: "Exodus 3:11", text: "Moses said to God, 'Who am I that I should go to Pharaoh?'" },
+            { ref: "Exodus 4:11-12", text: "The LORD said, 'Who gave humans their mouths? Now go; I will help you speak.'" },
+            { ref: "Numbers 12:3", text: "Moses was a very humble man, more humble than anyone else on the face of the earth." },
+            { ref: "Hebrews 3:5", text: "Moses was faithful as a servant in all God's house." }
+        ],
+        study: {
+            title: "7-Day Formation Journey",
+            days: [
+                { day: 1, title: "The Hidden Years", passage: "Exodus 2:1-15", question: "How is God using your current hidden season to shape you?" },
+                { day: 2, title: "The Burning Bush", passage: "Exodus 3:1-12", question: "Where is God interrupting your routine with His call?" },
+                { day: 3, title: "Excuses vs. Obedience", passage: "Exodus 4:1-17", question: "What excuses are you making to avoid God's call?" },
+                { day: 4, title: "Confronting Pharaoh", passage: "Exodus 5:1-9; 6:1-8", question: "What opposition are you afraid to face?" },
+                { day: 5, title: "The Intercessor", passage: "Exodus 32:1-14", question: "Who is God calling you to intercede for today?" },
+                { day: 6, title: "Face to Face", passage: "Exodus 33:12-23", question: "How are you pursuing intimacy with God?" },
+                { day: 7, title: "Finishing Faithful", passage: "Deuteronomy 34:1-12", question: "What legacy of faithfulness are you building?" }
+            ],
+            memoryVerse: "Exodus 4:12 — 'Now go; I will help you speak and will teach you what to say.'",
+            keyTruth: "God doesn't call the equipped—He equips the called through intimate relationship."
+        }
+    },
+    david: {
+        name: "David",
+        title: "The Worshiper's Heart",
+        icon: "🎵",
+        gradient: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)",
+        description: "You're in a season where intimacy with God matters more than success. Your heart quickly returns to worship despite failures, and repentance comes naturally to you.",
+        season: "Anointing before readiness; repentance after failure.",
+        legacy: "God values repentant hearts.",
+        christConnection: "Messianic lineage—Jesus is the Son of David.",
+        whyMatch: [
+            "Your first response to life is worship",
+            "You've experienced significant failure but refuse to let it define you",
+            "You're emotionally honest with God in prayer",
+            "You value intimacy with God over public recognition",
+            "You believe repentance matters more than perfection"
+        ],
+        scriptures: [
+            { ref: "Psalm 51:10", text: "Create in me a pure heart, O God, and renew a steadfast spirit within me." },
+            { ref: "1 Samuel 13:14", text: "The LORD has sought out a man after his own heart." },
+            { ref: "Acts 13:22", text: "I have found David son of Jesse, a man after my own heart." },
+            { ref: "Psalm 27:4", text: "One thing I ask: to dwell in the house of the LORD all the days of my life." }
+        ],
+        study: {
+            title: "7-Day Formation Journey",
+            days: [
+                { day: 1, title: "Chosen in Obscurity", passage: "1 Samuel 16:1-13", question: "How has God seen value in you when others haven't?" },
+                { day: 2, title: "Facing Your Giant", passage: "1 Samuel 17:32-50", question: "What giant are you facing with faith today?" },
+                { day: 3, title: "Friendship & Loyalty", passage: "1 Samuel 18:1-4; 20:1-17", question: "Who is your Jonathan—your covenant friend?" },
+                { day: 4, title: "When You Fall", passage: "2 Samuel 11:1-17; 12:1-13", question: "Is there hidden sin you need to bring into the light?" },
+                { day: 5, title: "True Repentance", passage: "Psalm 51:1-19", question: "What does genuine repentance look like for you?" },
+                { day: 6, title: "Undignified Worship", passage: "2 Samuel 6:12-22", question: "What holds back your full expression of worship?" },
+                { day: 7, title: "A Heart That Returns", passage: "Psalm 23:1-6", question: "How quickly does your heart return to God?" }
+            ],
+            memoryVerse: "Psalm 51:10 — 'Create in me a pure heart, O God, and renew a steadfast spirit within me.'",
+            keyTruth: "God measures your heart by how quickly you return to Him, not by your perfection."
+        }
+    },
+    abraham: {
+        name: "Abraham",
+        title: "The Faith Walker",
+        icon: "⭐",
+        gradient: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
+        description: "You're in a season of stepping into the unknown, trusting God without seeing the full picture. He's calling you to leave comfort behind and walk by faith.",
+        season: "Learning trust through waiting.",
+        legacy: "Faith initiates covenant.",
+        christConnection: "Faith credited as righteousness—the model for all believers.",
+        whyMatch: [
+            "You're in a major life transition or uncertainty",
+            "God is asking you to leave something comfortable behind",
+            "You hold promises from God that haven't been fulfilled yet",
+            "You struggle between faith and trying to control outcomes",
+            "God's timing seems completely different from yours"
+        ],
+        scriptures: [
+            { ref: "Hebrews 11:8", text: "By faith Abraham obeyed and went, even though he did not know where he was going." },
+            { ref: "Genesis 15:6", text: "Abram believed the LORD, and he credited it to him as righteousness." },
+            { ref: "Romans 4:20-21", text: "He did not waver through unbelief but was strengthened in his faith." },
+            { ref: "Galatians 3:9", text: "Those who rely on faith are blessed along with Abraham." }
+        ],
+        study: {
+            title: "7-Day Formation Journey",
+            days: [
+                { day: 1, title: "The Call to Go", passage: "Genesis 12:1-9", question: "What is God asking you to leave behind?" },
+                { day: 2, title: "Faith Despite Fear", passage: "Genesis 12:10-20; 20:1-18", question: "When has fear compromised your faith journey?" },
+                { day: 3, title: "Waiting on Promise", passage: "Genesis 15:1-6", question: "What promises are you still waiting on?" },
+                { day: 4, title: "Helping God Out", passage: "Genesis 16:1-16", question: "When have you tried to force God's hand?" },
+                { day: 5, title: "New Identity", passage: "Genesis 17:1-8, 15-22", question: "How has God changed your identity through this season?" },
+                { day: 6, title: "The Ultimate Test", passage: "Genesis 22:1-14", question: "What is your 'Isaac'—the thing hardest to surrender?" },
+                { day: 7, title: "Legacy of Faith", passage: "Hebrews 11:8-19", question: "What faith legacy are you building for others?" }
+            ],
+            memoryVerse: "Hebrews 11:8 — 'By faith Abraham obeyed and went, even though he did not know where he was going.'",
+            keyTruth: "Faith is knowing WHO leads, not WHERE you're going."
+        }
+    },
+    esther: {
+        name: "Esther",
+        title: "The Strategic Intercessor",
+        icon: "👑",
+        gradient: "linear-gradient(135deg, #db2777 0%, #be185d 100%)",
+        description: "You're in a season of divine positioning. God has placed you where you are for such a time as this, and He's calling you to use your influence courageously.",
+        season: "Courage at the right time.",
+        legacy: "God positions people for deliverance.",
+        christConnection: "Picture of sacrificial intercession for God's people.",
+        whyMatch: [
+            "You sense God has positioned you somewhere for a purpose",
+            "You wrestle with whether to speak up or stay quiet",
+            "You advocate for others who can't advocate for themselves",
+            "You have influence in places others don't have access",
+            "Courage for you means risking comfort for what's right"
+        ],
+        scriptures: [
+            { ref: "Esther 4:14", text: "Who knows but that you have come to your royal position for such a time as this?" },
+            { ref: "Esther 4:16", text: "I will go to the king... And if I perish, I perish." },
+            { ref: "Esther 7:3", text: "Grant me my life—this is my petition. And spare my people." },
+            { ref: "Proverbs 31:8-9", text: "Speak up for those who cannot speak for themselves." }
+        ],
+        study: {
+            title: "7-Day Formation Journey",
+            days: [
+                { day: 1, title: "Positioned by God", passage: "Esther 2:1-18", question: "How has God sovereignly positioned you?" },
+                { day: 2, title: "Hidden Identity", passage: "Esther 2:19-23; 3:1-6", question: "When is it time to reveal who you really are?" },
+                { day: 3, title: "The Crisis Moment", passage: "Esther 3:7-15; 4:1-8", question: "What crisis is calling for your voice?" },
+                { day: 4, title: "For Such a Time", passage: "Esther 4:9-17", question: "What were you specifically made for?" },
+                { day: 5, title: "Strategic Wisdom", passage: "Esther 5:1-14", question: "How do you approach difficult people with wisdom?" },
+                { day: 6, title: "Speaking Truth", passage: "Esther 7:1-10", question: "What truth must you speak, even if it costs you?" },
+                { day: 7, title: "Lasting Impact", passage: "Esther 8:1-17", question: "How will your courage create lasting impact?" }
+            ],
+            memoryVerse: "Esther 4:14 — 'Who knows but that you have come to your royal position for such a time as this?'",
+            keyTruth: "You are not where you are by accident—God positions for purpose."
+        }
+    },
+    joseph: {
+        name: "Joseph",
+        title: "The Faithful Sufferer",
+        icon: "🌾",
+        gradient: "linear-gradient(135deg, #059669 0%, #0d9488 100%)",
+        description: "You're in a season of private pain and unseen faithfulness. God is building character in hidden places, preparing you for future influence through current suffering.",
+        season: "Faithfulness under injustice.",
+        legacy: "God redeems suffering.",
+        christConnection: "Type of Christ—betrayed by His own, yet exalted to save many.",
+        whyMatch: [
+            "You've experienced betrayal from people close to you",
+            "You do the right thing but face setbacks anyway",
+            "You maintain integrity even when no one is watching",
+            "Your God-given dreams seem impossibly distant",
+            "You're learning that God's timing is not your timing"
+        ],
+        scriptures: [
+            { ref: "Genesis 50:20", text: "You intended to harm me, but God intended it for good." },
+            { ref: "Genesis 39:2-3", text: "The LORD was with Joseph so that he prospered." },
+            { ref: "Genesis 39:21", text: "The LORD was with him; he showed him kindness." },
+            { ref: "Psalm 105:19", text: "Till what he foretold came to pass, the word of the LORD tested him." }
+        ],
+        study: {
+            title: "7-Day Formation Journey",
+            days: [
+                { day: 1, title: "Dreams from God", passage: "Genesis 37:1-11", question: "What dreams has God placed in your heart?" },
+                { day: 2, title: "Betrayed by Family", passage: "Genesis 37:12-36", question: "How do you handle betrayal from those closest to you?" },
+                { day: 3, title: "Integrity in Temptation", passage: "Genesis 39:1-18", question: "Where is your integrity being tested right now?" },
+                { day: 4, title: "Faithful When Forgotten", passage: "Genesis 39:19-23; 40:1-23", question: "Can you serve faithfully even when forgotten?" },
+                { day: 5, title: "God's Perfect Timing", passage: "Genesis 41:1-40", question: "Are you trusting God's timing, even when it's slow?" },
+                { day: 6, title: "Forgiveness & Healing", passage: "Genesis 45:1-15", question: "Who do you need to forgive?" },
+                { day: 7, title: "Meant for Good", passage: "Genesis 50:15-21", question: "Can you see God's redemptive hand in your pain?" }
+            ],
+            memoryVerse: "Genesis 50:20 — 'You intended to harm me, but God intended it for good.'",
+            keyTruth: "Your pit is preparation, not your destination."
+        }
+    },
+    deborah: {
+        name: "Deborah",
+        title: "The Spirit-Led Authority",
+        icon: "⚡",
+        gradient: "linear-gradient(135deg, #eab308 0%, #d97706 100%)",
+        description: "You're in a season of stepping into Spirit-led leadership. God is calling you to lead boldly, not from self-promotion but from obedience to His direction.",
+        season: "Authority rooted in obedience.",
+        legacy: "God empowers obedient leaders.",
+        christConnection: "Model of Spirit-led leadership pointing to Christ's authority.",
+        whyMatch: [
+            "People naturally seek your wisdom and counsel",
+            "Your authority comes from hearing God, not seeking power",
+            "You lead without needing the spotlight",
+            "You speak prophetically into situations",
+            "You lead by going first, not just directing others"
+        ],
+        scriptures: [
+            { ref: "Judges 4:4-5", text: "Deborah, a prophet, was leading Israel at that time." },
+            { ref: "Judges 4:14", text: "'Go! This is the day the LORD has given Sisera into your hands.'" },
+            { ref: "Judges 5:7", text: "Until I, Deborah, arose, arose a mother in Israel." },
+            { ref: "Joel 2:28", text: "Your sons and daughters will prophesy." }
+        ],
+        study: {
+            title: "7-Day Formation Journey",
+            days: [
+                { day: 1, title: "Called to Lead", passage: "Judges 4:1-5", question: "How has God called you to lead in your context?" },
+                { day: 2, title: "Hearing from God", passage: "Judges 4:6-7; 1 Samuel 3:1-10", question: "How do you discern God's voice?" },
+                { day: 3, title: "Empowering Others", passage: "Judges 4:8-10", question: "Who are you empowering to step into their calling?" },
+                { day: 4, title: "Going First", passage: "Judges 4:14-16", question: "Are you willing to go where you call others to go?" },
+                { day: 5, title: "Unexpected Heroes", passage: "Judges 4:17-24", question: "Who are the unexpected heroes God is raising up around you?" },
+                { day: 6, title: "Songs of Victory", passage: "Judges 5:1-12", question: "When did God last give you a victory worth celebrating?" },
+                { day: 7, title: "Lasting Peace", passage: "Judges 5:31", question: "What legacy of peace will your leadership leave?" }
+            ],
+            memoryVerse: "Judges 4:14 — 'Go! This is the day the LORD has given Sisera into your hands.'",
+            keyTruth: "Leadership is discerning God's direction and having the courage to act on it."
+        }
+    },
+    peter: {
+        name: "Peter",
+        title: "The Restored Leader",
+        icon: "🪨",
+        gradient: "linear-gradient(135deg, #64748b 0%, #475569 100%)",
+        description: "You're in a season of restoration after failure. Jesus is personally restoring you, turning your greatest shame into your greatest platform for ministry.",
+        season: "Restoration after failure.",
+        legacy: "Grace forms leaders.",
+        christConnection: "Personally restored by Jesus after denial—picture of Christ's restoring grace.",
+        whyMatch: [
+            "You've had a significant public or private failure",
+            "You feel disqualified from what God called you to",
+            "You're experiencing Jesus meeting you in your shame",
+            "You're more impulsive than strategic",
+            "You're learning that failure isn't final with Jesus"
+        ],
+        scriptures: [
+            { ref: "Luke 22:32", text: "I have prayed for you, that your faith may not fail. When you have turned back, strengthen your brothers." },
+            { ref: "John 21:17", text: "Jesus said, 'Feed my sheep.'" },
+            { ref: "Matthew 16:18", text: "On this rock I will build my church." },
+            { ref: "Acts 2:14", text: "Peter stood up with the Eleven, raised his voice and addressed the crowd." }
+        ],
+        study: {
+            title: "7-Day Formation Journey",
+            days: [
+                { day: 1, title: "The Call to Follow", passage: "Matthew 4:18-20; Luke 5:1-11", question: "How did Jesus first call you to follow Him?" },
+                { day: 2, title: "Walking on Water", passage: "Matthew 14:22-33", question: "When have you stepped out in faith, then faltered?" },
+                { day: 3, title: "The Great Confession", passage: "Matthew 16:13-20", question: "What has God revealed to you about Jesus?" },
+                { day: 4, title: "The Denial", passage: "Luke 22:54-62", question: "When have you denied Christ through your actions?" },
+                { day: 5, title: "Restoration", passage: "John 21:15-19", question: "How is Jesus restoring you right now?" },
+                { day: 6, title: "Filled with Power", passage: "Acts 2:1-14, 37-41", question: "How has the Spirit empowered your weakness?" },
+                { day: 7, title: "Strengthen Others", passage: "1 Peter 5:1-11", question: "How can your failure strengthen others?" }
+            ],
+            memoryVerse: "Luke 22:32 — 'When you have turned back, strengthen your brothers.'",
+            keyTruth: "Your greatest failure, surrendered to Jesus, becomes your greatest ministry."
+        }
+    },
+    paul: {
+        name: "Paul",
+        title: "The Transformed Missionary",
+        icon: "✝️",
+        gradient: "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+        description: "You're in a season of radical transformation. God has dramatically changed your direction, and now your former passion is being redirected for His mission.",
+        season: "Transformation through surrender.",
+        legacy: "Grace fuels mission.",
+        christConnection: "Encountered the risen Christ—transformed from persecutor to apostle.",
+        whyMatch: [
+            "You've had a dramatic encounter that changed your direction",
+            "Your past seems like it should disqualify you from ministry",
+            "You have intense passion that now needs redirection",
+            "You feel called to reach people others have written off",
+            "Suffering has become a normal part of your calling"
+        ],
+        scriptures: [
+            { ref: "Acts 9:15", text: "This man is my chosen instrument to proclaim my name." },
+            { ref: "Galatians 2:20", text: "I have been crucified with Christ and I no longer live, but Christ lives in me." },
+            { ref: "2 Corinthians 12:9", text: "My grace is sufficient for you, for my power is made perfect in weakness." },
+            { ref: "Philippians 3:8", text: "I consider everything a loss because of the surpassing worth of knowing Christ." }
+        ],
+        study: {
+            title: "7-Day Formation Journey",
+            days: [
+                { day: 1, title: "Before the Encounter", passage: "Acts 7:58-8:3; Philippians 3:4-6", question: "What was your life before Jesus radically changed it?" },
+                { day: 2, title: "The Damascus Road", passage: "Acts 9:1-19", question: "When did Jesus interrupt your path?" },
+                { day: 3, title: "Accepting the Mission", passage: "Acts 9:20-31; Galatians 1:15-24", question: "What mission has God given you?" },
+                { day: 4, title: "Suffering for the Name", passage: "2 Corinthians 11:23-30", question: "How has suffering shaped your calling?" },
+                { day: 5, title: "Power in Weakness", passage: "2 Corinthians 12:1-10", question: "Where is God's power showing in your weakness?" },
+                { day: 6, title: "Finishing the Race", passage: "2 Timothy 4:1-8", question: "How do you want to finish your race?" },
+                { day: 7, title: "Christ Is All", passage: "Philippians 3:7-14", question: "Is knowing Christ worth losing everything else?" }
+            ],
+            memoryVerse: "Galatians 2:20 — 'I have been crucified with Christ and I no longer live, but Christ lives in me.'",
+            keyTruth: "Your past doesn't disqualify you—it qualifies you to reach people others can't."
+        }
+    },
+    marymagdalene: {
+        name: "Mary Magdalene",
+        title: "The Devoted Witness",
+        icon: "🌅",
+        gradient: "linear-gradient(135deg, #f472b6 0%, #ec4899 100%)",
+        description: "You're in a season of deep devotion born from gratitude. Jesus has delivered you, and your response is unwavering faithfulness—even when others have fled.",
+        season: "Devotion through gratitude.",
+        legacy: "Faithfulness sees resurrection.",
+        christConnection: "First witness of the resurrection—chosen to proclaim that Jesus is alive.",
+        whyMatch: [
+            "You've been delivered from something significant",
+            "Your gratitude for Jesus drives your devotion",
+            "You stay when others leave",
+            "You're not ashamed to express your love for Jesus",
+            "You've encountered the risen Christ personally"
+        ],
+        scriptures: [
+            { ref: "Luke 8:2", text: "Mary called Magdalene, from whom seven demons had gone out." },
+            { ref: "John 19:25", text: "Near the cross of Jesus stood his mother... and Mary Magdalene." },
+            { ref: "John 20:16", text: "Jesus said to her, 'Mary.' She turned and cried out, 'Rabboni!'" },
+            { ref: "John 20:18", text: "Mary Magdalene went to the disciples with the news: 'I have seen the Lord!'" }
+        ],
+        study: {
+            title: "7-Day Formation Journey",
+            days: [
+                { day: 1, title: "Delivered & Devoted", passage: "Luke 8:1-3", question: "What has Jesus delivered you from?" },
+                { day: 2, title: "Following Jesus", passage: "Mark 15:40-41; Luke 8:1-3", question: "How are you following Jesus with your resources?" },
+                { day: 3, title: "At the Cross", passage: "John 19:25-27", question: "Are you willing to stay near Jesus in the painful moments?" },
+                { day: 4, title: "At the Tomb", passage: "Mark 15:47-16:1", question: "How do you honor Jesus even when hope seems gone?" },
+                { day: 5, title: "Seeking Jesus", passage: "John 20:1-10", question: "How desperately are you seeking Jesus?" },
+                { day: 6, title: "He Knows Your Name", passage: "John 20:11-16", question: "When has Jesus called you by name?" },
+                { day: 7, title: "Go and Tell", passage: "John 20:17-18; Mark 16:9-11", question: "Who needs to hear 'I have seen the Lord' from you?" }
+            ],
+            memoryVerse: "John 20:18 — 'Mary Magdalene went to the disciples with the news: \"I have seen the Lord!\"'",
+            keyTruth: "Those who have been forgiven much, love much—and are chosen to witness resurrection."
+        }
+    },
+    timothy: {
+        name: "Timothy",
+        title: "The Growing Disciple",
+        icon: "📖",
+        gradient: "linear-gradient(135deg, #14b8a6 0%, #0891b2 100%)",
+        description: "You're in a season of growth through mentoring. God is developing you under the guidance of mature believers, preparing you for greater responsibility.",
+        season: "Growth through mentoring.",
+        legacy: "God grows willing learners.",
+        christConnection: "Formed through discipleship—the model of being shaped by following.",
+        whyMatch: [
+            "You're young in faith or young in a new calling",
+            "You have a mentor who is pouring into you",
+            "You sometimes struggle with insecurity about your age or experience",
+            "You're eager to learn and grow",
+            "You feel the weight of responsibility you weren't expecting"
+        ],
+        scriptures: [
+            { ref: "1 Timothy 4:12", text: "Don't let anyone look down on you because you are young." },
+            { ref: "2 Timothy 1:5", text: "I am reminded of your sincere faith, which first lived in your grandmother Lois." },
+            { ref: "2 Timothy 2:2", text: "The things you have heard me say... entrust to reliable people." },
+            { ref: "Philippians 2:22", text: "Timothy has proved himself, serving with me in the work of the gospel." }
+        ],
+        study: {
+            title: "7-Day Formation Journey",
+            days: [
+                { day: 1, title: "Godly Heritage", passage: "2 Timothy 1:3-7; Acts 16:1-5", question: "Who planted seeds of faith in your life?" },
+                { day: 2, title: "Called & Chosen", passage: "Acts 16:1-5; 1 Timothy 1:18-19", question: "What has God called you to despite your youth?" },
+                { day: 3, title: "Learning from a Mentor", passage: "Philippians 2:19-24; 2 Timothy 3:10-11", question: "Who is mentoring you, and what are you learning?" },
+                { day: 4, title: "Don't Despise Your Youth", passage: "1 Timothy 4:11-16", question: "How can you set an example right now?" },
+                { day: 5, title: "Guard the Deposit", passage: "2 Timothy 1:13-14; 1 Timothy 6:20-21", question: "What truth has been entrusted to you to guard?" },
+                { day: 6, title: "Endure Hardship", passage: "2 Timothy 2:1-13", question: "What hardship is building your endurance?" },
+                { day: 7, title: "Entrust to Others", passage: "2 Timothy 2:2; 4:1-5", question: "Who are you investing in to continue the legacy?" }
+            ],
+            memoryVerse: "1 Timothy 4:12 — 'Don't let anyone look down on you because you are young, but set an example for the believers.'",
+            keyTruth: "Your willingness to learn is more important than your years of experience."
+        }
+    },
+    ruth: {
+        name: "Ruth",
+        title: "The Faithful Outsider",
+        icon: "🌿",
+        gradient: "linear-gradient(135deg, #84cc16 0%, #65a30d 100%)",
+        description: "You're in a season of faithfulness in ordinary life. Though you may feel like an outsider, your steadfast love and loyalty are weaving you into God's greater story.",
+        season: "Faithfulness in ordinary life.",
+        legacy: "God honors steadfast love.",
+        christConnection: "Ancestor of Jesus—the outsider brought into the covenant line.",
+        whyMatch: [
+            "You sometimes feel like an outsider in faith communities",
+            "You've chosen to follow God even when it cost you everything",
+            "You value loyalty and commitment deeply",
+            "You're doing ordinary work with extraordinary faithfulness",
+            "You've attached yourself to someone whose God you now follow"
+        ],
+        scriptures: [
+            { ref: "Ruth 1:16", text: "Where you go I will go. Your people will be my people and your God my God." },
+            { ref: "Ruth 2:12", text: "May you be richly rewarded by the LORD, under whose wings you have come to take refuge." },
+            { ref: "Ruth 3:11", text: "All the people know that you are a woman of noble character." },
+            { ref: "Matthew 1:5", text: "Boaz the father of Obed, whose mother was Ruth." }
+        ],
+        study: {
+            title: "7-Day Formation Journey",
+            days: [
+                { day: 1, title: "Bitter Beginnings", passage: "Ruth 1:1-5", question: "What bitter circumstances have shaped your journey?" },
+                { day: 2, title: "The Costly Choice", passage: "Ruth 1:6-18", question: "What has following God cost you?" },
+                { day: 3, title: "Starting Over", passage: "Ruth 1:19-22; 2:1-3", question: "How are you stepping into new territory with God?" },
+                { day: 4, title: "Favor in the Field", passage: "Ruth 2:4-16", question: "Where is God showing you unexpected favor?" },
+                { day: 5, title: "Faithful Work", passage: "Ruth 2:17-23", question: "How are you being faithful in ordinary work?" },
+                { day: 6, title: "Bold Faith", passage: "Ruth 3:1-18", question: "What bold step of faith is God asking of you?" },
+                { day: 7, title: "Redeemed & Restored", passage: "Ruth 4:1-17", question: "How is God redeeming your story for His purposes?" }
+            ],
+            memoryVerse: "Ruth 1:16 — 'Where you go I will go, and where you stay I will stay. Your people will be my people and your God my God.'",
+            keyTruth: "Faithfulness in ordinary moments writes you into God's extraordinary story."
+        }
+    },
+    priscilla: {
+        name: "Priscilla",
+        title: "The Quiet Builder",
+        icon: "🏠",
+        gradient: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
+        description: "You're in a season of quiet, mature leadership. God is using you to build others up, disciple emerging leaders, and multiply your influence through investment in people.",
+        season: "Quiet mature leadership.",
+        legacy: "Formation multiplies influence.",
+        christConnection: "Builder of the early church—partnering with Christ to establish His body.",
+        whyMatch: [
+            "You prefer to work behind the scenes",
+            "You invest in developing other leaders",
+            "Your home or workspace is a place of ministry",
+            "You partner well with others in mission",
+            "You correct and teach with grace, not public criticism"
+        ],
+        scriptures: [
+            { ref: "Acts 18:26", text: "They invited him to their home and explained to him the way of God more adequately." },
+            { ref: "Romans 16:3-4", text: "Greet Priscilla and Aquila, my co-workers in Christ Jesus, who risked their lives for me." },
+            { ref: "1 Corinthians 16:19", text: "Aquila and Priscilla greet you warmly, together with the church that meets at their house." },
+            { ref: "Acts 18:2-3", text: "Paul went to see them, and because he was a tentmaker as they were, he stayed and worked with them." }
+        ],
+        study: {
+            title: "7-Day Formation Journey",
+            days: [
+                { day: 1, title: "Partnership in Mission", passage: "Acts 18:1-4", question: "Who do you partner with in ministry?" },
+                { day: 2, title: "Workplace as Ministry", passage: "Acts 18:2-3; 1 Thessalonians 4:11-12", question: "How is your work a platform for ministry?" },
+                { day: 3, title: "Discipling Leaders", passage: "Acts 18:24-28", question: "Who are you investing in to become a better teacher?" },
+                { day: 4, title: "Home as Church", passage: "1 Corinthians 16:19; Romans 16:3-5", question: "How is your home a place of ministry?" },
+                { day: 5, title: "Risking for the Gospel", passage: "Romans 16:3-4", question: "What risks have you taken for the gospel?" },
+                { day: 6, title: "Traveling for Mission", passage: "Acts 18:18-21", question: "How is God moving you for His purposes?" },
+                { day: 7, title: "Lasting Legacy", passage: "2 Timothy 4:19", question: "What legacy of quiet leadership are you building?" }
+            ],
+            memoryVerse: "Acts 18:26 — 'They invited him to their home and explained to him the way of God more adequately.'",
+            keyTruth: "The greatest influence often comes through quiet, intentional investment in people."
+        }
+    }
+};
+// ========== QUIZ QUESTIONS ==========
+const QUESTIONS = [
+    {
+        question: "When facing a major decision, what is your primary inner struggle?",
+        answers: [
+            { text: "I feel unqualified and make excuses about my limitations", chars: { moses: 3, timothy: 2, peter: 1 } },
+            { text: "I'm torn between trusting God's timing and trying to make it happen myself", chars: { abraham: 3, joseph: 2, esther: 1 } },
+            { text: "I want to act, but I'm afraid of the cost or what others will think", chars: { esther: 3, peter: 2, paul: 1 } },
+            { text: "I seek wise counsel and try to discern God's direction through others", chars: { timothy: 3, priscilla: 2, deborah: 1 } }
+        ]
+    },
+    {
+        question: "How do you typically respond when you've failed or fallen short?",
+        answers: [
+            { text: "I'm drawn immediately back to God in honest, emotional repentance", chars: { david: 3, peter: 2 } },
+            { text: "I feel disqualified and wonder if God can still use me", chars: { peter: 3, moses: 2, timothy: 1 } },
+            { text: "I process it privately, trusting God is still working even in this", chars: { joseph: 3, ruth: 2 } },
+            { text: "I remember what Jesus delivered me from and it deepens my devotion", chars: { marymagdalene: 3, paul: 2, david: 1 } }
+        ]
+    },
+    {
+        question: "What best describes your current relationship with waiting on God?",
+        answers: [
+            { text: "I'm holding unfulfilled promises and learning to trust His timing", chars: { abraham: 3, joseph: 2 } },
+            { text: "I'm being prepared in hiddenness for something I don't fully understand yet", chars: { moses: 3, joseph: 2, david: 1 } },
+            { text: "I'm being developed under a mentor, growing through their investment", chars: { timothy: 3, ruth: 2 } },
+            { text: "I sense I'm positioned for something specific, but the timing isn't clear", chars: { esther: 3, deborah: 2 } }
+        ]
+    },
+    {
+        question: "When others look to you for leadership or guidance, how do you feel?",
+        answers: [
+            { text: "Inadequate—who am I to lead anyone?", chars: { moses: 3, timothy: 2 } },
+            { text: "Responsible—I take it seriously because God has positioned me here", chars: { deborah: 3, esther: 2, priscilla: 1 } },
+            { text: "Restored—my past failures actually give me something to offer", chars: { peter: 3, paul: 2, david: 1 } },
+            { text: "Quiet confidence—I'd rather develop others than be in the spotlight", chars: { priscilla: 3, timothy: 2, ruth: 1 } }
+        ]
+    },
+    {
+        question: "What has suffering or hardship produced in your life most significantly?",
+        answers: [
+            { text: "Deeper intimacy with God and a quicker return to worship", chars: { david: 3, marymagdalene: 2 } },
+            { text: "Character and the ability to see God's redemptive purposes", chars: { joseph: 3, ruth: 2 } },
+            { text: "Boldness—I've lost enough that I'm no longer afraid to risk", chars: { paul: 3, esther: 2, peter: 1 } },
+            { text: "Compassion and understanding for others walking through pain", chars: { moses: 2, priscilla: 2, peter: 2, ruth: 1 } }
+        ]
+    },
+    {
+        question: "How do you primarily express your devotion to Jesus?",
+        answers: [
+            { text: "Through worship, prayer, and emotional honesty before God", chars: { david: 3, marymagdalene: 2 } },
+            { text: "Through faithful obedience in everyday, ordinary tasks", chars: { ruth: 3, joseph: 2, timothy: 1 } },
+            { text: "Through serving and investing in others behind the scenes", chars: { priscilla: 3, timothy: 2 } },
+            { text: "Through bold proclamation and risking for the gospel", chars: { paul: 3, peter: 2, deborah: 1 } }
+        ]
+    },
+    {
+        question: "Which statement best describes your sense of calling right now?",
+        answers: [
+            { text: "I feel called but completely inadequate for what God is asking", chars: { moses: 3, timothy: 2, peter: 1 } },
+            { text: "I've been radically redirected—my whole life direction has changed", chars: { paul: 3, ruth: 2, marymagdalene: 1 } },
+            { text: "I sense I'm positioned for influence at a specific moment in time", chars: { esther: 3, deborah: 2 } },
+            { text: "I'm being tested and refined before the calling becomes clear", chars: { joseph: 3, abraham: 2, david: 1 } }
+        ]
+    },
+    {
+        question: "When you encounter someone who needs correction or teaching, how do you approach it?",
+        answers: [
+            { text: "I invite them in privately and explain things more adequately", chars: { priscilla: 3, timothy: 1 } },
+            { text: "I speak prophetically and directly when God gives me a word", chars: { deborah: 3, paul: 2 } },
+            { text: "I share from my own failures and what God taught me through them", chars: { peter: 3, david: 2, paul: 1 } },
+            { text: "I intercede for them first, then speak if God opens the door", chars: { moses: 2, esther: 2, abraham: 1 } }
+        ]
+    },
+    {
+        question: "What is your relationship with community and belonging?",
+        answers: [
+            { text: "I sometimes feel like an outsider, but I've chosen to stay committed", chars: { ruth: 3, marymagdalene: 2 } },
+            { text: "My home and relationships are the center of my ministry", chars: { priscilla: 3, deborah: 1 } },
+            { text: "I've been restored to community after a period of isolation or shame", chars: { peter: 3, david: 2, paul: 1 } },
+            { text: "I'm often alone with God, interceding for the community from a distance", chars: { moses: 3, abraham: 2, esther: 1 } }
+        ]
+    },
+    {
+        question: "What legacy do you most hope to leave?",
+        answers: [
+            { text: "That I knew God intimately and led others into His presence", chars: { moses: 2, david: 3, marymagdalene: 1 } },
+            { text: "That I was faithful in the small things and God used it for His story", chars: { ruth: 3, joseph: 2, timothy: 1 } },
+            { text: "That I developed and multiplied leaders who continue the mission", chars: { priscilla: 3, paul: 2, timothy: 1 } },
+            { text: "That I acted with courage when it mattered and God delivered through me", chars: { esther: 3, deborah: 2, peter: 1 } }
+        ]
+    }
+];
+// ========== GITHUB INTEGRATION ==========
+const GitHub = {
+    config: {
+        token: localStorage.getItem('github_token') || '',
+        repo: localStorage.getItem('github_repo') || '',
+        owner: localStorage.getItem('github_owner') || '',
+        branch: 'main',
+        dataFile: 'rooted-data.json'
+    },
+    
+    isConfigured() {
+        return this.config.token && this.config.repo && this.config.owner;
+    },
+    
+    setConfig(token, owner, repo) {
+        this.config.token = token;
+        this.config.owner = owner;
+        this.config.repo = repo;
+        localStorage.setItem('github_token', token);
+        localStorage.setItem('github_owner', owner);
+        localStorage.setItem('github_repo', repo);
+    },
+    
+    clearConfig() {
+        this.config.token = '';
+        this.config.owner = '';
+        this.config.repo = '';
+        localStorage.removeItem('github_token');
+        localStorage.removeItem('github_owner');
+        localStorage.removeItem('github_repo');
+    },
+    
+    async getFile() {
+        if (!this.isConfigured()) return null;
+        try {
+            const response = await fetch(
+                `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${this.config.dataFile}?ref=${this.config.branch}`,
+                { headers: { 'Authorization': `token ${this.config.token}`, 'Accept': 'application/vnd.github.v3+json' } }
+            );
+            if (response.status === 404) return null;
+            if (!response.ok) throw new Error('Failed to fetch from GitHub');
+            const data = await response.json();
+            return { content: JSON.parse(atob(data.content)), sha: data.sha };
+        } catch (e) {
+            console.error('GitHub fetch error:', e);
+            return null;
+        }
+    },
+    
+    async saveFile(data) {
+        if (!this.isConfigured()) return false;
+        try {
+            const existing = await this.getFile();
+            const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+            const body = {
+                message: `Rooted data sync - ${new Date().toISOString()}`,
+                content: content,
+                branch: this.config.branch
+            };
+            if (existing?.sha) body.sha = existing.sha;
+            
+            const response = await fetch(
+                `https://api.github.com/repos/${this.config.owner}/${this.config.repo}/contents/${this.config.dataFile}`,
+                {
+                    method: 'PUT',
+                    headers: { 'Authorization': `token ${this.config.token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                }
+            );
+            if (!response.ok) throw new Error('Failed to save to GitHub');
+            return true;
+        } catch (e) {
+            console.error('GitHub save error:', e);
+            return false;
+        }
+    },
+    
+    async sync() {
+        if (!this.isConfigured()) return { success: false, message: 'GitHub not configured' };
+        try {
+            const remote = await this.getFile();
+            const local = DB.getData();
+            
+            if (remote?.content) {
+                // Merge: remote wins for conflicts, but merge arrays
+                const merged = this.mergeData(local, remote.content);
+                localStorage.setItem('rooted_db', JSON.stringify(merged));
+                await this.saveFile(merged);
+                return { success: true, message: 'Synced with GitHub!' };
+            } else {
+                // No remote file, push local
+                await this.saveFile(local);
+                return { success: true, message: 'Data pushed to GitHub!' };
+            }
+        } catch (e) {
+            return { success: false, message: e.message };
+        }
+    },
+    
+    mergeData(local, remote) {
+        const merged = { ...remote };
+        // Merge users (avoid duplicates by email)
+        const remoteEmails = new Set(remote.users?.map(u => u.email) || []);
+        merged.users = [...(remote.users || []), ...(local.users || []).filter(u => !remoteEmails.has(u.email))];
+        // Merge churches
+        const remoteChurchIds = new Set(remote.churches?.map(c => c.id) || []);
+        merged.churches = [...(remote.churches || []), ...(local.churches || []).filter(c => !remoteChurchIds.has(c.id))];
+        // Merge tool progress
+        merged.toolProgress = { ...local.toolProgress, ...remote.toolProgress };
+        // Merge resources
+        merged.resources = { ...local.resources, ...remote.resources };
+        // Merge sessions
+        merged.sessions = { ...local.sessions, ...remote.sessions };
+        return merged;
+    }
+};
+
+// ========== DATABASE ==========
+const DB = {
+    init() {
+        if (!localStorage.getItem('rooted_db')) {
+            const initialData = {
+                churches: [
+                    { id: 'ff001', name: 'Faith Fellowship', city: 'San Leandro', state: 'CA', logo: '⛪', memberCount: 342, color: '#2d5a47' },
+                    { id: 'gc002', name: 'Grace Community Church', city: 'Hayward', state: 'CA', logo: '✝️', memberCount: 567, color: '#7c3aed' },
+                    { id: 'nl003', name: 'New Life Church', city: 'Oakland', state: 'CA', logo: '🕊️', memberCount: 234, color: '#0891b2' },
+                    { id: 'hb004', name: 'Hillside Baptist', city: 'Castro Valley', state: 'CA', logo: '⛰️', memberCount: 189, color: '#dc2626' },
+                    { id: 'cc005', name: 'Cornerstone Church', city: 'Fremont', state: 'CA', logo: '🪨', memberCount: 423, color: '#d97706' }
+                ],
+                users: [], sessions: {}, toolProgress: {}, resources: {}
+            };
+            localStorage.setItem('rooted_db', JSON.stringify(initialData));
+        }
+        return this.getData();
+    },
+    getData() { return JSON.parse(localStorage.getItem('rooted_db') || '{}'); },
+    saveData(data) { 
+        localStorage.setItem('rooted_db', JSON.stringify(data));
+        // Auto-sync to GitHub if configured
+        if (GitHub.isConfigured()) {
+            GitHub.saveFile(data).then(success => {
+                if (success) console.log('Auto-synced to GitHub');
+            });
+        }
+    },
+    createUser(userData) {
+        const data = this.getData();
+        const user = { id: 'user_' + Date.now(), ...userData, createdAt: new Date().toISOString(), role: 'member' };
+        data.users.push(user);
+        this.saveData(data);
+        return user;
+    },
+    findUser(email) { return this.getData().users.find(u => u.email === email); },
+    createSession(userId) {
+        const data = this.getData();
+        const token = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2);
+        data.sessions[token] = { userId, createdAt: new Date().toISOString() };
+        this.saveData(data);
+        localStorage.setItem('rooted_session', token);
+        return token;
+    },
+    getSession() {
+        const token = localStorage.getItem('rooted_session');
+        if (!token) return null;
+        const data = this.getData();
+        const session = data.sessions[token];
+        if (!session) return null;
+        return data.users.find(u => u.id === session.userId) || null;
+    },
+    logout() {
+        const token = localStorage.getItem('rooted_session');
+        if (token) { const data = this.getData(); delete data.sessions[token]; this.saveData(data); }
+        localStorage.removeItem('rooted_session');
+    },
+    getChurches(search = '') {
+        const data = this.getData();
+        if (!search) return data.churches;
+        const s = search.toLowerCase();
+        return data.churches.filter(c => c.name.toLowerCase().includes(s) || c.city.toLowerCase().includes(s));
+    },
+    getChurch(id) { return this.getData().churches.find(c => c.id === id); },
+    saveToolProgress(userId, toolId, progress) {
+        const data = this.getData();
+        if (!data.toolProgress[userId]) data.toolProgress[userId] = {};
+        data.toolProgress[userId][toolId] = { ...progress, updatedAt: new Date().toISOString() };
+        this.saveData(data);
+    },
+    getToolProgress(userId, toolId) { return this.getData().toolProgress[userId]?.[toolId] || null; },
+    getAllToolProgress(userId) { return this.getData().toolProgress[userId] || {}; }
+};
+
+// ========== TOOLS REGISTRY ==========
+const TOOLS = {
+    seasons: { 
+        id: 'seasons', 
+        name: 'Discover Your Season', 
+        description: 'Find which biblical character\'s journey mirrors your current spiritual season.', 
+        icon: '🌱', 
+        color: 'linear-gradient(135deg, #2d5a47, #7cb083)', 
+        category: 'assessment', 
+        duration: '5 min', 
+        status: 'active',
+        type: 'internal' // internal = built into app
+    },
+    formation: { 
+        id: 'formation', 
+        name: 'Spiritual Formation Dashboard', 
+        description: 'A comprehensive 100-question assessment across 25 categories to evaluate your spiritual growth journey.', 
+        icon: '📊', 
+        color: 'linear-gradient(135deg, #f59e0b, #fbbf24)', 
+        category: 'assessment', 
+        duration: '20 min', 
+        status: 'active',
+        type: 'external', // external = opens in new tab
+        url: '' // Will be set in settings
+    },
+    gifts: { 
+        id: 'gifts', 
+        name: 'Spiritual Gifts Assessment', 
+        description: 'Discover your unique spiritual gifts and how God has equipped you to serve.', 
+        icon: '🎁', 
+        color: 'linear-gradient(135deg, #7c3aed, #a78bfa)', 
+        category: 'assessment', 
+        duration: '10 min', 
+        status: 'coming',
+        type: 'external',
+        url: ''
+    },
+    prayer: { 
+        id: 'prayer', 
+        name: 'Prayer Journal', 
+        description: 'Track your prayers, record answers, and grow your prayer life.', 
+        icon: '🙏', 
+        color: 'linear-gradient(135deg, #0891b2, #22d3ee)', 
+        category: 'devotional', 
+        duration: 'Ongoing', 
+        status: 'coming',
+        type: 'external',
+        url: ''
+    },
+    reading: { 
+        id: 'reading', 
+        name: 'Bible Reading Plans', 
+        description: 'Follow structured reading plans to journey through Scripture.', 
+        icon: '📖', 
+        color: 'linear-gradient(135deg, #dc2626, #f87171)', 
+        category: 'devotional', 
+        duration: 'Various', 
+        status: 'coming',
+        type: 'external',
+        url: ''
+    },
+    growth: { 
+        id: 'growth', 
+        name: 'Growth Track', 
+        description: 'A guided pathway for new believers and those deepening their faith.', 
+        icon: '📈', 
+        color: 'linear-gradient(135deg, #d97706, #fbbf24)', 
+        category: 'discipleship', 
+        duration: '8 weeks', 
+        status: 'coming',
+        type: 'external',
+        url: ''
+    },
+    community: { 
+        id: 'community', 
+        name: 'Small Groups', 
+        description: 'Connect with others in your church through small group communities.', 
+        icon: '👥', 
+        color: 'linear-gradient(135deg, #059669, #34d399)', 
+        category: 'community', 
+        duration: 'Ongoing', 
+        status: 'coming',
+        type: 'external',
+        url: ''
+    }
+};
+
+// Load custom tool URLs from storage
+function loadToolUrls() {
+    const data = DB.getData();
+    if (data.toolUrls) {
+        Object.keys(data.toolUrls).forEach(toolId => {
+            if (TOOLS[toolId]) {
+                TOOLS[toolId].url = data.toolUrls[toolId];
+                if (data.toolUrls[toolId]) {
+                    TOOLS[toolId].status = 'active';
+                }
+            }
+        });
+    }
+}
+
+function saveToolUrl(toolId, url) {
+    const data = DB.getData();
+    if (!data.toolUrls) data.toolUrls = {};
+    data.toolUrls[toolId] = url;
+    if (TOOLS[toolId]) {
+        TOOLS[toolId].url = url;
+        if (url) TOOLS[toolId].status = 'active';
+    }
+    DB.saveData(data);
+}
+
+// ========== STATE ==========
+const State = {
+    current: { screen: 'loading', user: null, church: null, sidebarOpen: false, activeNav: 'dashboard', selectedChurch: null },
+    listeners: [],
+    set(updates) { this.current = { ...this.current, ...updates }; this.notify(); },
+    subscribe(fn) { this.listeners.push(fn); },
+    notify() { this.listeners.forEach(fn => fn(this.current)); }
+};
+
+// ========== ROUTER ==========
+const Router = {
+    init() {
+        const user = DB.getSession();
+        if (user) {
+            const church = DB.getChurch(user.churchId);
+            State.set({ screen: 'app', user, church, activeNav: 'dashboard' });
+        } else {
+            State.set({ screen: 'welcome' });
+        }
+    },
+    go(screen, data = {}) { State.set({ screen, ...data }); }
+};
+
+// ========== UI HELPERS ==========
+function toast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerHTML = `<span>${message}</span>`;
+    container.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+}
+
+function toggleSidebar(open) {
+    State.set({ sidebarOpen: open });
+    document.getElementById('sidebarOverlay')?.classList.toggle('show', open);
+    document.querySelector('.sidebar')?.classList.toggle('open', open);
+}
+
+function toggleTheme() {
+    document.body.dataset.theme = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('rooted_theme', document.body.dataset.theme);
+    render();
+}
+
+function navigate(page) {
+    State.set({ activeNav: page });
+    toggleSidebar(false);
+}
+// ========== RENDER ENGINE ==========
+function render() {
+    const app = document.getElementById('app');
+    const state = State.current;
+    switch(state.screen) {
+        case 'loading': app.innerHTML = renderLoading(); break;
+        case 'welcome': app.innerHTML = renderWelcome(); break;
+        case 'find-church': app.innerHTML = renderFindChurch(); break;
+        case 'signup': app.innerHTML = renderSignup(); break;
+        case 'login': app.innerHTML = renderLogin(); break;
+        case 'app': app.innerHTML = renderApp(); break;
+        case 'tool-seasons': app.innerHTML = renderSeasonsTool(); setTimeout(initQuiz, 50); break;
+    }
+}
+
+function renderLoading() {
+    return `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center"><div style="text-align:center"><div style="font-size:4rem;animation:pulse 1.5s infinite">🌱</div><p style="margin-top:16px;color:var(--text-secondary)">Loading...</p></div></div>`;
+}
+
+function renderWelcome() {
+    return `<div class="auth-container fade-in"><div class="auth-left"><div class="auth-brand"><div class="auth-logo">🌱</div><h1 class="auth-brand-name">Rooted</h1><p class="auth-tagline">Grow where you're planted</p></div></div><div class="auth-right"><div class="auth-form-container"><h2 class="auth-form-title">Welcome</h2><p class="auth-form-subtitle">Connect with your church and grow in your faith journey.</p><button class="btn btn-primary btn-lg btn-block" onclick="Router.go('find-church')">Find Your Church</button><div class="auth-divider">or</div><button class="btn btn-secondary btn-lg btn-block" onclick="Router.go('login')">Sign In</button><div class="auth-divider">try it out</div><button class="btn btn-ghost btn-lg btn-block" onclick="demoMode()" style="border:2px dashed var(--border-color)">🚀 Demo Mode (No Account)</button><p style="text-align:center;margin-top:var(--space-xl);color:var(--text-tertiary);font-size:0.9rem">Are you a church leader? <a href="#" class="auth-link">Register your church</a></p></div></div></div>`;
+}
+
+function demoMode() {
+    const church = DB.getChurch('ff001');
+    const demoUser = { id: 'demo_user', name: 'Demo User', email: 'demo@rooted.app', role: 'member', churchId: 'ff001' };
+    toast('Welcome to Demo Mode! 🚀', 'success');
+    State.set({ user: demoUser, church, screen: 'app', activeNav: 'dashboard' });
+}
+
+function renderFindChurch() {
+    const churches = DB.getChurches();
+    return `<div class="auth-container fade-in"><div class="auth-left"><div class="auth-brand"><div class="auth-logo">⛪</div><h1 class="auth-brand-name" style="font-size:2rem">Find Your Church</h1><p class="auth-tagline">Connect with your faith community</p></div></div><div class="auth-right"><div class="auth-form-container" style="max-width:500px"><button class="btn btn-ghost" onclick="Router.go('welcome')" style="margin-bottom:var(--space-lg)">← Back</button><h2 class="auth-form-title">Find Your Church</h2><p class="auth-form-subtitle">Search by name or location</p><div class="church-search"><span class="church-search-icon">🔍</span><input type="text" class="church-search-input" placeholder="Search churches..." id="churchSearch" oninput="filterChurches(this.value)"></div><div class="church-list" id="churchList">${churches.map(c => `<div class="church-item" onclick="selectChurch('${c.id}')"><div class="church-avatar" style="background:${c.color}">${c.logo}</div><div class="church-info"><h3>${c.name}</h3><p>${c.city}, ${c.state} • ${c.memberCount} members</p></div></div>`).join('')}</div><p style="text-align:center;margin-top:var(--space-lg);color:var(--text-tertiary);font-size:0.9rem">Don't see your church? <a href="#" class="auth-link">Invite them to join</a></p></div></div></div>`;
+}
+
+function filterChurches(query) {
+    const churches = DB.getChurches(query);
+    document.getElementById('churchList').innerHTML = churches.map(c => `<div class="church-item" onclick="selectChurch('${c.id}')"><div class="church-avatar" style="background:${c.color}">${c.logo}</div><div class="church-info"><h3>${c.name}</h3><p>${c.city}, ${c.state} • ${c.memberCount} members</p></div></div>`).join('') || '<p style="text-align:center;color:var(--text-tertiary);padding:32px">No churches found</p>';
+}
+
+function selectChurch(churchId) {
+    State.set({ selectedChurch: DB.getChurch(churchId) });
+    Router.go('signup');
+}
+
+function renderSignup() {
+    const church = State.current.selectedChurch;
+    return `<div class="auth-container fade-in"><div class="auth-left"><div class="auth-brand"><div class="auth-logo">${church?.logo || '⛪'}</div><h1 class="auth-brand-name" style="font-size:2rem">${church?.name || 'Your Church'}</h1><p class="auth-tagline">Join your community on Rooted</p></div></div><div class="auth-right"><div class="auth-form-container"><button class="btn btn-ghost" onclick="Router.go('find-church')" style="margin-bottom:var(--space-lg)">← Back</button><h2 class="auth-form-title">Create Account</h2><p class="auth-form-subtitle">Join ${church?.name || 'your church'} on Rooted</p><form onsubmit="handleSignup(event)"><div class="input-group"><label class="input-label">Full Name</label><input type="text" class="input-field" id="signupName" placeholder="Your name" required></div><div class="input-group"><label class="input-label">Email</label><input type="email" class="input-field" id="signupEmail" placeholder="you@example.com" required></div><div class="input-group"><label class="input-label">Password</label><input type="password" class="input-field" id="signupPassword" placeholder="Create a password" required></div><button type="submit" class="btn btn-primary btn-lg btn-block">Create Account</button></form><p style="text-align:center;margin-top:var(--space-lg);color:var(--text-tertiary);font-size:0.9rem">Already have an account? <a href="#" class="auth-link" onclick="Router.go('login')">Sign in</a></p></div></div></div>`;
+}
+
+function handleSignup(e) {
+    e.preventDefault();
+    const name = document.getElementById('signupName').value;
+    const email = document.getElementById('signupEmail').value;
+    const password = document.getElementById('signupPassword').value;
+    const church = State.current.selectedChurch;
+    if (DB.findUser(email)) { toast('An account with this email already exists', 'error'); return; }
+    const user = DB.createUser({ name, email, password, churchId: church.id });
+    DB.createSession(user.id);
+    toast('Welcome to Rooted! 🌱', 'success');
+    State.set({ user, church, screen: 'app', activeNav: 'dashboard' });
+}
+
+function renderLogin() {
+    return `<div class="auth-container fade-in"><div class="auth-left"><div class="auth-brand"><div class="auth-logo">🌱</div><h1 class="auth-brand-name">Rooted</h1><p class="auth-tagline">Welcome back</p></div></div><div class="auth-right"><div class="auth-form-container"><button class="btn btn-ghost" onclick="Router.go('welcome')" style="margin-bottom:var(--space-lg)">← Back</button><h2 class="auth-form-title">Sign In</h2><p class="auth-form-subtitle">Continue your growth journey</p><form onsubmit="handleLogin(event)"><div class="input-group"><label class="input-label">Email</label><input type="email" class="input-field" id="loginEmail" placeholder="you@example.com" required></div><div class="input-group"><label class="input-label">Password</label><input type="password" class="input-field" id="loginPassword" placeholder="Your password" required></div><button type="submit" class="btn btn-primary btn-lg btn-block">Sign In</button></form><p style="text-align:center;margin-top:var(--space-lg);color:var(--text-tertiary);font-size:0.9rem">Don't have an account? <a href="#" class="auth-link" onclick="Router.go('find-church')">Get started</a></p></div></div></div>`;
+}
+
+function handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    const user = DB.findUser(email);
+    if (!user || user.password !== password) { toast('Invalid email or password', 'error'); return; }
+    const church = DB.getChurch(user.churchId);
+    DB.createSession(user.id);
+    toast('Welcome back! 🌱', 'success');
+    State.set({ user, church, screen: 'app', activeNav: 'dashboard' });
+}
+
+function handleLogout() {
+    DB.logout();
+    State.set({ user: null, church: null, screen: 'welcome' });
+    toast('See you next time!', 'info');
+}
+// ========== MAIN APP ==========
+function renderApp() {
+    const { user, church, activeNav } = State.current;
+    const titles = { dashboard: 'Dashboard', tools: 'Growth Tools', resources: 'Resources', groups: 'Groups', events: 'Events', prayer: 'Prayer Wall', journey: 'My Journey', settings: 'Settings' };
+    
+    return `
+        <aside class="sidebar ${State.current.sidebarOpen ? 'open' : ''}">
+            <div class="sidebar-header">
+                <div class="sidebar-logo"><div class="sidebar-logo-icon">🌱</div><span class="sidebar-logo-text">Rooted</span></div>
+                ${church ? `<div class="sidebar-church"><span>${church.logo}</span><span class="truncate">${church.name}</span></div>` : ''}
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Main</div>
+                    <div class="nav-item ${activeNav === 'dashboard' ? 'active' : ''}" onclick="navigate('dashboard')"><span class="nav-item-icon">🏠</span><span>Dashboard</span></div>
+                    <div class="nav-item ${activeNav === 'tools' ? 'active' : ''}" onclick="navigate('tools')"><span class="nav-item-icon">🧰</span><span>Growth Tools</span></div>
+                    <div class="nav-item ${activeNav === 'resources' ? 'active' : ''}" onclick="navigate('resources')"><span class="nav-item-icon">📚</span><span>Resources</span></div>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Community</div>
+                    <div class="nav-item ${activeNav === 'groups' ? 'active' : ''}" onclick="navigate('groups')"><span class="nav-item-icon">👥</span><span>Groups</span></div>
+                    <div class="nav-item ${activeNav === 'events' ? 'active' : ''}" onclick="navigate('events')"><span class="nav-item-icon">📅</span><span>Events</span></div>
+                    <div class="nav-item ${activeNav === 'prayer' ? 'active' : ''}" onclick="navigate('prayer')"><span class="nav-item-icon">🙏</span><span>Prayer Wall</span><span class="nav-item-badge">3</span></div>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Personal</div>
+                    <div class="nav-item ${activeNav === 'journey' ? 'active' : ''}" onclick="navigate('journey')"><span class="nav-item-icon">📈</span><span>My Journey</span></div>
+                    <div class="nav-item ${activeNav === 'settings' ? 'active' : ''}" onclick="navigate('settings')"><span class="nav-item-icon">⚙️</span><span>Settings</span></div>
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-menu" onclick="handleLogout()">
+                    <div class="user-avatar">${user?.name?.charAt(0) || 'U'}</div>
+                    <div class="user-info"><div class="user-name truncate">${user?.name || 'User'}</div><div class="user-role">${user?.role === 'admin' ? 'Admin' : 'Member'}</div></div>
+                    <span>▾</span>
+                </div>
+            </div>
+        </aside>
+        <main class="main-content">
+            <header class="main-header">
+                <div class="header-left">
+                    <button class="menu-toggle" onclick="toggleSidebar(true)">☰</button>
+                    <h1 class="page-title">${titles[activeNav] || 'Dashboard'}</h1>
+                </div>
+                <div class="header-right">
+                    <div class="search-bar"><span>🔍</span><input type="text" placeholder="Search..."></div>
+                    <button class="header-btn" title="Notifications">🔔<span class="badge"></span></button>
+                    <button class="header-btn" onclick="toggleTheme()" title="Toggle theme">${document.body.dataset.theme === 'dark' ? '☀️' : '🌙'}</button>
+                    <button class="btn btn-sm btn-secondary" onclick="handleLogout()"><span>Sign Out</span></button>
+                </div>
+            </header>
+            <div class="main-body">${renderPage(activeNav)}</div>
+        </main>`;
+}
+
+function renderPage(page) {
+    switch(page) {
+        case 'dashboard': return renderDashboard();
+        case 'tools': return renderTools();
+        case 'resources': return renderResources();
+        case 'groups': return renderEmpty('👥', 'Groups Coming Soon', 'Connect with others in your church through small groups and communities.');
+        case 'events': return renderEmpty('📅', 'Events Coming Soon', 'Stay up to date with your church\'s events and activities.');
+        case 'prayer': return renderEmpty('🙏', 'Prayer Wall Coming Soon', 'Share prayer requests and pray for others in your church community.');
+        case 'journey': return renderJourney();
+        case 'settings': return renderSettings();
+        default: return renderDashboard();
+    }
+}
+
+function renderEmpty(icon, title, desc) {
+    return `<div class="fade-up"><div class="empty-state"><div class="empty-state-icon">${icon}</div><h3 class="empty-state-title">${title}</h3><p class="empty-state-description">${desc}</p></div></div>`;
+}
+
+function renderDashboard() {
+    const { user, church } = State.current;
+    const progress = DB.getAllToolProgress(user?.id);
+    const seasonResult = progress.seasons?.result;
+    const charName = seasonResult ? CHARACTERS[seasonResult]?.name : null;
+    const charDesc = seasonResult ? CHARACTERS[seasonResult]?.description.split('.')[0] + '.' : null;
+    
+    return `<div class="fade-up">
+        <div class="welcome-banner">
+            <h2 class="welcome-title">Welcome back, ${user?.name?.split(' ')[0] || 'Friend'}!</h2>
+            <p class="welcome-subtitle">Continue growing in your faith journey with ${church?.name || 'your church'}.</p>
+        </div>
+        <div class="stat-grid stagger">
+            <div class="stat-card"><div class="stat-label">Tools Completed</div><div class="stat-value">${Object.keys(progress).length}</div><div class="stat-change positive">+1 this week</div></div>
+            <div class="stat-card"><div class="stat-label">Current Streak</div><div class="stat-value">7</div><div class="stat-change positive">days</div></div>
+            <div class="stat-card"><div class="stat-label">Your Season</div><div class="stat-value" style="font-size:1.5rem">${charName || '—'}</div><div class="stat-change">${charName ? 'Discovered!' : 'Take the quiz'}</div></div>
+            <div class="stat-card"><div class="stat-label">Church Rank</div><div class="stat-value">#12</div><div class="stat-change positive">↑ 3 spots</div></div>
+        </div>
+        <div style="margin-top:var(--space-2xl)">
+            <div class="section-header"><h3 class="section-title">Continue Growing</h3><button class="btn btn-ghost btn-sm" onclick="navigate('tools')">View All →</button></div>
+            <div class="grid grid-2 stagger">${renderToolCard(TOOLS.seasons, progress.seasons)}${renderToolCard(TOOLS.gifts)}</div>
+        </div>
+        ${seasonResult ? `<div style="margin-top:var(--space-2xl)"><div class="section-header"><h3 class="section-title">Your Season: ${charName}</h3><button class="btn btn-ghost btn-sm" onclick="openTool('seasons')">View Details →</button></div><div class="card"><p style="color:var(--text-secondary)">${charDesc}</p></div></div>` : ''}
+    </div>`;
+}
+
+function renderToolCard(tool, progress = null) {
+    const isCompleted = progress?.completed;
+    const isActive = tool.status === 'active';
+    const isExternal = tool.type === 'external';
+    const hasUrl = isExternal && tool.url;
+    
+    return `<div class="tool-card ${!isActive ? 'coming-soon' : ''}" onclick="${isActive ? `openTool('${tool.id}')` : ''}">
+        <div style="display:flex;justify-content:space-between;align-items:start">
+            <div class="tool-icon" style="background:${tool.color}">${tool.icon}</div>
+            ${isExternal && isActive ? `<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openToolConfigModal('${tool.id}')" title="Edit URL">⚙️</button>` : ''}
+        </div>
+        <h4 class="tool-title">${tool.name}</h4>
+        <p class="tool-description">${tool.description}</p>
+        <div class="tool-meta">
+            <span class="tool-tag">${tool.duration}</span>
+            ${isCompleted ? '<span class="tool-tag" style="background:var(--success);color:white">✓ Completed</span>' : ''}
+            ${!isActive ? '<span class="tool-tag">Coming Soon</span>' : ''}
+            ${isExternal && hasUrl ? '<span class="tool-tag" style="background:var(--info);color:white">↗ External</span>' : ''}
+            ${isExternal && !hasUrl && isActive ? '<span class="tool-tag" style="background:var(--warning);color:white">⚙️ Setup URL</span>' : ''}
+        </div>
+    </div>`;
+}
+
+function renderTools() {
+    const { user } = State.current;
+    const progress = DB.getAllToolProgress(user?.id);
+    const toolList = Object.values(TOOLS);
+    return `<div class="fade-up">
+        <p style="color:var(--text-secondary);margin-bottom:var(--space-xl)">Discover tools designed to help you grow in your faith and understand your spiritual journey.</p>
+        <div class="section-header"><h3 class="section-title">Assessments</h3></div>
+        <div class="grid grid-3 stagger">${toolList.filter(t => t.category === 'assessment').map(t => renderToolCard(t, progress[t.id])).join('')}</div>
+        <div class="section-header" style="margin-top:var(--space-2xl)"><h3 class="section-title">Devotional</h3></div>
+        <div class="grid grid-3 stagger">${toolList.filter(t => t.category === 'devotional').map(t => renderToolCard(t, progress[t.id])).join('')}</div>
+        <div class="section-header" style="margin-top:var(--space-2xl)"><h3 class="section-title">Discipleship & Community</h3></div>
+        <div class="grid grid-3 stagger">${toolList.filter(t => t.category === 'discipleship' || t.category === 'community').map(t => renderToolCard(t, progress[t.id])).join('')}</div>
+    </div>`;
+}
+
+function renderJourney() {
+    const { user } = State.current;
+    const progress = DB.getAllToolProgress(user?.id);
+    const seasonResult = progress.seasons?.result;
+    const char = seasonResult ? CHARACTERS[seasonResult] : null;
+    return `<div class="fade-up">
+        <div class="card" style="margin-bottom:var(--space-xl)">
+            <h3 style="font-family:var(--font-display);margin-bottom:var(--space-md)">Your Spiritual Journey</h3>
+            <p style="color:var(--text-secondary)">Track your growth and see how far you've come.</p>
+            <div class="progress-bar" style="margin-top:var(--space-lg);height:12px"><div class="progress-fill" style="width:${Object.keys(progress).length * 16.6}%"></div></div>
+            <p style="font-size:0.85rem;color:var(--text-tertiary);margin-top:var(--space-sm)">${Object.keys(progress).length} of 6 tools completed</p>
+        </div>
+        ${char ? `<div class="card"><h4 style="margin-bottom:var(--space-md)">🌱 Your Season: ${char.name}</h4><p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">${char.description}</p><button class="btn btn-secondary" onclick="openTool('seasons')">View Full Results</button></div>` : `<div class="card card-interactive" onclick="openTool('seasons')"><h4 style="margin-bottom:var(--space-md)">🌱 Discover Your Season</h4><p style="color:var(--text-secondary)">Take the quiz to find which biblical character's journey mirrors your current spiritual season.</p></div>`}
+    </div>`;
+}
+
+function renderSettings() {
+    const { user, church } = State.current;
+    const githubConfigured = GitHub.isConfigured();
+    
+    return `<div class="fade-up">
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="font-family:var(--font-display);margin-bottom:var(--space-lg)">Profile</h3>
+            <div class="input-group"><label class="input-label">Name</label><input type="text" class="input-field" value="${user?.name || ''}" readonly></div>
+            <div class="input-group"><label class="input-label">Email</label><input type="email" class="input-field" value="${user?.email || ''}" readonly></div>
+            <div class="input-group"><label class="input-label">Church</label><input type="text" class="input-field" value="${church?.name || ''}" readonly></div>
+        </div>
+        
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="font-family:var(--font-display);margin-bottom:var(--space-lg)">Preferences</h3>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-md) 0;border-bottom:1px solid var(--border-color)">
+                <div><div style="font-weight:500">Dark Mode</div><div style="font-size:0.85rem;color:var(--text-tertiary)">Use dark theme</div></div>
+                <button class="btn btn-secondary btn-sm" onclick="toggleTheme()">${document.body.dataset.theme === 'dark' ? 'Light' : 'Dark'}</button>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-md) 0">
+                <div><div style="font-weight:500">Notifications</div><div style="font-size:0.85rem;color:var(--text-tertiary)">Receive push notifications</div></div>
+                <button class="btn btn-secondary btn-sm">Enable</button>
+            </div>
+        </div>
+        
+        <div class="card" style="margin-bottom:var(--space-lg);border-color:${githubConfigured ? 'var(--success)' : 'var(--warning)'}">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-lg)">
+                <h3 style="font-family:var(--font-display)">☁️ GitHub Sync</h3>
+                ${githubConfigured ? '<span style="background:var(--success);color:white;padding:4px 12px;border-radius:20px;font-size:0.75rem;font-weight:600">Connected</span>' : '<span style="background:var(--warning);color:white;padding:4px 12px;border-radius:20px;font-size:0.75rem;font-weight:600">Not Connected</span>'}
+            </div>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg);font-size:0.9rem">
+                Save your data to a GitHub repository for backup and sync across devices.
+            </p>
+            ${githubConfigured ? `
+                <div style="background:var(--hover-bg);padding:var(--space-md);border-radius:var(--radius-md);margin-bottom:var(--space-lg)">
+                    <div style="font-size:0.85rem;color:var(--text-tertiary);margin-bottom:4px">Connected Repository</div>
+                    <div style="font-weight:500">${GitHub.config.owner}/${GitHub.config.repo}</div>
+                </div>
+                <div style="display:flex;gap:var(--space-md)">
+                    <button class="btn btn-primary" onclick="syncGitHub()">🔄 Sync Now</button>
+                    <button class="btn btn-secondary" onclick="openGitHubModal()">⚙️ Settings</button>
+                    <button class="btn btn-ghost" onclick="disconnectGitHub()" style="color:var(--error)">Disconnect</button>
+                </div>
+            ` : `
+                <button class="btn btn-primary" onclick="openGitHubModal()">Connect GitHub Repository</button>
+            `}
+        </div>
+        
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="font-family:var(--font-display);margin-bottom:var(--space-lg)">📦 Data Management</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg);font-size:0.9rem">
+                Export or import your data for backup purposes.
+            </p>
+            <div style="display:flex;gap:var(--space-md);flex-wrap:wrap">
+                <button class="btn btn-secondary" onclick="exportData()">📥 Export Data (JSON)</button>
+                <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">📤 Import Data</button>
+                <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+            </div>
+        </div>
+        
+        <div class="card" style="border-color:var(--error)">
+            <h3 style="font-family:var(--font-display);margin-bottom:var(--space-md);color:var(--error)">Danger Zone</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">These actions cannot be undone.</p>
+            <div style="display:flex;gap:var(--space-md);flex-wrap:wrap">
+                <button class="btn btn-secondary" style="border-color:var(--error);color:var(--error)" onclick="handleLogout()">Sign Out</button>
+                <button class="btn btn-secondary" style="border-color:var(--error);color:var(--error)" onclick="clearAllData()">Clear All Data</button>
+            </div>
+        </div>
+        
+        <div id="settingsModal"></div>
+    </div>`;
+}
+
+function openGitHubModal() {
+    const modal = document.getElementById('settingsModal') || document.createElement('div');
+    modal.id = 'settingsModal';
+    if (!document.getElementById('settingsModal')) document.body.appendChild(modal);
+    
+    modal.innerHTML = `
+        <div class="modal-overlay" onclick="closeSettingsModal()">
+            <div class="modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3 class="modal-title">Connect GitHub Repository</h3>
+                    <button class="modal-close" onclick="closeSettingsModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div style="background:var(--hover-bg);padding:var(--space-lg);border-radius:var(--radius-md);margin-bottom:var(--space-lg)">
+                        <h4 style="margin-bottom:var(--space-md)">📋 Setup Instructions</h4>
+                        <ol style="color:var(--text-secondary);font-size:0.9rem;padding-left:var(--space-lg);line-height:1.8">
+                            <li>Go to <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--root-green)">GitHub Settings → Developer Settings → Personal Access Tokens</a></li>
+                            <li>Click "Generate new token (classic)"</li>
+                            <li>Give it a name like "Rooted App"</li>
+                            <li>Select scope: <strong>repo</strong> (Full control of private repositories)</li>
+                            <li>Click "Generate token" and copy it</li>
+                            <li>Create a new repository (can be private)</li>
+                        </ol>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">GitHub Personal Access Token</label>
+                        <input type="password" class="input-field" id="githubToken" value="${GitHub.config.token}" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">GitHub Username</label>
+                        <input type="text" class="input-field" id="githubOwner" value="${GitHub.config.owner}" placeholder="your-username">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Repository Name</label>
+                        <input type="text" class="input-field" id="githubRepo" value="${GitHub.config.repo}" placeholder="rooted-data">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeSettingsModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveGitHubConfig()">Connect & Sync</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function closeSettingsModal() {
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.innerHTML = '';
+}
+
+async function saveGitHubConfig() {
+    const token = document.getElementById('githubToken').value.trim();
+    const owner = document.getElementById('githubOwner').value.trim();
+    const repo = document.getElementById('githubRepo').value.trim();
+    
+    if (!token || !owner || !repo) {
+        toast('Please fill in all fields', 'error');
+        return;
+    }
+    
+    GitHub.setConfig(token, owner, repo);
+    closeSettingsModal();
+    toast('Connecting to GitHub...', 'info');
+    
+    const result = await GitHub.sync();
+    if (result.success) {
+        toast(result.message, 'success');
+    } else {
+        toast('Connection failed: ' + result.message, 'error');
+    }
+    render();
+}
+
+async function syncGitHub() {
+    toast('Syncing with GitHub...', 'info');
+    const result = await GitHub.sync();
+    if (result.success) {
+        toast(result.message, 'success');
+    } else {
+        toast('Sync failed: ' + result.message, 'error');
+    }
+    render();
+}
+
+function disconnectGitHub() {
+    if (!confirm('Disconnect from GitHub? Your local data will remain.')) return;
+    GitHub.clearConfig();
+    toast('Disconnected from GitHub', 'info');
+    render();
+}
+
+function exportData() {
+    const data = DB.getData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rooted-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Data exported! 📥', 'success');
+}
+
+function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (data.churches && data.users !== undefined) {
+                localStorage.setItem('rooted_db', JSON.stringify(data));
+                toast('Data imported successfully! 📤', 'success');
+                render();
+            } else {
+                toast('Invalid data file', 'error');
+            }
+        } catch (err) {
+            toast('Failed to parse file', 'error');
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+function clearAllData() {
+    if (!confirm('Are you sure? This will delete ALL local data including your account!')) return;
+    if (!confirm('This cannot be undone. Are you absolutely sure?')) return;
+    
+    localStorage.clear();
+    toast('All data cleared', 'info');
+    location.reload();
+}
+
+function renderResources() {
+    const { user, church } = State.current;
+    const data = DB.getData();
+    const churchResources = data.resources[church?.id] || { links: {}, customResources: [] };
+    const links = churchResources.links || {};
+    const custom = churchResources.customResources || [];
+    
+    return `<div class="fade-up">
+        <p style="color:var(--text-secondary);margin-bottom:var(--space-xl)">Connect with ${church?.name || 'your church'} and access all your spiritual growth resources in one place.</p>
+        
+        <!-- Church Links Section -->
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <div class="section-header" style="margin-bottom:var(--space-lg)">
+                <h3 class="section-title">⛪ Church Links</h3>
+                <button class="btn btn-sm btn-secondary" onclick="openEditLinksModal()">Edit Links</button>
+            </div>
+            
+            <div class="grid grid-2" style="gap:var(--space-md)">
+                ${links.website ? `<a href="${links.website}" target="_blank" class="resource-link-card"><span class="resource-link-icon">🌐</span><div><div class="resource-link-title">Website</div><div class="resource-link-url">${formatUrl(links.website)}</div></div></a>` : renderEmptyLinkCard('🌐', 'Website', 'website')}
+                ${links.youtube ? `<a href="${links.youtube}" target="_blank" class="resource-link-card"><span class="resource-link-icon">📺</span><div><div class="resource-link-title">YouTube</div><div class="resource-link-url">${formatUrl(links.youtube)}</div></div></a>` : renderEmptyLinkCard('📺', 'YouTube', 'youtube')}
+                ${links.facebook ? `<a href="${links.facebook}" target="_blank" class="resource-link-card"><span class="resource-link-icon">📘</span><div><div class="resource-link-title">Facebook</div><div class="resource-link-url">${formatUrl(links.facebook)}</div></div></a>` : renderEmptyLinkCard('📘', 'Facebook', 'facebook')}
+                ${links.instagram ? `<a href="${links.instagram}" target="_blank" class="resource-link-card"><span class="resource-link-icon">📸</span><div><div class="resource-link-title">Instagram</div><div class="resource-link-url">${formatUrl(links.instagram)}</div></div></a>` : renderEmptyLinkCard('📸', 'Instagram', 'instagram')}
+                ${links.spotify ? `<a href="${links.spotify}" target="_blank" class="resource-link-card"><span class="resource-link-icon">🎵</span><div><div class="resource-link-title">Spotify/Podcast</div><div class="resource-link-url">${formatUrl(links.spotify)}</div></div></a>` : renderEmptyLinkCard('🎵', 'Spotify/Podcast', 'spotify')}
+                ${links.giving ? `<a href="${links.giving}" target="_blank" class="resource-link-card"><span class="resource-link-icon">💝</span><div><div class="resource-link-title">Give</div><div class="resource-link-url">${formatUrl(links.giving)}</div></div></a>` : renderEmptyLinkCard('💝', 'Giving', 'giving')}
+            </div>
+        </div>
+        
+        <!-- Custom Resources Section -->
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <div class="section-header" style="margin-bottom:var(--space-lg)">
+                <h3 class="section-title">📚 Resources Library</h3>
+                <button class="btn btn-sm btn-primary" onclick="openAddResourceModal()">+ Add Resource</button>
+            </div>
+            
+            ${custom.length > 0 ? `
+                <div class="resources-list">
+                    ${custom.map((r, i) => `
+                        <div class="resource-item">
+                            <div class="resource-item-icon" style="background:${getResourceColor(r.type)}">${getResourceIcon(r.type)}</div>
+                            <div class="resource-item-content">
+                                <div class="resource-item-title">${r.title}</div>
+                                <div class="resource-item-meta">${r.type}${r.description ? ' • ' + r.description : ''}</div>
+                            </div>
+                            <div class="resource-item-actions">
+                                <a href="${r.url}" target="_blank" class="btn btn-sm btn-secondary">Open</a>
+                                <button class="btn btn-sm btn-ghost" onclick="deleteResource(${i})" style="color:var(--error)">🗑️</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : `
+                <div class="empty-state" style="padding:var(--space-xl)">
+                    <div class="empty-state-icon" style="font-size:3rem">📂</div>
+                    <h4 class="empty-state-title" style="font-size:1.1rem">No Resources Yet</h4>
+                    <p class="empty-state-description" style="font-size:0.9rem">Add sermons, documents, study guides, and more.</p>
+                </div>
+            `}
+        </div>
+        
+        <!-- Quick Add Suggestions -->
+        <div class="card">
+            <h3 class="section-title" style="margin-bottom:var(--space-lg)">💡 Suggested Resources to Add</h3>
+            <div class="grid grid-3" style="gap:var(--space-md)">
+                <button class="suggestion-card" onclick="openAddResourceModal('Sermon')">
+                    <span style="font-size:1.5rem">🎤</span>
+                    <span>Sermon Series</span>
+                </button>
+                <button class="suggestion-card" onclick="openAddResourceModal('Study Guide')">
+                    <span style="font-size:1.5rem">📖</span>
+                    <span>Study Guide</span>
+                </button>
+                <button class="suggestion-card" onclick="openAddResourceModal('Event')">
+                    <span style="font-size:1.5rem">📅</span>
+                    <span>Upcoming Event</span>
+                </button>
+                <button class="suggestion-card" onclick="openAddResourceModal('Document')">
+                    <span style="font-size:1.5rem">📄</span>
+                    <span>Document/PDF</span>
+                </button>
+                <button class="suggestion-card" onclick="openAddResourceModal('Devotional')">
+                    <span style="font-size:1.5rem">🙏</span>
+                    <span>Devotional</span>
+                </button>
+                <button class="suggestion-card" onclick="openAddResourceModal('Other')">
+                    <span style="font-size:1.5rem">🔗</span>
+                    <span>Other Link</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Modal Container -->
+        <div id="resourceModal"></div>
+    </div>`;
+}
+
+function renderEmptyLinkCard(icon, title, type) {
+    return `<button class="resource-link-card empty" onclick="openEditLinksModal('${type}')"><span class="resource-link-icon">${icon}</span><div><div class="resource-link-title">Add ${title}</div><div class="resource-link-url">Click to add link</div></div></button>`;
+}
+
+function formatUrl(url) {
+    return url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').substring(0, 30) + (url.length > 40 ? '...' : '');
+}
+
+function getResourceIcon(type) {
+    const icons = { 'Sermon': '🎤', 'Study Guide': '📖', 'Event': '📅', 'Document': '📄', 'Devotional': '🙏', 'Video': '🎬', 'Audio': '🎧', 'Other': '🔗' };
+    return icons[type] || '📎';
+}
+
+function getResourceColor(type) {
+    const colors = { 'Sermon': 'linear-gradient(135deg, #dc2626, #f87171)', 'Study Guide': 'linear-gradient(135deg, #2d5a47, #7cb083)', 'Event': 'linear-gradient(135deg, #7c3aed, #a78bfa)', 'Document': 'linear-gradient(135deg, #0891b2, #22d3ee)', 'Devotional': 'linear-gradient(135deg, #d97706, #fbbf24)', 'Video': 'linear-gradient(135deg, #dc2626, #f87171)', 'Audio': 'linear-gradient(135deg, #059669, #34d399)', 'Other': 'linear-gradient(135deg, #64748b, #94a3b8)' };
+    return colors[type] || colors['Other'];
+}
+
+function openEditLinksModal(focusField = '') {
+    const { church } = State.current;
+    const data = DB.getData();
+    const links = data.resources[church?.id]?.links || {};
+    
+    document.getElementById('resourceModal').innerHTML = `
+        <div class="modal-overlay" onclick="closeResourceModal()">
+            <div class="modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3 class="modal-title">Edit Church Links</h3>
+                    <button class="modal-close" onclick="closeResourceModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label class="input-label">🌐 Website</label>
+                        <input type="url" class="input-field" id="linkWebsite" value="${links.website || ''}" placeholder="https://yourchurch.com">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">📺 YouTube Channel</label>
+                        <input type="url" class="input-field" id="linkYoutube" value="${links.youtube || ''}" placeholder="https://youtube.com/@yourchurch">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">📘 Facebook Page</label>
+                        <input type="url" class="input-field" id="linkFacebook" value="${links.facebook || ''}" placeholder="https://facebook.com/yourchurch">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">📸 Instagram</label>
+                        <input type="url" class="input-field" id="linkInstagram" value="${links.instagram || ''}" placeholder="https://instagram.com/yourchurch">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">🎵 Spotify / Podcast</label>
+                        <input type="url" class="input-field" id="linkSpotify" value="${links.spotify || ''}" placeholder="https://open.spotify.com/show/...">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">💝 Online Giving</label>
+                        <input type="url" class="input-field" id="linkGiving" value="${links.giving || ''}" placeholder="https://give.yourchurch.com">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeResourceModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveChurchLinks()">Save Links</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    if (focusField) {
+        setTimeout(() => document.getElementById('link' + focusField.charAt(0).toUpperCase() + focusField.slice(1))?.focus(), 100);
+    }
+}
+
+function saveChurchLinks() {
+    const { church } = State.current;
+    const data = DB.getData();
+    
+    if (!data.resources[church.id]) data.resources[church.id] = { links: {}, customResources: [] };
+    
+    data.resources[church.id].links = {
+        website: document.getElementById('linkWebsite').value.trim(),
+        youtube: document.getElementById('linkYoutube').value.trim(),
+        facebook: document.getElementById('linkFacebook').value.trim(),
+        instagram: document.getElementById('linkInstagram').value.trim(),
+        spotify: document.getElementById('linkSpotify').value.trim(),
+        giving: document.getElementById('linkGiving').value.trim()
+    };
+    
+    DB.saveData(data);
+    closeResourceModal();
+    toast('Church links saved! 🎉', 'success');
+    render();
+}
+
+function openAddResourceModal(defaultType = '') {
+    document.getElementById('resourceModal').innerHTML = `
+        <div class="modal-overlay" onclick="closeResourceModal()">
+            <div class="modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3 class="modal-title">Add Resource</h3>
+                    <button class="modal-close" onclick="closeResourceModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label class="input-label">Resource Type</label>
+                        <select class="input-field" id="resourceType">
+                            <option value="Sermon" ${defaultType === 'Sermon' ? 'selected' : ''}>🎤 Sermon</option>
+                            <option value="Study Guide" ${defaultType === 'Study Guide' ? 'selected' : ''}>📖 Study Guide</option>
+                            <option value="Event" ${defaultType === 'Event' ? 'selected' : ''}>📅 Event</option>
+                            <option value="Document" ${defaultType === 'Document' ? 'selected' : ''}>📄 Document/PDF</option>
+                            <option value="Devotional" ${defaultType === 'Devotional' ? 'selected' : ''}>🙏 Devotional</option>
+                            <option value="Video" ${defaultType === 'Video' ? 'selected' : ''}>🎬 Video</option>
+                            <option value="Audio" ${defaultType === 'Audio' ? 'selected' : ''}>🎧 Audio/Podcast</option>
+                            <option value="Other" ${defaultType === 'Other' ? 'selected' : ''}>🔗 Other</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Title</label>
+                        <input type="text" class="input-field" id="resourceTitle" placeholder="e.g., Sunday Sermon - Faith Over Fear">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">URL / Link</label>
+                        <input type="url" class="input-field" id="resourceUrl" placeholder="https://...">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Description (optional)</label>
+                        <input type="text" class="input-field" id="resourceDesc" placeholder="Brief description...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeResourceModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveResource()">Add Resource</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function saveResource() {
+    const { church } = State.current;
+    const data = DB.getData();
+    
+    const title = document.getElementById('resourceTitle').value.trim();
+    const url = document.getElementById('resourceUrl').value.trim();
+    const type = document.getElementById('resourceType').value;
+    const description = document.getElementById('resourceDesc').value.trim();
+    
+    if (!title || !url) {
+        toast('Please enter a title and URL', 'error');
+        return;
+    }
+    
+    if (!data.resources[church.id]) data.resources[church.id] = { links: {}, customResources: [] };
+    
+    data.resources[church.id].customResources.push({
+        title, url, type, description,
+        addedAt: new Date().toISOString()
+    });
+    
+    DB.saveData(data);
+    closeResourceModal();
+    toast('Resource added! 📚', 'success');
+    render();
+}
+
+function deleteResource(index) {
+    if (!confirm('Delete this resource?')) return;
+    const { church } = State.current;
+    const data = DB.getData();
+    data.resources[church.id].customResources.splice(index, 1);
+    DB.saveData(data);
+    toast('Resource deleted', 'info');
+    render();
+}
+
+function closeResourceModal() {
+    document.getElementById('resourceModal').innerHTML = '';
+}
+
+function openTool(toolId) {
+    const tool = TOOLS[toolId];
+    if (!tool) return;
+    
+    if (tool.type === 'external' && tool.url) {
+        // Open external tool in new tab
+        window.open(tool.url, '_blank');
+    } else if (tool.type === 'internal' || toolId === 'seasons') {
+        // Open internal tool
+        State.set({ screen: 'tool-seasons' });
+    } else if (tool.type === 'external' && !tool.url) {
+        // Show modal to configure URL
+        openToolConfigModal(toolId);
+    }
+}
+
+function openToolConfigModal(toolId) {
+    const tool = TOOLS[toolId];
+    const modal = document.getElementById('settingsModal') || document.createElement('div');
+    modal.id = 'settingsModal';
+    if (!document.getElementById('settingsModal')) document.body.appendChild(modal);
+    
+    modal.innerHTML = `
+        <div class="modal-overlay" onclick="closeSettingsModal()">
+            <div class="modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3 class="modal-title">${tool.icon} Configure ${tool.name}</h3>
+                    <button class="modal-close" onclick="closeSettingsModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">
+                        Enter the URL where this tool is hosted (e.g., your GitHub Pages link).
+                    </p>
+                    <div class="input-group">
+                        <label class="input-label">Tool URL</label>
+                        <input type="url" class="input-field" id="toolUrl" value="${tool.url || ''}" placeholder="https://yourusername.github.io/tool-name/">
+                    </div>
+                    <div style="background:var(--hover-bg);padding:var(--space-md);border-radius:var(--radius-md);margin-top:var(--space-md)">
+                        <p style="font-size:0.85rem;color:var(--text-tertiary)">
+                            💡 <strong>Tip:</strong> Host your HTML tools on GitHub Pages for free. 
+                            Upload the HTML file to a repo, enable Pages in Settings, and use the provided URL.
+                        </p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeSettingsModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveToolConfig('${toolId}')">Save & Open</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function saveToolConfig(toolId) {
+    const url = document.getElementById('toolUrl').value.trim();
+    if (!url) {
+        toast('Please enter a URL', 'error');
+        return;
+    }
+    saveToolUrl(toolId, url);
+    closeSettingsModal();
+    toast('Tool configured! Opening...', 'success');
+    setTimeout(() => window.open(url, '_blank'), 500);
+    render();
+}
+
+// ========== SEASONS QUIZ ==========
+let quizState = { screen: 'start', questionIndex: 0, selectedAnswer: null, scores: {}, result: null, expandedSection: null };
+
+function renderSeasonsTool() {
+    return `<div style="min-height:100vh;background:linear-gradient(145deg,var(--bg-primary),var(--slate-900))"><div class="quiz-container" style="max-width:600px;margin:0 auto;padding:var(--space-lg)"><button class="btn btn-ghost" onclick="backToApp()" style="margin-bottom:var(--space-lg)">← Back to Dashboard</button><div id="quizContent"></div></div></div>`;
+}
+
+function backToApp() { State.set({ screen: 'app', activeNav: 'dashboard' }); }
+
+function initQuiz() {
+    const { user } = State.current;
+    const savedProgress = DB.getToolProgress(user?.id, 'seasons');
+    if (savedProgress?.completed) {
+        quizState = { screen: 'result', questionIndex: 0, selectedAnswer: null, scores: savedProgress.scores || {}, result: savedProgress.result, expandedSection: null };
+    } else {
+        quizState = { screen: 'start', questionIndex: 0, selectedAnswer: null, scores: {}, result: null, expandedSection: null };
+    }
+    renderQuiz();
+}
+
+function renderQuiz() {
+    const container = document.getElementById('quizContent');
+    if (!container) return;
+    switch(quizState.screen) {
+        case 'start': container.innerHTML = renderQuizStart(); break;
+        case 'quiz': container.innerHTML = renderQuizQuestion(); break;
+        case 'result': container.innerHTML = renderQuizResult(); break;
+    }
+}
+
+function renderQuizStart() {
+    return `<div class="card fade-up" style="text-align:center;padding:var(--space-2xl)"><div style="font-size:4rem;margin-bottom:var(--space-lg)">🌱</div><h2 style="font-family:var(--font-display);font-size:2rem;margin-bottom:var(--space-md)">Discover Your Season</h2><p style="color:var(--text-secondary);margin-bottom:var(--space-xl)">Which biblical character's journey mirrors your current spiritual season?</p><button class="btn btn-primary btn-lg" onclick="startQuiz()">Begin the Journey</button><p style="color:var(--text-tertiary);font-size:0.85rem;margin-top:var(--space-lg)">10 questions • 5 minutes</p></div>`;
+}
+
+function startQuiz() {
+    quizState = { screen: 'quiz', questionIndex: 0, selectedAnswer: null, scores: {}, result: null, expandedSection: null };
+    renderQuiz();
+}
+
+function renderQuizQuestion() {
+    const q = QUESTIONS[quizState.questionIndex];
+    const progress = ((quizState.questionIndex) / QUESTIONS.length) * 100;
+    return `<div class="fade-up"><div class="quiz-progress"><div class="quiz-progress-text"><span>Question ${quizState.questionIndex + 1} of ${QUESTIONS.length}</span><span>${Math.round(progress)}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div></div><div class="card" style="margin-top:var(--space-lg)"><h2 class="quiz-question">${q.question}</h2><div class="quiz-options">${q.answers.map((a, i) => `<button class="quiz-option ${quizState.selectedAnswer === i ? 'selected' : ''}" onclick="selectQuizAnswer(${i})"><div class="quiz-radio"><div class="quiz-radio-dot"></div></div><span>${a.text}</span></button>`).join('')}</div><button class="btn btn-primary btn-block btn-lg" onclick="nextQuizQuestion()" ${quizState.selectedAnswer === null ? 'disabled' : ''}>${quizState.questionIndex === QUESTIONS.length - 1 ? 'See My Season' : 'Continue'}</button></div></div>`;
+}
+
+function selectQuizAnswer(index) {
+    quizState.selectedAnswer = index;
+    renderQuiz();
+}
+
+function nextQuizQuestion() {
+    if (quizState.selectedAnswer === null) return;
+    const answer = QUESTIONS[quizState.questionIndex].answers[quizState.selectedAnswer];
+    for (const [char, score] of Object.entries(answer.chars)) {
+        quizState.scores[char] = (quizState.scores[char] || 0) + score;
+    }
+    if (quizState.questionIndex < QUESTIONS.length - 1) {
+        quizState.questionIndex++;
+        quizState.selectedAnswer = null;
+        renderQuiz();
+    } else {
+        const sorted = Object.entries(quizState.scores).sort((a, b) => b[1] - a[1]);
+        quizState.result = sorted[0][0];
+        quizState.screen = 'result';
+        const { user } = State.current;
+        DB.saveToolProgress(user?.id, 'seasons', { completed: true, result: quizState.result, scores: quizState.scores });
+        renderQuiz();
+    }
+}
+
+function renderQuizResult() {
+    const char = CHARACTERS[quizState.result];
+    if (!char) return '<p>Error loading result</p>';
+    const exp = quizState.expandedSection;
+    
+    return `<div class="fade-up">
+        <div class="card result-header" style="background:${char.gradient}">
+            <div class="result-icon" style="background:rgba(255,255,255,0.2)">${char.icon}</div>
+            <p class="result-season">Your Season</p>
+            <h1 class="result-name" style="color:white">${char.name}</h1>
+            <p class="result-title" style="color:rgba(255,255,255,0.9)">${char.title}</p>
+            <p class="result-description" style="color:rgba(255,255,255,0.85)">${char.description}</p>
+        </div>
+        
+        <div class="share-grid no-print" style="margin-top:var(--space-lg)">
+            <button class="share-btn" onclick="shareQuiz()"><div class="share-btn-icon">🔗</div><div class="share-btn-label">Share Quiz</div></button>
+            <button class="share-btn" onclick="shareResult()"><div class="share-btn-icon">📤</div><div class="share-btn-label">Share Result</div></button>
+            <button class="share-btn" onclick="printResult()"><div class="share-btn-icon">🖨️</div><div class="share-btn-label">Print Guide</div></button>
+            <button class="share-btn" onclick="printResult()"><div class="share-btn-icon">📄</div><div class="share-btn-label">Save PDF</div></button>
+        </div>
+        
+        <div class="accordion no-print" style="margin-top:var(--space-lg)">
+            <button class="accordion-header" onclick="toggleQuizSection('season')"><span>🌱 Your Formation Season</span><span>${exp === 'season' ? '−' : '+'}</span></button>
+            ${exp === 'season' ? `<div class="accordion-content"><div style="margin-bottom:var(--space-md)"><p style="color:var(--root-green);font-size:0.85rem;margin-bottom:4px">Season</p><p>${char.season}</p></div><div style="margin-bottom:var(--space-md)"><p style="color:var(--root-green);font-size:0.85rem;margin-bottom:4px">Legacy</p><p>${char.legacy}</p></div><div><p style="color:var(--root-green);font-size:0.85rem;margin-bottom:4px">Connection to Christ</p><p>${char.christConnection}</p></div></div>` : ''}
+        </div>
+        
+        <div class="accordion no-print">
+            <button class="accordion-header" onclick="toggleQuizSection('why')"><span>🎯 Why You Match ${char.name}</span><span>${exp === 'why' ? '−' : '+'}</span></button>
+            ${exp === 'why' ? `<div class="accordion-content"><ul style="list-style:none">${char.whyMatch.map(w => `<li style="padding:8px 0;border-bottom:1px solid var(--border-color);display:flex;gap:10px"><span style="color:var(--root-green)">✓</span><span>${w}</span></li>`).join('')}</ul></div>` : ''}
+        </div>
+        
+        <div class="accordion no-print">
+            <button class="accordion-header" onclick="toggleQuizSection('scriptures')"><span>📖 Key Scriptures</span><span>${exp === 'scriptures' ? '−' : '+'}</span></button>
+            ${exp === 'scriptures' ? `<div class="accordion-content">${char.scriptures.map(s => `<div class="scripture-block"><p class="scripture-text">"${s.text}"</p><p class="scripture-ref">— ${s.ref}</p></div>`).join('')}</div>` : ''}
+        </div>
+        
+        <div class="accordion no-print">
+            <button class="accordion-header" onclick="toggleQuizSection('study')"><span>🗺️ ${char.study.title}</span><span>${exp === 'study' ? '−' : '+'}</span></button>
+            ${exp === 'study' ? `<div class="accordion-content">
+                ${char.study.days.map(d => `<div class="day-card"><div class="day-header"><div class="day-number" style="background:${char.gradient}">${d.day}</div><div class="day-title">Day ${d.day}: ${d.title}</div></div><p class="day-passage">📖 ${d.passage}</p><p class="day-question">💭 ${d.question}</p></div>`).join('')}
+                <div style="background:rgba(45,90,71,0.1);border:1px solid var(--root-green);border-radius:var(--radius-md);padding:var(--space-lg);text-align:center;margin-top:var(--space-lg)"><p style="color:var(--root-green);font-size:0.85rem;margin-bottom:6px">📝 Memory Verse</p><p>${char.study.memoryVerse}</p></div>
+                <div style="background:${char.gradient};border-radius:var(--radius-md);padding:var(--space-lg);text-align:center;margin-top:var(--space-md)"><p style="color:rgba(255,255,255,0.8);font-size:0.85rem;margin-bottom:6px">💡 Key Truth</p><p style="color:white;font-weight:500">${char.study.keyTruth}</p></div>
+                <div style="background:var(--card-bg);border-radius:var(--radius-md);padding:var(--space-lg);margin-top:var(--space-md)"><p style="font-weight:500;margin-bottom:var(--space-md)">🔗 Free Bible Tools</p><p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.8">• <a href="https://www.biblegateway.com" target="_blank" style="color:var(--root-green)">BibleGateway.com</a> — Multiple translations<br>• <a href="https://www.blueletterbible.org" target="_blank" style="color:var(--root-green)">BlueLetter Bible.org</a> — Study tools<br>• <a href="https://www.youversion.com" target="_blank" style="color:var(--root-green)">YouVersion.com</a> — Bible app<br>• <a href="https://biblehub.com" target="_blank" style="color:var(--root-green)">BibleHub.com</a> — Commentaries</p></div>
+            </div>` : ''}
+        </div>
+        
+        <button class="btn btn-secondary btn-block no-print" onclick="retakeQuiz()" style="margin-top:var(--space-lg)">Take Quiz Again</button>
+    </div>`;
+}
+
+function toggleQuizSection(section) {
+    quizState.expandedSection = quizState.expandedSection === section ? null : section;
+    renderQuiz();
+}
+
+function retakeQuiz() {
+    const { user } = State.current;
+    const data = DB.getData();
+    if (data.toolProgress[user?.id]) delete data.toolProgress[user.id].seasons;
+    DB.saveData(data);
+    quizState = { screen: 'start', questionIndex: 0, selectedAnswer: null, scores: {}, result: null, expandedSection: null };
+    renderQuiz();
+}
+
+function shareQuiz() {
+    const url = window.location.href.split('?')[0];
+    const text = "Discover Your Season - Find which biblical character's journey mirrors your current spiritual season.";
+    if (navigator.share) {
+        navigator.share({ title: 'Discover Your Season', text, url }).catch(() => copyToClipboard(url));
+    } else {
+        copyToClipboard(url);
+    }
+}
+
+function shareResult() {
+    const char = CHARACTERS[quizState.result];
+    const url = window.location.href.split('?')[0];
+    const text = `I'm in a "${char.name}" season: ${char.title}. ${char.description.split('.')[0]}. Take the quiz!`;
+    if (navigator.share) {
+        navigator.share({ title: `My Season: ${char.name}`, text, url }).catch(() => copyToClipboard(text + '\n' + url));
+    } else {
+        copyToClipboard(text + '\n' + url);
+    }
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard!', 'success'));
+}
+
+function printResult() {
+    const char = CHARACTERS[quizState.result];
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>${char.name} - Discover Your Season</title><style>
+        body { font-family: Georgia, serif; max-width: 800px; margin: 0 auto; padding: 40px; color: #1a1a2e; }
+        h1 { text-align: center; color: #2d5a47; margin-bottom: 8px; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 32px; }
+        h2 { color: #2d5a47; border-bottom: 2px solid #2d5a47; padding-bottom: 8px; margin-top: 32px; }
+        .scripture { border-left: 4px solid #2d5a47; padding: 12px 16px; margin: 16px 0; background: #f5f5f5; }
+        .scripture em { display: block; margin-bottom: 8px; }
+        .scripture strong { color: #2d5a47; }
+        .day { border: 1px solid #ddd; padding: 16px; margin: 12px 0; border-radius: 8px; }
+        .day-num { background: #2d5a47; color: white; padding: 4px 12px; border-radius: 20px; font-weight: bold; }
+        .memory { background: #f0f7f4; border: 2px solid #2d5a47; padding: 20px; text-align: center; margin: 24px 0; border-radius: 8px; }
+        .truth { background: #2d5a47; color: white; padding: 20px; text-align: center; border-radius: 8px; }
+    </style></head><body>
+        <h1>${char.icon} ${char.name}: ${char.title}</h1>
+        <p class="subtitle">${char.description}</p>
+        
+        <h2>Your Formation Season</h2>
+        <p><strong>Season:</strong> ${char.season}</p>
+        <p><strong>Legacy:</strong> ${char.legacy}</p>
+        <p><strong>Connection to Christ:</strong> ${char.christConnection}</p>
+        
+        <h2>Why You Match ${char.name}</h2>
+        <ul>${char.whyMatch.map(w => `<li>${w}</li>`).join('')}</ul>
+        
+        <h2>Key Scriptures</h2>
+        ${char.scriptures.map(s => `<div class="scripture"><em>"${s.text}"</em><strong>— ${s.ref}</strong></div>`).join('')}
+        
+        <h2>${char.study.title}</h2>
+        ${char.study.days.map(d => `<div class="day"><span class="day-num">${d.day}</span> <strong>${d.title}</strong><br><small>📖 ${d.passage}</small><br><em>💭 ${d.question}</em></div>`).join('')}
+        
+        <div class="memory"><strong>📝 Memory Verse</strong><br>${char.study.memoryVerse}</div>
+        <div class="truth"><strong>💡 Key Truth</strong><br>${char.study.keyTruth}</div>
+    </body></html>`);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+// ========== INIT ==========
+document.body.dataset.theme = localStorage.getItem('rooted_theme') || 'dark';
+DB.init();
+loadToolUrls(); // Load saved tool URLs
+State.subscribe(render);
+Router.init();
+</script>
+</body>
+</html>
