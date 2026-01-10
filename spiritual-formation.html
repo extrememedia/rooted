@@ -81,6 +81,9 @@
     .correct { color: #10b981; }
     .incorrect { color: #ef4444; text-decoration: line-through; }
     .center-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 25px; }
+    .back-to-rooted { display: inline-flex; align-items: center; gap: 8px; color: #7cb083; font-size: 0.9rem; padding: 10px 16px; border-radius: 10px; cursor: pointer; transition: all 0.2s; text-decoration: none; background: rgba(45, 90, 71, 0.2); border: 1px solid rgba(45, 90, 71, 0.4); margin-bottom: 20px; }
+    .back-to-rooted:hover { background: rgba(45, 90, 71, 0.4); color: #a8d4af; border-color: #7cb083; }
+    .back-to-rooted .icon { font-size: 1.1rem; }
     .history-item { background: rgba(15, 23, 42, 0.6); border-radius: 10px; padding: 16px; margin-bottom: 12px; cursor: pointer; border: 1px solid rgba(148, 163, 184, 0.1); transition: all 0.2s; }
     .history-item:hover { border-color: rgba(251, 191, 36, 0.3); }
     .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
@@ -110,6 +113,9 @@
 </head>
 <body>
   <div class="content">
+    <!-- BACK TO ROOTED -->
+    <a href="../index.html#tools" class="back-to-rooted" onclick="localStorage.setItem('rooted_nav','tools')"><span class="icon">🌱</span> Back to Growth Tools</a>
+    
     <!-- LOGIN -->
     <div id="login-screen" class="screen active">
       <div class="header"><h1 class="title">Spiritual Formation Dashboard</h1><p class="subtitle">Know Yourself • Grow Intentionally</p></div>
