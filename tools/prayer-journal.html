@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prayer Journal | Rooted</title>
+    <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { min-height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%); font-family: 'Segoe UI', system-ui, sans-serif; color: #f8fafc; line-height: 1.6; }
+.container { max-width: 700px; margin: 0 auto; padding: 20px; }
+.back-btn { display: inline-flex; align-items: center; gap: 8px; color: #7cb083; padding: 10px 16px; border-radius: 10px; cursor: pointer; background: rgba(45, 90, 71, 0.2); border: 1px solid rgba(45, 90, 71, 0.4); margin-bottom: 20px; text-decoration: none; font-size: 0.9rem; }
+.back-btn:hover { background: rgba(45, 90, 71, 0.4); }
+.header { text-align: center; margin-bottom: 30px; }
+.header-icon { font-size: 3rem; margin-bottom: 10px; }
+.header-title { font-size: 1.8rem; color: #7cb083; margin-bottom: 5px; }
+.header-sub { color: #94a3b8; }
+.card { background: rgba(30, 41, 59, 0.9); border-radius: 16px; border: 1px solid rgba(124, 176, 131, 0.2); padding: 24px; margin-bottom: 20px; }
+.btn { background: linear-gradient(135deg, #2d5a47, #3d7a5f); color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 1rem; cursor: pointer; }
+.btn:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(45, 90, 71, 0.4); }
+.btn-secondary { background: transparent; border: 1px solid #7cb083; color: #7cb083; }
+.btn-block { width: 100%; }
+.btn-sm { padding: 8px 16px; font-size: 0.9rem; }
+.tabs { display: flex; gap: 0; margin-bottom: 20px; border-radius: 10px; overflow: hidden; border: 1px solid rgba(148, 163, 184, 0.2); }
+.tab { flex: 1; padding: 12px; background: rgba(15, 23, 42, 0.6); color: #94a3b8; border: none; cursor: pointer; font-size: 0.9rem; }
+.tab.active { background: rgba(45, 90, 71, 0.3); color: #7cb083; }
+.input-field { width: 100%; padding: 12px 16px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 10px; color: #f8fafc; font-size: 1rem; margin-bottom: 15px; }
+.input-field:focus { outline: none; border-color: #7cb083; }
+textarea.input-field { min-height: 100px; resize: vertical; }
+.acts-section { margin-bottom: 20px; }
+.acts-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.acts-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+.acts-title { font-weight: 600; }
+.acts-desc { font-size: 0.85rem; color: #94a3b8; }
+.prayer-item { background: rgba(15, 23, 42, 0.4); border-radius: 12px; padding: 16px; margin-bottom: 12px; border-left: 4px solid #7cb083; }
+.prayer-item.answered { border-left-color: #22c55e; background: rgba(34, 197, 94, 0.1); }
+.prayer-date { font-size: 0.8rem; color: #64748b; margin-bottom: 8px; }
+.prayer-text { margin-bottom: 10px; }
+.prayer-category { display: inline-block; padding: 4px 10px; border-radius: 15px; font-size: 0.75rem; background: rgba(124, 176, 131, 0.2); color: #7cb083; }
+.prayer-actions { display: flex; gap: 10px; margin-top: 10px; }
+.answered-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 15px; font-size: 0.75rem; background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+.stats-row { display: flex; gap: 15px; margin-bottom: 20px; }
+.stat-box { flex: 1; background: rgba(15, 23, 42, 0.6); border-radius: 10px; padding: 15px; text-align: center; }
+.stat-value { font-size: 1.5rem; color: #7cb083; font-weight: 600; }
+.stat-label { font-size: 0.8rem; color: #94a3b8; }
+.filter-row { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+.filter-btn { padding: 8px 16px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 20px; color: #94a3b8; cursor: pointer; font-size: 0.85rem; }
+.filter-btn:hover { border-color: rgba(124, 176, 131, 0.3); }
+.filter-btn.active { background: rgba(45, 90, 71, 0.3); border-color: #7cb083; color: #7cb083; }
+.empty { text-align: center; padding: 40px; color: #64748b; }
+.screen { display: none; }
+.screen.active { display: block; }
+.info-box { background: rgba(124, 176, 131, 0.1); padding: 16px; border-radius: 10px; margin-bottom: 20px; }
+.info-box h4 { color: #7cb083; margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="../index.html" class="back-btn" onclick="localStorage.setItem('rooted_nav','tools')">
+        <span>🌱</span> Back to Growth Tools
+    </a>
+
+    <div class="header">
+        <div class="header-icon">🙏</div>
+        <h1 class="header-title">Prayer Journal</h1>
+        <p class="header-sub">ACTS Method: Adoration, Confession, Thanksgiving, Supplication</p>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('new')">New Prayer</button>
+        <button class="tab" onclick="showTab('journal')">My Journal</button>
+        <button class="tab" onclick="showTab('answered')">Answered</button>
+    </div>
+
+    <!-- NEW PRAYER TAB -->
+    <div id="new-tab" class="screen active">
+        <div class="info-box">
+            <h4>📖 The ACTS Method</h4>
+            <p style="font-size:0.9rem;color:#94a3b8">A simple framework for balanced prayer: Adoration (praise God), Confession (acknowledge sin), Thanksgiving (express gratitude), Supplication (make requests).</p>
+        </div>
+
+        <div class="acts-section">
+            <div class="acts-header">
+                <div class="acts-icon" style="background:rgba(251,191,36,0.2)">🙌</div>
+                <div><div class="acts-title" style="color:#fbbf24">Adoration</div><div class="acts-desc">Praise God for who He is</div></div>
+            </div>
+            <textarea class="input-field" id="prayer-adoration" placeholder="Lord, I praise You for..."></textarea>
+        </div>
+
+        <div class="acts-section">
+            <div class="acts-header">
+                <div class="acts-icon" style="background:rgba(239,68,68,0.2)">💔</div>
+                <div><div class="acts-title" style="color:#ef4444">Confession</div><div class="acts-desc">Acknowledge sin and ask forgiveness</div></div>
+            </div>
+            <textarea class="input-field" id="prayer-confession" placeholder="Father, I confess..."></textarea>
+        </div>
+
+        <div class="acts-section">
+            <div class="acts-header">
+                <div class="acts-icon" style="background:rgba(34,197,94,0.2)">🙏</div>
+                <div><div class="acts-title" style="color:#22c55e">Thanksgiving</div><div class="acts-desc">Thank God for what He's done</div></div>
+            </div>
+            <textarea class="input-field" id="prayer-thanksgiving" placeholder="Thank You, Lord, for..."></textarea>
+        </div>
+
+        <div class="acts-section">
+            <div class="acts-header">
+                <div class="acts-icon" style="background:rgba(59,130,246,0.2)">✨</div>
+                <div><div class="acts-title" style="color:#3b82f6">Supplication</div><div class="acts-desc">Make your requests known</div></div>
+            </div>
+            <textarea class="input-field" id="prayer-supplication" placeholder="Lord, I ask for..."></textarea>
+        </div>
+
+        <button class="btn btn-block" onclick="savePrayer()">Save Prayer Entry</button>
+    </div>
+
+    <!-- JOURNAL TAB -->
+    <div id="journal-tab" class="screen">
+        <div class="stats-row">
+            <div class="stat-box"><div class="stat-value" id="stat-total">0</div><div class="stat-label">Total Prayers</div></div>
+            <div class="stat-box"><div class="stat-value" id="stat-answered">0</div><div class="stat-label">Answered</div></div>
+            <div class="stat-box"><div class="stat-value" id="stat-streak">0</div><div class="stat-label">Day Streak</div></div>
+        </div>
+
+        <div class="filter-row">
+            <button class="filter-btn active" onclick="filterPrayers('all')">All</button>
+            <button class="filter-btn" onclick="filterPrayers('adoration')">🙌 Adoration</button>
+            <button class="filter-btn" onclick="filterPrayers('confession')">💔 Confession</button>
+            <button class="filter-btn" onclick="filterPrayers('thanksgiving')">🙏 Thanks</button>
+            <button class="filter-btn" onclick="filterPrayers('supplication')">✨ Requests</button>
+        </div>
+
+        <div id="prayers-list"></div>
+    </div>
+
+    <!-- ANSWERED TAB -->
+    <div id="answered-tab" class="screen">
+        <div class="info-box">
+            <h4>✅ Answered Prayers</h4>
+            <p style="font-size:0.9rem;color:#94a3b8">Celebrate God's faithfulness! Review the prayers He has answered.</p>
+        </div>
+        <div id="answered-list"></div>
+    </div>
+</div>
+
+<script>
+let state = { prayers: [], streak: 0, lastPrayer: null };
+let currentFilter = 'all';
+
+function loadState() {
+    const saved = localStorage.getItem('rooted_tool_prayer');
+    if (saved) {
+        try { state = JSON.parse(saved); } catch(e) {}
+    }
+    updateStreak();
+}
+
+function saveState() {
+    localStorage.setItem('rooted_tool_prayer', JSON.stringify(state));
+}
+
+function updateStreak() {
+    if (!state.lastPrayer) { state.streak = 0; return; }
+    const last = new Date(state.lastPrayer).toDateString();
+    const today = new Date().toDateString();
+    const yesterday = new Date(Date.now() - 86400000).toDateString();
+    
+    if (last === today) return;
+    if (last === yesterday) return;
+    state.streak = 0;
+}
+
+function showTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelector(`.tab:nth-child(${tab === 'new' ? 1 : tab === 'journal' ? 2 : 3})`).classList.add('active');
+    document.getElementById(`${tab}-tab`).classList.add('active');
+    
+    if (tab === 'journal') renderJournal();
+    if (tab === 'answered') renderAnswered();
+}
+
+function savePrayer() {
+    const adoration = document.getElementById('prayer-adoration').value.trim();
+    const confession = document.getElementById('prayer-confession').value.trim();
+    const thanksgiving = document.getElementById('prayer-thanksgiving').value.trim();
+    const supplication = document.getElementById('prayer-supplication').value.trim();
+
+    if (!adoration && !confession && !thanksgiving && !supplication) {
+        alert('Please write at least one prayer');
+        return;
+    }
+
+    const date = new Date().toISOString();
+    
+    if (adoration) state.prayers.push({ id: Date.now(), type: 'adoration', text: adoration, date, answered: false });
+    if (confession) state.prayers.push({ id: Date.now() + 1, type: 'confession', text: confession, date, answered: false });
+    if (thanksgiving) state.prayers.push({ id: Date.now() + 2, type: 'thanksgiving', text: thanksgiving, date, answered: false });
+    if (supplication) state.prayers.push({ id: Date.now() + 3, type: 'supplication', text: supplication, date, answered: false });
+
+    const lastDate = state.lastPrayer ? new Date(state.lastPrayer).toDateString() : null;
+    const today = new Date().toDateString();
+    if (lastDate !== today) {
+        state.streak++;
+    }
+    state.lastPrayer = date;
+
+    saveState();
+
+    // Clear form
+    document.getElementById('prayer-adoration').value = '';
+    document.getElementById('prayer-confession').value = '';
+    document.getElementById('prayer-thanksgiving').value = '';
+    document.getElementById('prayer-supplication').value = '';
+
+    alert('Prayer saved! 🙏');
+    showTab('journal');
+}
+
+function renderJournal() {
+    document.getElementById('stat-total').textContent = state.prayers.length;
+    document.getElementById('stat-answered').textContent = state.prayers.filter(p => p.answered).length;
+    document.getElementById('stat-streak').textContent = state.streak;
+
+    const filtered = currentFilter === 'all' 
+        ? state.prayers 
+        : state.prayers.filter(p => p.type === currentFilter);
+
+    if (filtered.length === 0) {
+        document.getElementById('prayers-list').innerHTML = `
+            <div class="empty">
+                <p>No prayers yet</p>
+                <button class="btn" style="margin-top:15px" onclick="showTab('new')">Write Your First Prayer</button>
+            </div>
+        `;
+        return;
+    }
+
+    document.getElementById('prayers-list').innerHTML = [...filtered].reverse().map(p => renderPrayerItem(p)).join('');
+}
+
+function renderAnswered() {
+    const answered = state.prayers.filter(p => p.answered);
+    
+    if (answered.length === 0) {
+        document.getElementById('answered-list').innerHTML = `
+            <div class="empty">
+                <p>No answered prayers recorded yet</p>
+                <p style="font-size:0.9rem;margin-top:10px;color:#94a3b8">When God answers, mark your prayers as answered!</p>
+            </div>
+        `;
+        return;
+    }
+
+    document.getElementById('answered-list').innerHTML = answered.map(p => renderPrayerItem(p, true)).join('');
+}
+
+function renderPrayerItem(p, hideActions = false) {
+    const icons = { adoration: '🙌', confession: '💔', thanksgiving: '🙏', supplication: '✨' };
+    const colors = { adoration: '#fbbf24', confession: '#ef4444', thanksgiving: '#22c55e', supplication: '#3b82f6' };
+    
+    return `
+        <div class="prayer-item ${p.answered ? 'answered' : ''}">
+            <div class="prayer-date">${new Date(p.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</div>
+            <div class="prayer-text">${sanitize(p.text)}</div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <span class="prayer-category" style="background:rgba(${colors[p.type] === '#fbbf24' ? '251,191,36' : colors[p.type] === '#ef4444' ? '239,68,68' : colors[p.type] === '#22c55e' ? '34,197,94' : '59,130,246'},0.2);color:${colors[p.type]}">${icons[p.type]} ${p.type}</span>
+                ${p.answered ? '<span class="answered-badge">✅ Answered</span>' : ''}
+            </div>
+            ${!hideActions ? `
+                <div class="prayer-actions">
+                    ${!p.answered && p.type === 'supplication' ? `<button class="btn btn-secondary btn-sm" onclick="markAnswered(${p.id})">Mark Answered</button>` : ''}
+                    <button class="btn btn-secondary btn-sm" onclick="deletePrayer(${p.id})">Delete</button>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+function filterPrayers(filter) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    renderJournal();
+}
+
+function markAnswered(id) {
+    const prayer = state.prayers.find(p => p.id === id);
+    if (prayer) {
+        prayer.answered = true;
+        prayer.answeredDate = new Date().toISOString();
+        saveState();
+        renderJournal();
+        alert('Praise God! Prayer marked as answered! 🎉');
+    }
+}
+
+function deletePrayer(id) {
+    if (!confirm('Delete this prayer entry?')) return;
+    state.prayers = state.prayers.filter(p => p.id !== id);
+    saveState();
+    renderJournal();
+}
+
+function sanitize(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// Initialize
+loadState();
+</script>
+</body>
+</html>

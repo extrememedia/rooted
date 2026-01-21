@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Core Doctrines | Rooted</title>
+    <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { min-height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%); font-family: 'Segoe UI', system-ui, sans-serif; color: #f8fafc; line-height: 1.6; }
+.container { max-width: 800px; margin: 0 auto; padding: 20px; }
+.back-btn { display: inline-flex; align-items: center; gap: 8px; color: #7cb083; padding: 10px 16px; border-radius: 10px; background: rgba(45, 90, 71, 0.2); border: 1px solid rgba(45, 90, 71, 0.4); margin-bottom: 20px; text-decoration: none; }
+.back-btn:hover { background: rgba(45, 90, 71, 0.4); }
+.header { text-align: center; margin-bottom: 30px; }
+.header-icon { font-size: 3rem; margin-bottom: 10px; }
+.header-title { font-size: 1.8rem; color: #7cb083; margin-bottom: 5px; }
+.header-sub { color: #94a3b8; }
+.card { background: rgba(30, 41, 59, 0.9); border-radius: 16px; border: 1px solid rgba(124, 176, 131, 0.2); padding: 24px; margin-bottom: 20px; }
+.doctrine-card { background: rgba(15, 23, 42, 0.6); border-radius: 12px; padding: 20px; margin-bottom: 15px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
+.doctrine-card:hover { border-color: rgba(124, 176, 131, 0.4); transform: translateY(-2px); }
+.doctrine-header { display: flex; align-items: center; gap: 15px; margin-bottom: 10px; }
+.doctrine-icon { font-size: 2rem; }
+.doctrine-title { color: #7cb083; font-size: 1.2rem; }
+.doctrine-summary { color: #94a3b8; font-size: 0.9rem; }
+.progress-tag { display: inline-block; padding: 4px 10px; border-radius: 15px; font-size: 0.75rem; margin-top: 10px; }
+.progress-tag.new { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+.progress-tag.started { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+.progress-tag.complete { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+.lesson-content { display: none; }
+.lesson-content.active { display: block; }
+.btn { background: linear-gradient(135deg, #2d5a47, #3d7a5f); color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 1rem; cursor: pointer; }
+.btn:hover { box-shadow: 0 4px 20px rgba(45, 90, 71, 0.4); }
+.btn-secondary { background: transparent; border: 1px solid #7cb083; color: #7cb083; }
+.section { margin-bottom: 25px; }
+.section-title { color: #7cb083; font-size: 1.1rem; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.verse-box { background: rgba(124, 176, 131, 0.1); padding: 15px; border-radius: 10px; margin: 10px 0; border-left: 3px solid #7cb083; }
+.verse-ref { color: #7cb083; font-size: 0.85rem; margin-bottom: 5px; }
+.key-point { background: rgba(251, 191, 36, 0.1); padding: 12px; border-radius: 8px; margin: 8px 0; }
+.key-point strong { color: #fbbf24; }
+.quiz-option { padding: 12px 15px; background: rgba(15, 23, 42, 0.6); border: 2px solid rgba(148, 163, 184, 0.2); border-radius: 10px; margin: 8px 0; cursor: pointer; }
+.quiz-option:hover { border-color: rgba(124, 176, 131, 0.4); }
+.quiz-option.selected { border-color: #7cb083; background: rgba(45, 90, 71, 0.2); }
+.quiz-option.correct { border-color: #22c55e; background: rgba(34, 197, 94, 0.2); }
+.quiz-option.wrong { border-color: #ef4444; background: rgba(239, 68, 68, 0.2); }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="../index.html" class="back-btn" onclick="localStorage.setItem('rooted_nav','tools')"><span>🌱</span> Back to Growth Tools</a>
+    
+    <div id="list-view">
+        <div class="header">
+            <div class="header-icon">⛪</div>
+            <h1 class="header-title">Core Doctrines</h1>
+            <p class="header-sub">Essential Christian Beliefs</p>
+        </div>
+        <p style="color:#94a3b8;text-align:center;margin-bottom:20px">8 foundational doctrines every believer should understand</p>
+        <div id="doctrines-list"></div>
+    </div>
+
+    <div id="lesson-view" style="display:none">
+        <button class="btn btn-secondary" style="margin-bottom:20px" onclick="backToList()">← Back to Doctrines</button>
+        <div id="lesson-content"></div>
+    </div>
+</div>
+<script>
+const DOCTRINES = [
+    { id: 'scripture', icon: '📖', title: 'The Bible', summary: 'God\'s inspired, authoritative Word',
+      content: `<h2 style="color:#7cb083;margin-bottom:15px">📖 The Doctrine of Scripture</h2>
+        <div class="section"><div class="section-title">📌 What We Believe</div>
+        <p>The Bible is God's written Word to humanity—inspired, inerrant, and authoritative for faith and practice.</p></div>
+        <div class="section"><div class="section-title">📜 Key Scriptures</div>
+        <div class="verse-box"><div class="verse-ref">2 Timothy 3:16-17</div>"All Scripture is God-breathed and is useful for teaching, rebuking, correcting and training in righteousness."</div>
+        <div class="verse-box"><div class="verse-ref">2 Peter 1:21</div>"For prophecy never had its origin in the human will, but prophets, though human, spoke from God as they were carried along by the Holy Spirit."</div></div>
+        <div class="section"><div class="section-title">💡 Key Points</div>
+        <div class="key-point"><strong>Inspiration:</strong> God directed human authors to write His message.</div>
+        <div class="key-point"><strong>Inerrancy:</strong> The Bible is truthful in all it affirms.</div>
+        <div class="key-point"><strong>Authority:</strong> Scripture is the final rule for faith and life.</div></div>` },
+    { id: 'god', icon: '👑', title: 'God', summary: 'One God in three persons',
+      content: `<h2 style="color:#7cb083;margin-bottom:15px">👑 The Doctrine of God</h2>
+        <div class="section"><div class="section-title">📌 What We Believe</div>
+        <p>There is one God who eternally exists in three persons: Father, Son, and Holy Spirit—equal in power and glory.</p></div>
+        <div class="section"><div class="section-title">📜 Key Scriptures</div>
+        <div class="verse-box"><div class="verse-ref">Deuteronomy 6:4</div>"Hear, O Israel: The LORD our God, the LORD is one."</div>
+        <div class="verse-box"><div class="verse-ref">Matthew 28:19</div>"...baptizing them in the name of the Father and of the Son and of the Holy Spirit."</div></div>
+        <div class="section"><div class="section-title">💡 Key Attributes</div>
+        <div class="key-point"><strong>Holy:</strong> God is completely pure and set apart.</div>
+        <div class="key-point"><strong>Sovereign:</strong> God rules over all creation.</div>
+        <div class="key-point"><strong>Love:</strong> God's nature is self-giving love.</div></div>` },
+    { id: 'jesus', icon: '✝️', title: 'Jesus Christ', summary: 'Fully God and fully man',
+      content: `<h2 style="color:#7cb083;margin-bottom:15px">✝️ The Doctrine of Christ</h2>
+        <div class="section"><div class="section-title">📌 What We Believe</div>
+        <p>Jesus Christ is the eternal Son of God who became human, lived a sinless life, died for our sins, rose bodily, and will return.</p></div>
+        <div class="section"><div class="section-title">📜 Key Scriptures</div>
+        <div class="verse-box"><div class="verse-ref">John 1:1,14</div>"In the beginning was the Word, and the Word was with God, and the Word was God... The Word became flesh and made his dwelling among us."</div>
+        <div class="verse-box"><div class="verse-ref">Colossians 2:9</div>"For in Christ all the fullness of the Deity lives in bodily form."</div></div>` },
+    { id: 'spirit', icon: '🕊️', title: 'Holy Spirit', summary: 'God present and active',
+      content: `<h2 style="color:#7cb083;margin-bottom:15px">🕊️ The Doctrine of the Holy Spirit</h2>
+        <div class="section"><div class="section-title">📌 What We Believe</div>
+        <p>The Holy Spirit is the third person of the Trinity who convicts, regenerates, indwells, and empowers believers.</p></div>
+        <div class="section"><div class="section-title">📜 Key Scriptures</div>
+        <div class="verse-box"><div class="verse-ref">John 14:16-17</div>"I will ask the Father, and he will give you another advocate to help you and be with you forever—the Spirit of truth."</div></div>
+        <div class="section"><div class="section-title">💡 The Spirit's Work</div>
+        <div class="key-point"><strong>Convicts:</strong> Shows us our need for Christ.</div>
+        <div class="key-point"><strong>Indwells:</strong> Lives within every believer.</div>
+        <div class="key-point"><strong>Empowers:</strong> Gives gifts and produces fruit.</div></div>` },
+    { id: 'salvation', icon: '💝', title: 'Salvation', summary: 'By grace through faith',
+      content: `<h2 style="color:#7cb083;margin-bottom:15px">💝 The Doctrine of Salvation</h2>
+        <div class="section"><div class="section-title">📌 What We Believe</div>
+        <p>Salvation is God's free gift, received by grace alone through faith alone in Christ alone—not by works.</p></div>
+        <div class="section"><div class="section-title">📜 Key Scriptures</div>
+        <div class="verse-box"><div class="verse-ref">Ephesians 2:8-9</div>"For it is by grace you have been saved, through faith—and this is not from yourselves, it is the gift of God—not by works, so that no one can boast."</div>
+        <div class="verse-box"><div class="verse-ref">Romans 10:9</div>"If you declare with your mouth, 'Jesus is Lord,' and believe in your heart that God raised him from the dead, you will be saved."</div></div>` },
+    { id: 'church', icon: '🏛️', title: 'The Church', summary: 'The body of Christ',
+      content: `<h2 style="color:#7cb083;margin-bottom:15px">🏛️ The Doctrine of the Church</h2>
+        <div class="section"><div class="section-title">📌 What We Believe</div>
+        <p>The Church is the body of Christ—all believers united together to worship, grow, serve, and share the gospel.</p></div>
+        <div class="section"><div class="section-title">📜 Key Scriptures</div>
+        <div class="verse-box"><div class="verse-ref">Ephesians 4:4-6</div>"There is one body and one Spirit... one Lord, one faith, one baptism; one God and Father of all."</div></div>` },
+    { id: 'future', icon: '🌅', title: 'End Times', summary: 'Christ will return',
+      content: `<h2 style="color:#7cb083;margin-bottom:15px">🌅 The Doctrine of Last Things</h2>
+        <div class="section"><div class="section-title">📌 What We Believe</div>
+        <p>Jesus Christ will return bodily to judge the living and the dead. There will be a resurrection and eternal destinies.</p></div>
+        <div class="section"><div class="section-title">📜 Key Scriptures</div>
+        <div class="verse-box"><div class="verse-ref">Acts 1:11</div>"This same Jesus, who has been taken from you into heaven, will come back in the same way you have seen him go into heaven."</div>
+        <div class="verse-box"><div class="verse-ref">Revelation 21:4</div>"He will wipe every tear from their eyes. There will be no more death or mourning or crying or pain."</div></div>` },
+    { id: 'humanity', icon: '👥', title: 'Humanity', summary: 'Made in God\'s image',
+      content: `<h2 style="color:#7cb083;margin-bottom:15px">👥 The Doctrine of Humanity</h2>
+        <div class="section"><div class="section-title">📌 What We Believe</div>
+        <p>Humans are created in God's image with dignity and purpose, but all have sinned and fall short of God's glory.</p></div>
+        <div class="section"><div class="section-title">📜 Key Scriptures</div>
+        <div class="verse-box"><div class="verse-ref">Genesis 1:27</div>"So God created mankind in his own image, in the image of God he created them."</div>
+        <div class="verse-box"><div class="verse-ref">Romans 3:23</div>"For all have sinned and fall short of the glory of God."</div></div>` }
+];
+
+let progress = JSON.parse(localStorage.getItem('rooted_tool_doctrines') || '{}');
+
+function renderList() {
+    document.getElementById('doctrines-list').innerHTML = DOCTRINES.map(d => {
+        const status = progress[d.id] || 'new';
+        return `<div class="doctrine-card" onclick="openLesson('${d.id}')">
+            <div class="doctrine-header"><div class="doctrine-icon">${d.icon}</div><div class="doctrine-title">${d.title}</div></div>
+            <div class="doctrine-summary">${d.summary}</div>
+            <span class="progress-tag ${status}">${status === 'new' ? '📘 Not Started' : status === 'started' ? '📖 In Progress' : '✅ Completed'}</span>
+        </div>`;
+    }).join('');
+}
+
+function openLesson(id) {
+    const doctrine = DOCTRINES.find(d => d.id === id);
+    document.getElementById('lesson-content').innerHTML = doctrine.content + 
+        `<button class="btn" style="width:100%;margin-top:20px" onclick="markComplete('${id}')">Mark as Complete</button>`;
+    document.getElementById('list-view').style.display = 'none';
+    document.getElementById('lesson-view').style.display = 'block';
+    if (!progress[id]) { progress[id] = 'started'; saveProgress(); }
+}
+
+function markComplete(id) {
+    progress[id] = 'complete';
+    saveProgress();
+    alert('Doctrine marked as complete!');
+    backToList();
+}
+
+function backToList() {
+    document.getElementById('lesson-view').style.display = 'none';
+    document.getElementById('list-view').style.display = 'block';
+    renderList();
+}
+
+function saveProgress() {
+    localStorage.setItem('rooted_tool_doctrines', JSON.stringify(progress));
+}
+
+renderList();
+</script>
+</body>
+</html>

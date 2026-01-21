@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spiritual Gifts Assessment | Rooted</title>
+    <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { min-height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%); font-family: 'Segoe UI', system-ui, sans-serif; color: #f8fafc; line-height: 1.6; }
+.container { max-width: 700px; margin: 0 auto; padding: 20px; }
+.back-btn { display: inline-flex; align-items: center; gap: 8px; color: #7cb083; padding: 10px 16px; border-radius: 10px; cursor: pointer; background: rgba(45, 90, 71, 0.2); border: 1px solid rgba(45, 90, 71, 0.4); margin-bottom: 20px; text-decoration: none; font-size: 0.9rem; }
+.back-btn:hover { background: rgba(45, 90, 71, 0.4); color: #a8d4af; }
+.header { text-align: center; margin-bottom: 30px; }
+.header-icon { font-size: 3rem; margin-bottom: 10px; }
+.header-title { font-size: 1.8rem; color: #7cb083; margin-bottom: 5px; }
+.header-sub { color: #94a3b8; }
+.card { background: rgba(30, 41, 59, 0.9); border-radius: 16px; border: 1px solid rgba(124, 176, 131, 0.2); padding: 24px; margin-bottom: 20px; }
+.btn { background: linear-gradient(135deg, #2d5a47, #3d7a5f); color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 15px; }
+.btn:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(45, 90, 71, 0.4); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-secondary { background: transparent; border: 1px solid #7cb083; color: #7cb083; }
+.progress-bar { height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; margin-bottom: 20px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #2d5a47, #7cb083); transition: width 0.3s; }
+.question { font-size: 1.1rem; margin-bottom: 20px; line-height: 1.5; }
+.options { display: flex; flex-direction: column; gap: 10px; }
+.option { display: flex; align-items: center; gap: 12px; padding: 14px; background: rgba(15, 23, 42, 0.6); border: 2px solid rgba(148, 163, 184, 0.2); border-radius: 10px; cursor: pointer; transition: all 0.2s; }
+.option:hover { border-color: rgba(124, 176, 131, 0.4); }
+.option.selected { background: rgba(45, 90, 71, 0.3); border-color: #7cb083; }
+.option-text { flex: 1; }
+.gift-card { background: rgba(15, 23, 42, 0.6); border-radius: 12px; padding: 16px; margin-bottom: 12px; border-left: 4px solid #7cb083; }
+.gift-name { color: #7cb083; font-size: 1.1rem; font-weight: 600; margin-bottom: 4px; }
+.gift-score { font-size: 0.85rem; color: #94a3b8; }
+.gift-desc { font-size: 0.9rem; margin-top: 8px; }
+.scripture { background: rgba(124, 176, 131, 0.1); padding: 12px; border-radius: 8px; margin-top: 10px; font-style: italic; font-size: 0.9rem; }
+.meter { height: 8px; background: rgba(148, 163, 184, 0.2); border-radius: 4px; margin-top: 8px; overflow: hidden; }
+.meter-fill { height: 100%; background: linear-gradient(90deg, #2d5a47, #7cb083); }
+.screen { display: none; }
+.screen.active { display: block; }
+.info { background: rgba(124, 176, 131, 0.1); padding: 16px; border-radius: 10px; margin-bottom: 20px; }
+.info h4 { color: #7cb083; margin-bottom: 8px; }
+@media (max-width: 600px) { .container { padding: 15px; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="../index.html" class="back-btn" onclick="localStorage.setItem('rooted_nav','tools')">
+        <span>🌱</span> Back to Growth Tools
+    </a>
+
+    <!-- START SCREEN -->
+    <div id="start-screen" class="screen active">
+        <div class="header">
+            <div class="header-icon">🎁</div>
+            <h1 class="header-title">Spiritual Gifts Assessment</h1>
+            <p class="header-sub">Discover how God has uniquely equipped you</p>
+        </div>
+        <div class="card">
+            <div class="info">
+                <h4>📖 Biblical Foundation</h4>
+                <p>Spiritual gifts are special abilities given by the Holy Spirit to every believer for building up the Body of Christ (1 Corinthians 12, Romans 12, Ephesians 4).</p>
+            </div>
+            <p style="margin-bottom:15px">This assessment covers <strong>9 spiritual gifts</strong> through 45 questions. Answer honestly based on your experiences and tendencies.</p>
+            <p style="color:#94a3b8;font-size:0.9rem;margin-bottom:15px">⏱️ Takes about 15 minutes</p>
+            <button class="btn" onclick="startAssessment()">Begin Assessment</button>
+        </div>
+    </div>
+
+    <!-- QUIZ SCREEN -->
+    <div id="quiz-screen" class="screen">
+        <div class="header">
+            <h1 class="header-title">Spiritual Gifts</h1>
+            <p class="header-sub" id="progress-text">Question 1 of 45</p>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="card">
+            <p class="question" id="question-text"></p>
+            <div class="options" id="options-container"></div>
+            <button class="btn" id="next-btn" onclick="nextQuestion()" disabled>Next Question</button>
+        </div>
+    </div>
+
+    <!-- RESULTS SCREEN -->
+    <div id="results-screen" class="screen">
+        <div class="header">
+            <div class="header-icon">🎁</div>
+            <h1 class="header-title">Your Spiritual Gifts</h1>
+            <p class="header-sub">Based on your responses</p>
+        </div>
+        <div class="card">
+            <h3 style="color:#7cb083;margin-bottom:15px">Your Top Gifts</h3>
+            <div id="results-container"></div>
+        </div>
+        <div class="card">
+            <h3 style="color:#7cb083;margin-bottom:15px">What's Next?</h3>
+            <p style="margin-bottom:15px">Spiritual gifts are meant to be used! Consider:</p>
+            <ul style="margin-left:20px;color:#94a3b8">
+                <li>Share your results with a pastor or mentor</li>
+                <li>Look for serving opportunities that match your gifts</li>
+                <li>Study the biblical passages about your top gifts</li>
+                <li>Ask others if they see these gifts in you</li>
+            </ul>
+        </div>
+        <button class="btn" onclick="location.reload()">Retake Assessment</button>
+        <button class="btn btn-secondary" style="margin-top:10px" onclick="localStorage.setItem('rooted_nav','tools');window.location.href='../index.html'">Back to Tools</button>
+    </div>
+</div>
+
+<script>
+const GIFTS = {
+    teaching: { name: "Teaching", desc: "The ability to clearly explain and apply God's truth so others can learn and grow.", verse: "Romans 12:7 - 'If it is teaching, then teach.'" },
+    serving: { name: "Serving", desc: "The ability to identify and meet practical needs, helping others accomplish their work.", verse: "Romans 12:7 - 'If it is serving, then serve.'" },
+    encouragement: { name: "Encouragement", desc: "The ability to motivate others toward spiritual growth through comfort, counsel, and encouragement.", verse: "Romans 12:8 - 'If it is to encourage, then give encouragement.'" },
+    giving: { name: "Giving", desc: "The ability to contribute resources generously and cheerfully to further God's work.", verse: "Romans 12:8 - 'If it is giving, then give generously.'" },
+    leadership: { name: "Leadership", desc: "The ability to cast vision, set goals, and guide others toward accomplishing God's purposes.", verse: "Romans 12:8 - 'If it is to lead, do it diligently.'" },
+    mercy: { name: "Mercy", desc: "The ability to feel genuine empathy for those suffering and take action to help them.", verse: "Romans 12:8 - 'If it is to show mercy, do it cheerfully.'" },
+    wisdom: { name: "Wisdom", desc: "The ability to apply spiritual truth effectively to life situations.", verse: "1 Corinthians 12:8 - 'To one there is given...the message of wisdom.'" },
+    faith: { name: "Faith", desc: "The ability to trust God with confidence for things not yet seen, inspiring others to believe.", verse: "1 Corinthians 12:9 - 'To another faith by the same Spirit.'" },
+    hospitality: { name: "Hospitality", desc: "The ability to welcome and care for guests, creating warm environments for fellowship.", verse: "1 Peter 4:9 - 'Offer hospitality to one another without grumbling.'" }
+};
+
+const QUESTIONS = [
+    { q: "I enjoy explaining Scripture in ways that help others understand.", gift: "teaching" },
+    { q: "I notice practical needs and enjoy meeting them.", gift: "serving" },
+    { q: "People often come to me when they need encouragement.", gift: "encouragement" },
+    { q: "I find joy in giving financially to support God's work.", gift: "giving" },
+    { q: "I naturally take initiative to organize and lead projects.", gift: "leadership" },
+    { q: "I am deeply moved by people who are hurting or struggling.", gift: "mercy" },
+    { q: "I can often see the wise path forward in complex situations.", gift: "wisdom" },
+    { q: "I find it easy to trust God even when circumstances look impossible.", gift: "faith" },
+    { q: "I love having people in my home and making them feel welcome.", gift: "hospitality" },
+    { q: "I spend time studying the Bible to understand it more deeply.", gift: "teaching" },
+    { q: "I prefer working behind the scenes to help others succeed.", gift: "serving" },
+    { q: "I am good at helping people see the positive side of difficult situations.", gift: "encouragement" },
+    { q: "I am motivated to give even when finances are tight.", gift: "giving" },
+    { q: "Others often look to me to make decisions for the group.", gift: "leadership" },
+    { q: "I am drawn to visit or help people who are sick or in need.", gift: "mercy" },
+    { q: "People ask me for advice when facing tough decisions.", gift: "wisdom" },
+    { q: "I believe God can do great things even when others doubt.", gift: "faith" },
+    { q: "I enjoy cooking or preparing my space for guests.", gift: "hospitality" },
+    { q: "I get frustrated when biblical truth is taught incorrectly.", gift: "teaching" },
+    { q: "I'd rather serve than be served at church events.", gift: "serving" },
+    { q: "I naturally notice when someone is discouraged and want to help.", gift: "encouragement" },
+    { q: "I give regularly and systematically rather than impulsively.", gift: "giving" },
+    { q: "I enjoy developing plans and strategies to accomplish goals.", gift: "leadership" },
+    { q: "I find it difficult to say no when someone needs help.", gift: "mercy" },
+    { q: "I can often identify the root issue in a problem.", gift: "wisdom" },
+    { q: "I am willing to take risks for God's kingdom.", gift: "faith" },
+    { q: "Strangers often feel comfortable around me quickly.", gift: "hospitality" },
+    { q: "I enjoy preparing lessons or studies for others.", gift: "teaching" },
+    { q: "I look for ways to help without being asked.", gift: "serving" },
+    { q: "I write notes or send messages to encourage people.", gift: "encouragement" },
+    { q: "I see money as a tool to advance God's purposes.", gift: "giving" },
+    { q: "I can motivate others to work together toward a common goal.", gift: "leadership" },
+    { q: "I feel deep compassion for people going through hardship.", gift: "mercy" },
+    { q: "I can see potential consequences of decisions before others do.", gift: "wisdom" },
+    { q: "I pray bold prayers expecting God to answer.", gift: "faith" },
+    { q: "I think about how to make events welcoming for newcomers.", gift: "hospitality" },
+    { q: "I adapt my teaching style to help different people understand.", gift: "teaching" },
+    { q: "I find fulfillment in completing tasks that help the church function.", gift: "serving" },
+    { q: "I am patient with people who are struggling in their faith.", gift: "encouragement" },
+    { q: "I research charities and causes to give strategically.", gift: "giving" },
+    { q: "I am comfortable delegating tasks to others.", gift: "leadership" },
+    { q: "I am sensitive to the emotions and needs of others.", gift: "mercy" },
+    { q: "I seek God's perspective before giving advice.", gift: "wisdom" },
+    { q: "I encourage others to step out in faith.", gift: "faith" },
+    { q: "I remember details about guests to make them feel known.", gift: "hospitality" }
+];
+
+let currentQuestion = 0;
+let scores = {};
+let selectedAnswer = null;
+
+Object.keys(GIFTS).forEach(g => scores[g] = 0);
+
+function startAssessment() {
+    document.getElementById('start-screen').classList.remove('active');
+    document.getElementById('quiz-screen').classList.add('active');
+    showQuestion();
+}
+
+function showQuestion() {
+    const q = QUESTIONS[currentQuestion];
+    document.getElementById('question-text').textContent = q.q;
+    document.getElementById('progress-text').textContent = `Question ${currentQuestion + 1} of ${QUESTIONS.length}`;
+    document.getElementById('progress-fill').style.width = `${(currentQuestion / QUESTIONS.length) * 100}%`;
+    
+    const options = [
+        { value: 0, text: "Not at all like me" },
+        { value: 1, text: "Slightly like me" },
+        { value: 2, text: "Somewhat like me" },
+        { value: 3, text: "Very much like me" },
+        { value: 4, text: "Exactly like me" }
+    ];
+    
+    document.getElementById('options-container').innerHTML = options.map(o => `
+        <div class="option" onclick="selectOption(${o.value}, this)">
+            <div style="width:20px;height:20px;border:2px solid #64748b;border-radius:50%;flex-shrink:0"></div>
+            <span class="option-text">${o.text}</span>
+        </div>
+    `).join('');
+    
+    selectedAnswer = null;
+    document.getElementById('next-btn').disabled = true;
+    document.getElementById('next-btn').textContent = currentQuestion === QUESTIONS.length - 1 ? 'See Results' : 'Next Question';
+}
+
+function selectOption(value, el) {
+    document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    el.querySelector('div').style.background = '#7cb083';
+    el.querySelector('div').style.borderColor = '#7cb083';
+    selectedAnswer = value;
+    document.getElementById('next-btn').disabled = false;
+}
+
+function nextQuestion() {
+    if (selectedAnswer === null) return;
+    
+    scores[QUESTIONS[currentQuestion].gift] += selectedAnswer;
+    
+    if (currentQuestion < QUESTIONS.length - 1) {
+        currentQuestion++;
+        showQuestion();
+    } else {
+        showResults();
+    }
+}
+
+function showResults() {
+    document.getElementById('quiz-screen').classList.remove('active');
+    document.getElementById('results-screen').classList.add('active');
+    
+    const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+    const maxScore = 20; // 5 questions per gift × 4 max points
+    
+    document.getElementById('results-container').innerHTML = sorted.slice(0, 5).map(([gift, score], i) => {
+        const g = GIFTS[gift];
+        const pct = Math.round((score / maxScore) * 100);
+        return `
+            <div class="gift-card" style="border-left-color:${i === 0 ? '#7cb083' : i === 1 ? '#94a3b8' : '#64748b'}">
+                <div class="gift-name">${i + 1}. ${g.name}</div>
+                <div class="gift-score">${pct}% match</div>
+                <div class="meter"><div class="meter-fill" style="width:${pct}%"></div></div>
+                <p class="gift-desc">${g.desc}</p>
+                <div class="scripture">${g.verse}</div>
+            </div>
+        `;
+    }).join('');
+    
+    // Save results
+    localStorage.setItem('rooted_tool_gifts', JSON.stringify({ scores, completedAt: new Date().toISOString() }));
+}
+</script>
+</body>
+</html>

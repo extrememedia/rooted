@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Praying the Psalms | Rooted</title>
+    <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { min-height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%); font-family: 'Segoe UI', system-ui, sans-serif; color: #f8fafc; line-height: 1.6; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.back-btn { display: inline-flex; align-items: center; gap: 8px; color: #7cb083; padding: 10px 16px; border-radius: 10px; background: rgba(45, 90, 71, 0.2); border: 1px solid rgba(45, 90, 71, 0.4); margin-bottom: 20px; text-decoration: none; }
+.back-btn:hover { background: rgba(45, 90, 71, 0.4); }
+.header { text-align: center; margin-bottom: 30px; }
+.header-icon { font-size: 3rem; margin-bottom: 10px; }
+.header-title { font-size: 1.8rem; color: #7cb083; margin-bottom: 5px; }
+.header-sub { color: #94a3b8; }
+.card { background: rgba(30, 41, 59, 0.9); border-radius: 16px; border: 1px solid rgba(124, 176, 131, 0.2); padding: 24px; margin-bottom: 20px; }
+.btn { background: linear-gradient(135deg, #2d5a47, #3d7a5f); color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 1rem; cursor: pointer; width: 100%; }
+.btn:hover { box-shadow: 0 4px 20px rgba(45, 90, 71, 0.4); }
+.btn-secondary { background: transparent; border: 1px solid #7cb083; color: #7cb083; }
+.category-card { background: rgba(15, 23, 42, 0.6); border-radius: 12px; padding: 20px; margin-bottom: 15px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+.category-card:hover { border-color: rgba(124, 176, 131, 0.4); }
+.category-card.selected { border-color: #7cb083; background: rgba(45, 90, 71, 0.2); }
+.category-icon { font-size: 2rem; margin-bottom: 10px; }
+.category-title { color: #7cb083; font-size: 1.1rem; margin-bottom: 5px; }
+.category-desc { color: #94a3b8; font-size: 0.9rem; }
+.psalm-box { background: rgba(15, 23, 42, 0.6); padding: 25px; border-radius: 12px; border-left: 4px solid #7cb083; margin: 20px 0; }
+.psalm-text { font-size: 1.15rem; line-height: 1.9; font-style: italic; margin-bottom: 15px; }
+.psalm-ref { color: #7cb083; }
+.prompt { background: rgba(251, 191, 36, 0.1); padding: 15px; border-radius: 10px; margin: 15px 0; }
+.prompt-title { color: #fbbf24; font-size: 0.9rem; margin-bottom: 5px; }
+.screen { display: none; }
+.screen.active { display: block; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="../index.html" class="back-btn" onclick="localStorage.setItem('rooted_nav','tools')"><span>🌱</span> Back to Growth Tools</a>
+    
+    <div id="select" class="screen active">
+        <div class="header">
+            <div class="header-icon">🎵</div>
+            <h1 class="header-title">Praying the Psalms</h1>
+            <p class="header-sub">Let the Psalms guide your prayers</p>
+        </div>
+        <p style="color:#94a3b8;margin-bottom:20px;text-align:center">What do you need to express to God today?</p>
+        <div id="categories"></div>
+    </div>
+
+    <div id="pray" class="screen">
+        <button class="btn btn-secondary" style="width:auto;margin-bottom:20px" onclick="goBack()">← Choose Different</button>
+        <div class="header">
+            <div class="header-icon" id="pray-icon"></div>
+            <h1 class="header-title" id="pray-title"></h1>
+        </div>
+        <div class="psalm-box">
+            <p class="psalm-text" id="psalm-text"></p>
+            <p class="psalm-ref" id="psalm-ref"></p>
+        </div>
+        <div class="prompt">
+            <p class="prompt-title">💡 Prayer Prompt</p>
+            <p id="prayer-prompt" style="font-size:0.95rem"></p>
+        </div>
+        <div class="card">
+            <p style="margin-bottom:15px">Read the Psalm slowly. Let the words become your own prayer. Speak them aloud or in your heart.</p>
+            <button class="btn" onclick="nextPsalm()">Another Psalm</button>
+            <button class="btn btn-secondary" style="margin-top:10px" onclick="goBack()">Done Praying</button>
+        </div>
+    </div>
+</div>
+<script>
+const CATEGORIES = [
+    { id: 'praise', icon: '🙌', title: 'Praise & Worship', desc: 'Celebrate who God is', psalms: [
+        { ref: 'Psalm 100', text: 'Shout for joy to the LORD, all the earth. Worship the LORD with gladness; come before him with joyful songs. Know that the LORD is God. It is he who made us, and we are his.', prompt: 'What attributes of God fill you with awe today?' },
+        { ref: 'Psalm 145:1-3', text: 'I will exalt you, my God the King; I will praise your name for ever and ever. Every day I will praise you and extol your name for ever and ever. Great is the LORD and most worthy of praise.', prompt: 'Declare God\'s greatness in your own words.' },
+        { ref: 'Psalm 150', text: 'Praise the LORD. Praise God in his sanctuary; praise him in his mighty heavens. Praise him for his acts of power; praise him for his surpassing greatness.', prompt: 'How has God shown His power in your life?' }
+    ]},
+    { id: 'lament', icon: '😢', title: 'Lament & Sorrow', desc: 'Bring your pain to God', psalms: [
+        { ref: 'Psalm 13:1-2', text: 'How long, LORD? Will you forget me forever? How long will you hide your face from me? How long must I wrestle with my thoughts and day after day have sorrow in my heart?', prompt: 'What burden do you need to honestly lay before God?' },
+        { ref: 'Psalm 42:5', text: 'Why, my soul, are you downcast? Why so disturbed within me? Put your hope in God, for I will yet praise him, my Savior and my God.', prompt: 'Speak to your soul - remind yourself to hope in God.' },
+        { ref: 'Psalm 77:1-2', text: 'I cried out to God for help; I cried out to God to hear me. When I was in distress, I sought the Lord; at night I stretched out untiring hands.', prompt: 'Pour out your distress to God without holding back.' }
+    ]},
+    { id: 'thanks', icon: '🙏', title: 'Thanksgiving', desc: 'Thank God for His goodness', psalms: [
+        { ref: 'Psalm 103:1-5', text: 'Praise the LORD, my soul; all my inmost being, praise his holy name. Praise the LORD, my soul, and forget not all his benefits—who forgives all your sins and heals all your diseases.', prompt: 'List the benefits God has given you.' },
+        { ref: 'Psalm 107:1', text: 'Give thanks to the LORD, for he is good; his love endures forever.', prompt: 'How have you experienced God\'s enduring love?' },
+        { ref: 'Psalm 118:24', text: 'The LORD has done it this very day; let us rejoice today and be glad.', prompt: 'What has the Lord done today that you can thank Him for?' }
+    ]},
+    { id: 'trust', icon: '🛡️', title: 'Trust & Security', desc: 'Rest in God\'s protection', psalms: [
+        { ref: 'Psalm 23:1-4', text: 'The LORD is my shepherd, I lack nothing. He makes me lie down in green pastures, he leads me beside quiet waters. Even though I walk through the darkest valley, I will fear no evil, for you are with me.', prompt: 'Where do you need the Good Shepherd to lead you?' },
+        { ref: 'Psalm 46:1-2', text: 'God is our refuge and strength, an ever-present help in trouble. Therefore we will not fear, though the earth give way and the mountains fall into the heart of the sea.', prompt: 'What fears can you release to your refuge?' },
+        { ref: 'Psalm 91:1-2', text: 'Whoever dwells in the shelter of the Most High will rest in the shadow of the Almighty. I will say of the LORD, "He is my refuge and my fortress, my God, in whom I trust."', prompt: 'Declare your trust in God as your fortress.' }
+    ]},
+    { id: 'help', icon: '🆘', title: 'Cry for Help', desc: 'Ask God for deliverance', psalms: [
+        { ref: 'Psalm 61:1-3', text: 'Hear my cry, O God; listen to my prayer. From the ends of the earth I call to you, I call as my heart grows faint; lead me to the rock that is higher than I.', prompt: 'What situation feels beyond your strength?' },
+        { ref: 'Psalm 121:1-2', text: 'I lift up my eyes to the mountains—where does my help come from? My help comes from the LORD, the Maker of heaven and earth.', prompt: 'Lift your eyes and acknowledge where your help comes from.' },
+        { ref: 'Psalm 70:1', text: 'Hasten, O God, to save me; come quickly, LORD, to help me.', prompt: 'What urgent need can you bring to God right now?' }
+    ]}
+];
+
+let currentCategory = null;
+let currentPsalmIndex = 0;
+
+function init() {
+    document.getElementById('categories').innerHTML = CATEGORIES.map(c => `
+        <div class="category-card" onclick="selectCategory('${c.id}')">
+            <div class="category-icon">${c.icon}</div>
+            <div class="category-title">${c.title}</div>
+            <div class="category-desc">${c.desc}</div>
+        </div>
+    `).join('');
+}
+
+function selectCategory(id) {
+    currentCategory = CATEGORIES.find(c => c.id === id);
+    currentPsalmIndex = Math.floor(Math.random() * currentCategory.psalms.length);
+    showPsalm();
+}
+
+function showPsalm() {
+    const psalm = currentCategory.psalms[currentPsalmIndex];
+    document.getElementById('pray-icon').textContent = currentCategory.icon;
+    document.getElementById('pray-title').textContent = currentCategory.title;
+    document.getElementById('psalm-text').textContent = '"' + psalm.text + '"';
+    document.getElementById('psalm-ref').textContent = '— ' + psalm.ref;
+    document.getElementById('prayer-prompt').textContent = psalm.prompt;
+    document.getElementById('select').classList.remove('active');
+    document.getElementById('pray').classList.add('active');
+}
+
+function nextPsalm() {
+    currentPsalmIndex = (currentPsalmIndex + 1) % currentCategory.psalms.length;
+    showPsalm();
+}
+
+function goBack() {
+    document.getElementById('pray').classList.remove('active');
+    document.getElementById('select').classList.add('active');
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fruit of the Spirit | Rooted</title>
+    <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { min-height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%); font-family: 'Segoe UI', system-ui, sans-serif; color: #f8fafc; line-height: 1.6; }
+.container { max-width: 700px; margin: 0 auto; padding: 20px; }
+.back-btn { display: inline-flex; align-items: center; gap: 8px; color: #7cb083; padding: 10px 16px; border-radius: 10px; background: rgba(45, 90, 71, 0.2); border: 1px solid rgba(45, 90, 71, 0.4); margin-bottom: 20px; text-decoration: none; }
+.back-btn:hover { background: rgba(45, 90, 71, 0.4); }
+.header { text-align: center; margin-bottom: 30px; }
+.header-icon { font-size: 3rem; margin-bottom: 10px; }
+.header-title { font-size: 1.8rem; color: #7cb083; margin-bottom: 5px; }
+.header-sub { color: #94a3b8; }
+.card { background: rgba(30, 41, 59, 0.9); border-radius: 16px; border: 1px solid rgba(124, 176, 131, 0.2); padding: 24px; margin-bottom: 20px; }
+.btn { background: linear-gradient(135deg, #2d5a47, #3d7a5f); color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 1rem; cursor: pointer; width: 100%; }
+.fruit-card { background: rgba(15, 23, 42, 0.6); border-radius: 12px; padding: 20px; margin-bottom: 15px; cursor: pointer; border: 1px solid transparent; display: flex; align-items: center; gap: 15px; }
+.fruit-card:hover { border-color: rgba(124, 176, 131, 0.4); }
+.fruit-icon { font-size: 2.5rem; }
+.fruit-info { flex: 1; }
+.fruit-name { color: #7cb083; font-size: 1.1rem; }
+.verse-box { background: rgba(124, 176, 131, 0.1); padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 3px solid #7cb083; font-style: italic; text-align: center; }
+.tabs { display: flex; gap: 0; margin-bottom: 20px; border-radius: 10px; overflow: hidden; border: 1px solid rgba(148, 163, 184, 0.2); }
+.tab { flex: 1; padding: 12px; background: rgba(15, 23, 42, 0.6); color: #94a3b8; border: none; cursor: pointer; }
+.tab.active { background: rgba(45, 90, 71, 0.3); color: #7cb083; }
+.rating { display: flex; gap: 8px; margin-top: 10px; }
+.rating-btn { flex: 1; padding: 12px; background: rgba(15, 23, 42, 0.6); border: 2px solid rgba(148, 163, 184, 0.2); border-radius: 8px; cursor: pointer; text-align: center; color: #f8fafc; }
+.rating-btn:hover { border-color: rgba(124, 176, 131, 0.4); }
+.rating-btn.selected { border-color: #7cb083; background: rgba(45, 90, 71, 0.3); }
+.meter { height: 8px; background: rgba(148, 163, 184, 0.2); border-radius: 4px; overflow: hidden; margin-top: 8px; }
+.meter-fill { height: 100%; background: linear-gradient(90deg, #2d5a47, #7cb083); }
+.screen { display: none; }
+.screen.active { display: block; }
+.assessment-q { margin-bottom: 25px; }
+.assessment-q p { margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="../index.html" class="back-btn" onclick="localStorage.setItem('rooted_nav','tools')"><span>🌱</span> Back to Growth Tools</a>
+    
+    <div class="header">
+        <div class="header-icon">🍇</div>
+        <h1 class="header-title">Fruit of the Spirit</h1>
+        <p class="header-sub">Galatians 5:22-23</p>
+    </div>
+    <div class="verse-box">"But the fruit of the Spirit is love, joy, peace, forbearance, kindness, goodness, faithfulness, gentleness and self-control."</div>
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('overview')">Overview</button>
+        <button class="tab" onclick="showTab('assess')">Assessment</button>
+        <button class="tab" onclick="showTab('results')">Results</button>
+    </div>
+    <div id="overview-tab" class="screen active"><div id="fruit-list"></div></div>
+    <div id="assess-tab" class="screen"><div class="card"><h3 style="color:#7cb083;margin-bottom:15px">Rate Yourself (1-5)</h3><div id="assessment-form"></div><button class="btn" onclick="saveAssessment()">Save</button></div></div>
+    <div id="results-tab" class="screen"><div id="results-content"></div></div>
+    <div id="fruit-detail" class="screen"><button class="btn" style="background:transparent;border:1px solid #7cb083;color:#7cb083;margin-bottom:20px" onclick="showTab('overview')">← Back</button><div id="detail-content"></div></div>
+</div>
+<script>
+const FRUITS = [
+    { id: 'love', name: 'Love', icon: '❤️', desc: 'Unconditional, sacrificial love', actions: ['Serve someone who cannot repay you', 'Forgive someone who hurt you'] },
+    { id: 'joy', name: 'Joy', icon: '😊', desc: 'Deep gladness rooted in God', actions: ['Thank God for 3 things each morning', 'Choose joy in difficulty'] },
+    { id: 'peace', name: 'Peace', icon: '🕊️', desc: 'Inner calm from trusting God', actions: ['Cast anxieties on God in prayer', 'Be a peacemaker'] },
+    { id: 'patience', name: 'Patience', icon: '⏳', desc: 'Long-suffering endurance', actions: ['Respond calmly when frustrated', 'Wait without complaining'] },
+    { id: 'kindness', name: 'Kindness', icon: '🤗', desc: 'Tender concern for others', actions: ['Do an unexpected act of kindness', 'Speak encouraging words'] },
+    { id: 'goodness', name: 'Goodness', icon: '✨', desc: 'Moral excellence and integrity', actions: ['Do the right thing when no one watches', 'Be generous'] },
+    { id: 'faithfulness', name: 'Faithfulness', icon: '🤝', desc: 'Reliability and trustworthiness', actions: ['Keep a promise', 'Be dependable in small things'] },
+    { id: 'gentleness', name: 'Gentleness', icon: '🌸', desc: 'Strength under control', actions: ['Respond gently to criticism', 'Show humility'] },
+    { id: 'selfcontrol', name: 'Self-Control', icon: '💪', desc: 'Mastery over desires', actions: ['Say no to a temptation', 'Control your tongue'] }
+];
+let scores = JSON.parse(localStorage.getItem('rooted_tool_fruit') || '{}');
+function showTab(tab) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    if (tab !== 'detail') document.querySelector(`.tab:nth-child(${tab === 'overview' ? 1 : tab === 'assess' ? 2 : 3})`).classList.add('active');
+    document.getElementById(tab === 'detail' ? 'fruit-detail' : tab + '-tab').classList.add('active');
+    if (tab === 'assess') renderAssessment();
+    if (tab === 'results') renderResults();
+}
+function renderFruitList() {
+    document.getElementById('fruit-list').innerHTML = FRUITS.map(f => `
+        <div class="fruit-card" onclick="showFruit('${f.id}')">
+            <div class="fruit-icon">${f.icon}</div>
+            <div class="fruit-info"><div class="fruit-name">${f.name}</div><div style="color:#94a3b8;font-size:0.9rem">${f.desc}</div></div>
+            ${scores[f.id] ? `<div style="color:#7cb083">${scores[f.id]}/5</div>` : ''}
+        </div>
+    `).join('');
+}
+function showFruit(id) {
+    const f = FRUITS.find(x => x.id === id);
+    document.getElementById('detail-content').innerHTML = `
+        <div class="card" style="text-align:center"><div style="font-size:4rem;margin-bottom:15px">${f.icon}</div>
+        <h2 style="color:#7cb083;margin-bottom:10px">${f.name}</h2><p>${f.desc}</p></div>
+        <div class="card"><h3 style="color:#7cb083;margin-bottom:15px">🎯 Practice</h3>
+        ${f.actions.map(a => `<div style="padding:10px;background:rgba(15,23,42,0.4);border-radius:8px;margin-bottom:8px">• ${a}</div>`).join('')}</div>`;
+    showTab('detail');
+}
+function renderAssessment() {
+    document.getElementById('assessment-form').innerHTML = FRUITS.map(f => `
+        <div class="assessment-q"><p><strong>${f.icon} ${f.name}</strong></p>
+        <div class="rating">${[1,2,3,4,5].map(n => `<div class="rating-btn ${scores[f.id] == n ? 'selected' : ''}" onclick="setScore('${f.id}', ${n}, this)">${n}</div>`).join('')}</div></div>
+    `).join('');
+}
+function setScore(id, score, el) {
+    scores[id] = score;
+    el.parentElement.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+}
+function saveAssessment() {
+    localStorage.setItem('rooted_tool_fruit', JSON.stringify(scores));
+    alert('Saved!');
+    renderFruitList();
+}
+function renderResults() {
+    if (Object.keys(scores).length === 0) {
+        document.getElementById('results-content').innerHTML = '<div class="card" style="text-align:center"><p>Complete the assessment first!</p></div>';
+        return;
+    }
+    const sorted = FRUITS.map(f => ({ ...f, score: scores[f.id] || 0 })).sort((a, b) => b.score - a.score);
+    document.getElementById('results-content').innerHTML = `
+        <div class="card"><h3 style="color:#7cb083;margin-bottom:15px">Your Profile</h3>
+        ${sorted.map(f => `<div style="margin-bottom:15px"><div style="display:flex;justify-content:space-between"><span>${f.icon} ${f.name}</span><span>${f.score}/5</span></div>
+        <div class="meter"><div class="meter-fill" style="width:${f.score * 20}%"></div></div></div>`).join('')}</div>
+        <div class="card"><h3 style="color:#22c55e">💪 Strengths:</h3><p>${sorted.slice(0,3).map(f => f.icon + ' ' + f.name).join(', ')}</p></div>
+        <div class="card"><h3 style="color:#f59e0b">🎯 Growth Areas:</h3><p>${sorted.slice(-3).map(f => f.icon + ' ' + f.name).join(', ')}</p></div>`;
+}
+renderFruitList();
+</script>
+</body>
+</html>

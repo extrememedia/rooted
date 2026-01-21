@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lectio Divina | Rooted</title>
+    <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { min-height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%); font-family: 'Segoe UI', system-ui, sans-serif; color: #f8fafc; line-height: 1.6; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.back-btn { display: inline-flex; align-items: center; gap: 8px; color: #7cb083; padding: 10px 16px; border-radius: 10px; background: rgba(45, 90, 71, 0.2); border: 1px solid rgba(45, 90, 71, 0.4); margin-bottom: 20px; text-decoration: none; }
+.back-btn:hover { background: rgba(45, 90, 71, 0.4); }
+.header { text-align: center; margin-bottom: 30px; }
+.header-icon { font-size: 3rem; margin-bottom: 10px; }
+.header-title { font-size: 1.8rem; color: #7cb083; margin-bottom: 5px; }
+.header-sub { color: #94a3b8; }
+.card { background: rgba(30, 41, 59, 0.9); border-radius: 16px; border: 1px solid rgba(124, 176, 131, 0.2); padding: 24px; margin-bottom: 20px; }
+.btn { background: linear-gradient(135deg, #2d5a47, #3d7a5f); color: white; border: none; padding: 14px 28px; border-radius: 10px; font-size: 1rem; cursor: pointer; width: 100%; }
+.btn:hover { box-shadow: 0 4px 20px rgba(45, 90, 71, 0.4); }
+.phase { text-align: center; padding: 40px 20px; }
+.phase-icon { font-size: 4rem; margin-bottom: 20px; }
+.phase-title { font-size: 1.5rem; color: #7cb083; margin-bottom: 5px; }
+.phase-latin { font-style: italic; color: #64748b; margin-bottom: 20px; }
+.phase-instruction { color: #94a3b8; margin-bottom: 30px; line-height: 1.7; }
+.timer { font-size: 3rem; color: #7cb083; font-weight: 300; margin: 30px 0; }
+.progress-dots { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; background: rgba(148, 163, 184, 0.3); }
+.dot.active { background: #7cb083; }
+.dot.done { background: #22c55e; }
+.scripture-box { background: rgba(15, 23, 42, 0.6); padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #7cb083; }
+.scripture-text { font-size: 1.1rem; line-height: 1.8; margin-bottom: 10px; }
+.scripture-ref { color: #7cb083; font-size: 0.9rem; }
+textarea { width: 100%; padding: 15px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 10px; color: #f8fafc; font-size: 1rem; min-height: 100px; resize: vertical; margin: 15px 0; }
+textarea:focus { outline: none; border-color: #7cb083; }
+.screen { display: none; }
+.screen.active { display: block; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="../index.html" class="back-btn" onclick="localStorage.setItem('rooted_nav','tools')"><span>🌱</span> Back to Growth Tools</a>
+    
+    <div id="intro" class="screen active">
+        <div class="header">
+            <div class="header-icon">✨</div>
+            <h1 class="header-title">Lectio Divina</h1>
+            <p class="header-sub">Divine Reading • Sacred Listening</p>
+        </div>
+        <div class="card">
+            <p style="margin-bottom:15px">Lectio Divina is an ancient Christian practice of prayerful Scripture reading. Through four movements, we open ourselves to hear God speak through His Word.</p>
+            <p style="color:#7cb083;margin-bottom:20px"><strong>The Four Movements:</strong></p>
+            <p style="margin-bottom:8px">📖 <strong>Lectio</strong> (Read) - Read slowly, listen for a word or phrase</p>
+            <p style="margin-bottom:8px">💭 <strong>Meditatio</strong> (Reflect) - Ponder what God is saying to you</p>
+            <p style="margin-bottom:8px">🙏 <strong>Oratio</strong> (Respond) - Pray in response to God's word</p>
+            <p style="margin-bottom:20px">😌 <strong>Contemplatio</strong> (Rest) - Simply rest in God's presence</p>
+            <button class="btn" onclick="startPractice()">Begin Practice (15 min)</button>
+        </div>
+    </div>
+
+    <div id="practice" class="screen">
+        <div class="progress-dots">
+            <div class="dot" id="dot-0"></div>
+            <div class="dot" id="dot-1"></div>
+            <div class="dot" id="dot-2"></div>
+            <div class="dot" id="dot-3"></div>
+        </div>
+        <div class="phase" id="phase-content"></div>
+        <div id="phase-input"></div>
+        <button class="btn" id="next-btn" onclick="nextPhase()">Continue</button>
+    </div>
+
+    <div id="complete" class="screen">
+        <div class="header">
+            <div class="header-icon">🕊️</div>
+            <h1 class="header-title">Practice Complete</h1>
+            <p class="header-sub">May God's word dwell in you richly</p>
+        </div>
+        <div class="card">
+            <p style="margin-bottom:20px">Take a moment to carry what God has spoken into your day.</p>
+            <button class="btn" onclick="location.reload()">Practice Again</button>
+            <button class="btn" style="margin-top:10px;background:transparent;border:1px solid #7cb083;color:#7cb083" onclick="localStorage.setItem('rooted_nav','tools');window.location.href='../index.html'">Back to Tools</button>
+        </div>
+    </div>
+</div>
+<script>
+const SCRIPTURES = [
+    { text: "Be still, and know that I am God; I will be exalted among the nations, I will be exalted in the earth.", ref: "Psalm 46:10" },
+    { text: "The LORD is my shepherd, I lack nothing. He makes me lie down in green pastures, he leads me beside quiet waters, he refreshes my soul.", ref: "Psalm 23:1-3" },
+    { text: "Come to me, all you who are weary and burdened, and I will give you rest. Take my yoke upon you and learn from me, for I am gentle and humble in heart.", ref: "Matthew 11:28-29" },
+    { text: "Trust in the LORD with all your heart and lean not on your own understanding; in all your ways submit to him, and he will make your paths straight.", ref: "Proverbs 3:5-6" },
+    { text: "For I know the plans I have for you, declares the LORD, plans to prosper you and not to harm you, plans to give you hope and a future.", ref: "Jeremiah 29:11" }
+];
+const PHASES = [
+    { icon: "📖", title: "Lectio", latin: "Read", instruction: "Read the passage slowly, 2-3 times. Listen for a word or phrase that stands out to you. Don't analyze—just receive.", time: 180 },
+    { icon: "💭", title: "Meditatio", latin: "Reflect", instruction: "What word or phrase caught your attention? Sit with it. Turn it over in your mind. What might God be saying to you through this?", time: 180, hasInput: true },
+    { icon: "🙏", title: "Oratio", latin: "Respond", instruction: "Respond to God in prayer. Share your thoughts, feelings, and desires with Him. What is your heart's response to His word?", time: 180, hasInput: true },
+    { icon: "😌", title: "Contemplatio", latin: "Rest", instruction: "Release all thoughts and words. Simply rest in God's loving presence. Be still and know that He is God.", time: 180 }
+];
+let currentPhase = 0;
+let scripture = null;
+let timer = null;
+let responses = {};
+
+function startPractice() {
+    scripture = SCRIPTURES[Math.floor(Math.random() * SCRIPTURES.length)];
+    currentPhase = 0;
+    responses = {};
+    document.getElementById('intro').classList.remove('active');
+    document.getElementById('practice').classList.add('active');
+    showPhase();
+}
+
+function showPhase() {
+    const phase = PHASES[currentPhase];
+    updateDots();
+    
+    let html = `<div class="phase-icon">${phase.icon}</div>
+        <h2 class="phase-title">${phase.title}</h2>
+        <p class="phase-latin">${phase.latin}</p>
+        <p class="phase-instruction">${phase.instruction}</p>`;
+    
+    if (currentPhase === 0) {
+        html += `<div class="scripture-box"><p class="scripture-text">"${scripture.text}"</p><p class="scripture-ref">— ${scripture.ref}</p></div>`;
+    }
+    
+    document.getElementById('phase-content').innerHTML = html;
+    document.getElementById('phase-input').innerHTML = phase.hasInput ? 
+        `<textarea id="response" placeholder="Write your reflections..."></textarea>` : '';
+    document.getElementById('next-btn').textContent = currentPhase === 3 ? 'Complete' : 'Continue';
+}
+
+function updateDots() {
+    for (let i = 0; i < 4; i++) {
+        const dot = document.getElementById('dot-' + i);
+        dot.className = 'dot';
+        if (i < currentPhase) dot.classList.add('done');
+        if (i === currentPhase) dot.classList.add('active');
+    }
+}
+
+function nextPhase() {
+    const resp = document.getElementById('response');
+    if (resp) responses[currentPhase] = resp.value;
+    
+    if (currentPhase < 3) {
+        currentPhase++;
+        showPhase();
+    } else {
+        document.getElementById('practice').classList.remove('active');
+        document.getElementById('complete').classList.add('active');
+        localStorage.setItem('rooted_tool_lectio', JSON.stringify({ date: new Date().toISOString(), scripture, responses }));
+    }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inductive Bible Study | Rooted</title>
+    <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { min-height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%); font-family: 'Segoe UI', system-ui, sans-serif; color: #f8fafc; line-height: 1.6; }
+.container { max-width: 800px; margin: 0 auto; padding: 20px; }
+.back-btn { display: inline-flex; align-items: center; gap: 8px; color: #7cb083; padding: 10px 16px; border-radius: 10px; background: rgba(45, 90, 71, 0.2); border: 1px solid rgba(45, 90, 71, 0.4); margin-bottom: 20px; text-decoration: none; font-size: 0.9rem; }
+.back-btn:hover { background: rgba(45, 90, 71, 0.4); }
+.header { text-align: center; margin-bottom: 30px; }
+.header-icon { font-size: 3rem; margin-bottom: 10px; }
+.header-title { font-size: 1.8rem; color: #7cb083; margin-bottom: 5px; }
+.header-sub { color: #94a3b8; }
+.card { background: rgba(30, 41, 59, 0.9); border-radius: 16px; border: 1px solid rgba(124, 176, 131, 0.2); padding: 24px; margin-bottom: 20px; }
+.btn { background: linear-gradient(135deg, #2d5a47, #3d7a5f); color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 1rem; cursor: pointer; width: 100%; }
+.btn:hover { box-shadow: 0 4px 20px rgba(45, 90, 71, 0.4); }
+.btn-secondary { background: transparent; border: 1px solid #7cb083; color: #7cb083; }
+.input-field { width: 100%; padding: 12px 16px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 10px; color: #f8fafc; font-size: 1rem; margin-bottom: 15px; }
+.input-field:focus { outline: none; border-color: #7cb083; }
+textarea.input-field { min-height: 120px; resize: vertical; }
+.step { background: rgba(15, 23, 42, 0.6); border-radius: 12px; padding: 20px; margin-bottom: 15px; border-left: 4px solid #7cb083; }
+.step-num { display: inline-flex; width: 30px; height: 30px; background: #7cb083; color: #1a1a2e; border-radius: 50%; align-items: center; justify-content: center; font-weight: 600; margin-right: 10px; }
+.step-title { color: #7cb083; font-size: 1.1rem; margin-bottom: 8px; }
+.step-desc { color: #94a3b8; font-size: 0.9rem; margin-bottom: 12px; }
+.questions { background: rgba(124, 176, 131, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 12px; }
+.questions li { margin-left: 20px; color: #94a3b8; font-size: 0.9rem; margin-bottom: 4px; }
+.saved-studies { margin-top: 20px; }
+.study-item { padding: 15px; background: rgba(15, 23, 42, 0.4); border-radius: 10px; margin-bottom: 10px; cursor: pointer; border: 1px solid transparent; }
+.study-item:hover { border-color: rgba(124, 176, 131, 0.3); }
+.study-ref { color: #7cb083; font-weight: 500; }
+.study-date { font-size: 0.8rem; color: #64748b; }
+.tabs { display: flex; gap: 0; margin-bottom: 20px; border-radius: 10px; overflow: hidden; border: 1px solid rgba(148, 163, 184, 0.2); }
+.tab { flex: 1; padding: 12px; background: rgba(15, 23, 42, 0.6); color: #94a3b8; border: none; cursor: pointer; }
+.tab.active { background: rgba(45, 90, 71, 0.3); color: #7cb083; }
+.screen { display: none; }
+.screen.active { display: block; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="../index.html" class="back-btn" onclick="localStorage.setItem('rooted_nav','tools')"><span>🌱</span> Back to Growth Tools</a>
+    <div class="header">
+        <div class="header-icon">🔍</div>
+        <h1 class="header-title">Inductive Bible Study</h1>
+        <p class="header-sub">Observation • Interpretation • Application</p>
+    </div>
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('new')">New Study</button>
+        <button class="tab" onclick="showTab('saved')">Saved Studies</button>
+        <button class="tab" onclick="showTab('learn')">Learn Method</button>
+    </div>
+    <div id="new-tab" class="screen active">
+        <div class="card">
+            <input type="text" class="input-field" id="passage-ref" placeholder="Passage Reference (e.g., John 1:1-14)">
+        </div>
+        <div class="step">
+            <div class="step-title"><span class="step-num">1</span>Observation - What does it say?</div>
+            <div class="step-desc">Read carefully and note the facts.</div>
+            <div class="questions"><ul>
+                <li>Who is involved?</li><li>What is happening?</li><li>Where and when?</li><li>Are there repeated words or themes?</li>
+            </ul></div>
+            <textarea class="input-field" id="observation" placeholder="Write your observations..."></textarea>
+        </div>
+        <div class="step" style="border-color:#f59e0b">
+            <div class="step-title"><span class="step-num" style="background:#f59e0b">2</span>Interpretation - What does it mean?</div>
+            <div class="step-desc">Understand the author's intended meaning.</div>
+            <div class="questions"><ul>
+                <li>What is the main point?</li><li>Why did the author write this?</li><li>What did it mean to the original audience?</li><li>How does it connect to the rest of Scripture?</li>
+            </ul></div>
+            <textarea class="input-field" id="interpretation" placeholder="Write your interpretation..."></textarea>
+        </div>
+        <div class="step" style="border-color:#3b82f6">
+            <div class="step-title"><span class="step-num" style="background:#3b82f6">3</span>Application - How should I respond?</div>
+            <div class="step-desc">Apply the truth to your life.</div>
+            <div class="questions"><ul>
+                <li>Is there a command to obey?</li><li>Is there a sin to avoid?</li><li>Is there a promise to claim?</li><li>Is there an example to follow?</li>
+            </ul></div>
+            <textarea class="input-field" id="application" placeholder="Write your application..."></textarea>
+        </div>
+        <button class="btn" onclick="saveStudy()">Save Study</button>
+    </div>
+    <div id="saved-tab" class="screen">
+        <div id="saved-list"></div>
+    </div>
+    <div id="learn-tab" class="screen">
+        <div class="card">
+            <h3 style="color:#7cb083;margin-bottom:15px">What is Inductive Bible Study?</h3>
+            <p style="margin-bottom:15px">Inductive Bible Study is a method that lets Scripture speak for itself. Instead of starting with conclusions, you start with the text and draw out its meaning.</p>
+            <p style="margin-bottom:15px"><strong style="color:#7cb083">The Three Steps:</strong></p>
+            <p style="margin-bottom:10px"><strong>1. Observation</strong> - Carefully examine what the text actually says. Look for facts, repeated words, contrasts, and connections.</p>
+            <p style="margin-bottom:10px"><strong>2. Interpretation</strong> - Determine what the passage meant to its original audience. Consider context, genre, and cross-references.</p>
+            <p><strong>3. Application</strong> - Apply the timeless truths to your specific situation today.</p>
+        </div>
+    </div>
+</div>
+<script>
+let studies = JSON.parse(localStorage.getItem('rooted_tool_inductive') || '[]');
+function showTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById(tab + '-tab').classList.add('active');
+    if (tab === 'saved') renderSaved();
+}
+function saveStudy() {
+    const ref = document.getElementById('passage-ref').value.trim();
+    const obs = document.getElementById('observation').value.trim();
+    const int = document.getElementById('interpretation').value.trim();
+    const app = document.getElementById('application').value.trim();
+    if (!ref) { alert('Please enter a passage reference'); return; }
+    studies.unshift({ ref, observation: obs, interpretation: int, application: app, date: new Date().toISOString() });
+    localStorage.setItem('rooted_tool_inductive', JSON.stringify(studies));
+    document.getElementById('passage-ref').value = '';
+    document.getElementById('observation').value = '';
+    document.getElementById('interpretation').value = '';
+    document.getElementById('application').value = '';
+    alert('Study saved!');
+}
+function renderSaved() {
+    if (studies.length === 0) {
+        document.getElementById('saved-list').innerHTML = '<div style="text-align:center;padding:40px;color:#64748b">No saved studies yet</div>';
+        return;
+    }
+    document.getElementById('saved-list').innerHTML = studies.map((s, i) => `
+        <div class="study-item" onclick="viewStudy(${i})">
+            <div class="study-ref">${s.ref}</div>
+            <div class="study-date">${new Date(s.date).toLocaleDateString()}</div>
+        </div>
+    `).join('');
+}
+function viewStudy(i) {
+    const s = studies[i];
+    alert(`${s.ref}\n\nObservation:\n${s.observation || '(none)'}\n\nInterpretation:\n${s.interpretation || '(none)'}\n\nApplication:\n${s.application || '(none)'}`);
+}
+</script>
+</body>
+</html>

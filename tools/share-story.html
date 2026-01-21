@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Share Your Story | Rooted</title>
+    <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { min-height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%); font-family: 'Segoe UI', system-ui, sans-serif; color: #f8fafc; line-height: 1.6; }
+.container { max-width: 700px; margin: 0 auto; padding: 20px; }
+.back-btn { display: inline-flex; align-items: center; gap: 8px; color: #7cb083; padding: 10px 16px; border-radius: 10px; background: rgba(45, 90, 71, 0.2); border: 1px solid rgba(45, 90, 71, 0.4); margin-bottom: 20px; text-decoration: none; }
+.back-btn:hover { background: rgba(45, 90, 71, 0.4); }
+.header { text-align: center; margin-bottom: 30px; }
+.header-icon { font-size: 3rem; margin-bottom: 10px; }
+.header-title { font-size: 1.8rem; color: #7cb083; margin-bottom: 5px; }
+.header-sub { color: #94a3b8; }
+.card { background: rgba(30, 41, 59, 0.9); border-radius: 16px; border: 1px solid rgba(124, 176, 131, 0.2); padding: 24px; margin-bottom: 20px; }
+.btn { background: linear-gradient(135deg, #2d5a47, #3d7a5f); color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 1rem; cursor: pointer; width: 100%; }
+.btn:hover { box-shadow: 0 4px 20px rgba(45, 90, 71, 0.4); }
+.btn-secondary { background: transparent; border: 1px solid #7cb083; color: #7cb083; }
+.section { margin-bottom: 25px; }
+.section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+.section-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+.section-title { color: #7cb083; font-size: 1.1rem; }
+.section-desc { color: #94a3b8; font-size: 0.85rem; }
+textarea { width: 100%; padding: 15px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 10px; color: #f8fafc; font-size: 1rem; min-height: 120px; resize: vertical; }
+textarea:focus { outline: none; border-color: #7cb083; }
+.prompt { background: rgba(251, 191, 36, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 0.9rem; }
+.prompt strong { color: #fbbf24; }
+.tips { background: rgba(15, 23, 42, 0.6); padding: 15px; border-radius: 10px; margin-top: 15px; }
+.tips h4 { color: #7cb083; margin-bottom: 10px; }
+.tips li { margin-left: 20px; color: #94a3b8; font-size: 0.9rem; margin-bottom: 5px; }
+.verse-box { background: rgba(124, 176, 131, 0.1); padding: 15px; border-radius: 10px; margin: 20px 0; border-left: 3px solid #7cb083; font-style: italic; }
+.preview { background: rgba(15, 23, 42, 0.6); padding: 20px; border-radius: 12px; margin-top: 20px; }
+.preview h3 { color: #7cb083; margin-bottom: 15px; }
+.preview-section { margin-bottom: 15px; }
+.preview-section strong { color: #fbbf24; }
+.char-count { text-align: right; font-size: 0.8rem; color: #64748b; margin-top: 5px; }
+.screen { display: none; }
+.screen.active { display: block; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="../index.html" class="back-btn" onclick="localStorage.setItem('rooted_nav','tools')"><span>🌱</span> Back to Growth Tools</a>
+    
+    <div id="intro-screen" class="screen active">
+        <div class="header">
+            <div class="header-icon">📣</div>
+            <h1 class="header-title">Share Your Story</h1>
+            <p class="header-sub">Craft your personal testimony</p>
+        </div>
+        
+        <div class="verse-box" style="text-align:center">
+            "Always be prepared to give an answer to everyone who asks you to give the reason for the hope that you have."
+            <br><span style="color:#7cb083">— 1 Peter 3:15</span>
+        </div>
+
+        <div class="card">
+            <h3 style="color:#7cb083;margin-bottom:15px">The Power of Your Story</h3>
+            <p style="margin-bottom:15px">Your testimony is one of the most powerful tools you have for sharing your faith. No one can argue with what God has done in YOUR life!</p>
+            <p style="color:#94a3b8;margin-bottom:20px">This tool will help you craft a clear, compelling testimony using the simple "Before, How, After" framework.</p>
+            <button class="btn" onclick="startCrafting()">Start Crafting My Story</button>
+        </div>
+
+        <div class="tips">
+            <h4>💡 Tips for a Great Testimony</h4>
+            <ul>
+                <li>Keep it to 2-3 minutes when spoken</li>
+                <li>Be honest and authentic—not preachy</li>
+                <li>Focus on what Jesus did, not just what you did</li>
+                <li>Use everyday language, avoid "church words"</li>
+                <li>Practice it until it feels natural</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="craft-screen" class="screen">
+        <button class="btn btn-secondary" style="width:auto;margin-bottom:20px" onclick="goBack()">← Back</button>
+        
+        <div class="section">
+            <div class="section-header">
+                <div class="section-icon" style="background:rgba(239,68,68,0.2)">📍</div>
+                <div><div class="section-title">BEFORE: Life Before Christ</div><div class="section-desc">What was your life like? What were you searching for?</div></div>
+            </div>
+            <div class="prompt"><strong>Prompts:</strong> What did you believe? What was missing? What problems did you face?</div>
+            <textarea id="before" placeholder="Before I knew Jesus, my life was..." oninput="updateCount('before')"></textarea>
+            <div class="char-count"><span id="before-count">0</span> characters</div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <div class="section-icon" style="background:rgba(251,191,36,0.2)">✨</div>
+                <div><div class="section-title">HOW: How You Met Jesus</div><div class="section-desc">What led you to faith? What happened?</div></div>
+            </div>
+            <div class="prompt"><strong>Prompts:</strong> Who shared the gospel? What convinced you? When did you decide to follow Jesus?</div>
+            <textarea id="how" placeholder="I came to know Jesus when..." oninput="updateCount('how')"></textarea>
+            <div class="char-count"><span id="how-count">0</span> characters</div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <div class="section-icon" style="background:rgba(34,197,94,0.2)">🌱</div>
+                <div><div class="section-title">AFTER: Life Since Knowing Jesus</div><div class="section-desc">How has your life changed? What's different now?</div></div>
+            </div>
+            <div class="prompt"><strong>Prompts:</strong> What has changed? What do you have now? How do you see life differently?</div>
+            <textarea id="after" placeholder="Since following Jesus, my life has..." oninput="updateCount('after')"></textarea>
+            <div class="char-count"><span id="after-count">0</span> characters</div>
+        </div>
+
+        <button class="btn" onclick="preview()">Preview My Story</button>
+    </div>
+
+    <div id="preview-screen" class="screen">
+        <button class="btn btn-secondary" style="width:auto;margin-bottom:20px" onclick="edit()">← Edit</button>
+        
+        <div class="header">
+            <div class="header-icon">📖</div>
+            <h1 class="header-title">Your Story</h1>
+        </div>
+
+        <div class="preview">
+            <div class="preview-section"><strong>BEFORE:</strong><p id="preview-before"></p></div>
+            <div class="preview-section"><strong>HOW:</strong><p id="preview-how"></p></div>
+            <div class="preview-section"><strong>AFTER:</strong><p id="preview-after"></p></div>
+        </div>
+
+        <div class="card" style="margin-top:20px">
+            <h3 style="color:#7cb083;margin-bottom:15px">Next Steps</h3>
+            <ul style="margin-left:20px;color:#94a3b8">
+                <li>Practice saying it out loud</li>
+                <li>Time yourself (aim for 2-3 minutes)</li>
+                <li>Share it with a Christian friend for feedback</li>
+                <li>Pray for opportunities to share!</li>
+            </ul>
+        </div>
+
+        <button class="btn" onclick="saveStory()">💾 Save My Testimony</button>
+        <button class="btn btn-secondary" style="margin-top:10px" onclick="edit()">✏️ Keep Editing</button>
+    </div>
+</div>
+<script>
+function startCrafting() {
+    document.getElementById('intro-screen').classList.remove('active');
+    document.getElementById('craft-screen').classList.add('active');
+    loadSaved();
+}
+
+function goBack() {
+    document.getElementById('craft-screen').classList.remove('active');
+    document.getElementById('intro-screen').classList.add('active');
+}
+
+function updateCount(field) {
+    const text = document.getElementById(field).value;
+    document.getElementById(field + '-count').textContent = text.length;
+}
+
+function preview() {
+    const before = document.getElementById('before').value.trim();
+    const how = document.getElementById('how').value.trim();
+    const after = document.getElementById('after').value.trim();
+    
+    if (!before && !how && !after) {
+        alert('Please write at least one section of your story.');
+        return;
+    }
+    
+    document.getElementById('preview-before').textContent = before || '(not written yet)';
+    document.getElementById('preview-how').textContent = how || '(not written yet)';
+    document.getElementById('preview-after').textContent = after || '(not written yet)';
+    
+    document.getElementById('craft-screen').classList.remove('active');
+    document.getElementById('preview-screen').classList.add('active');
+}
+
+function edit() {
+    document.getElementById('preview-screen').classList.remove('active');
+    document.getElementById('craft-screen').classList.add('active');
+}
+
+function saveStory() {
+    const story = {
+        before: document.getElementById('before').value,
+        how: document.getElementById('how').value,
+        after: document.getElementById('after').value,
+        savedAt: new Date().toISOString()
+    };
+    localStorage.setItem('rooted_tool_testimony', JSON.stringify(story));
+    alert('Your testimony has been saved! 🎉');
+}
+
+function loadSaved() {
+    const saved = localStorage.getItem('rooted_tool_testimony');
+    if (saved) {
+        const story = JSON.parse(saved);
+        document.getElementById('before').value = story.before || '';
+        document.getElementById('how').value = story.how || '';
+        document.getElementById('after').value = story.after || '';
+        updateCount('before');
+        updateCount('how');
+        updateCount('after');
+    }
+}
+</script>
+</body>
+</html>

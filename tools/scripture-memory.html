@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scripture Memory | Rooted</title>
+    <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { min-height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%); font-family: 'Segoe UI', system-ui, sans-serif; color: #f8fafc; line-height: 1.6; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.back-btn { display: inline-flex; align-items: center; gap: 8px; color: #7cb083; padding: 10px 16px; border-radius: 10px; cursor: pointer; background: rgba(45, 90, 71, 0.2); border: 1px solid rgba(45, 90, 71, 0.4); margin-bottom: 20px; text-decoration: none; font-size: 0.9rem; }
+.back-btn:hover { background: rgba(45, 90, 71, 0.4); }
+.header { text-align: center; margin-bottom: 30px; }
+.header-icon { font-size: 3rem; margin-bottom: 10px; }
+.header-title { font-size: 1.8rem; color: #7cb083; margin-bottom: 5px; }
+.header-sub { color: #94a3b8; }
+.card { background: rgba(30, 41, 59, 0.9); border-radius: 16px; border: 1px solid rgba(124, 176, 131, 0.2); padding: 24px; margin-bottom: 20px; }
+.btn { background: linear-gradient(135deg, #2d5a47, #3d7a5f); color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 1rem; cursor: pointer; }
+.btn:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(45, 90, 71, 0.4); }
+.btn-secondary { background: transparent; border: 1px solid #7cb083; color: #7cb083; }
+.btn-block { width: 100%; }
+.btn-sm { padding: 8px 16px; font-size: 0.9rem; }
+.tabs { display: flex; gap: 0; margin-bottom: 20px; border-radius: 10px; overflow: hidden; border: 1px solid rgba(148, 163, 184, 0.2); }
+.tab { flex: 1; padding: 12px; background: rgba(15, 23, 42, 0.6); color: #94a3b8; border: none; cursor: pointer; font-size: 0.9rem; }
+.tab:hover { background: rgba(15, 23, 42, 0.8); }
+.tab.active { background: rgba(45, 90, 71, 0.3); color: #7cb083; }
+.flashcard { background: rgba(15, 23, 42, 0.6); border-radius: 16px; padding: 40px 30px; text-align: center; min-height: 250px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; transition: all 0.3s; border: 2px solid rgba(124, 176, 131, 0.2); }
+.flashcard:hover { border-color: rgba(124, 176, 131, 0.4); }
+.flashcard.flipped { background: rgba(45, 90, 71, 0.2); }
+.verse-ref { color: #7cb083; font-size: 1.2rem; margin-bottom: 15px; }
+.verse-text { font-size: 1.3rem; line-height: 1.6; }
+.verse-hint { color: #64748b; font-size: 0.9rem; margin-top: 20px; }
+.input-field { width: 100%; padding: 12px 16px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 10px; color: #f8fafc; font-size: 1rem; margin-bottom: 15px; }
+.input-field:focus { outline: none; border-color: #7cb083; }
+textarea.input-field { min-height: 100px; resize: vertical; }
+.verse-item { display: flex; align-items: center; gap: 12px; padding: 16px; background: rgba(15, 23, 42, 0.4); border-radius: 10px; margin-bottom: 10px; border: 1px solid transparent; }
+.verse-item:hover { border-color: rgba(124, 176, 131, 0.2); }
+.verse-item-ref { color: #7cb083; font-weight: 500; flex: 1; }
+.verse-item-status { font-size: 0.8rem; color: #64748b; }
+.mastery { display: flex; gap: 4px; }
+.mastery-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(148, 163, 184, 0.3); }
+.mastery-dot.filled { background: #7cb083; }
+.stats-row { display: flex; gap: 15px; margin-bottom: 20px; }
+.stat-box { flex: 1; background: rgba(15, 23, 42, 0.6); border-radius: 10px; padding: 15px; text-align: center; }
+.stat-value { font-size: 1.5rem; color: #7cb083; font-weight: 600; }
+.stat-label { font-size: 0.8rem; color: #94a3b8; }
+.review-btns { display: flex; gap: 10px; margin-top: 20px; }
+.review-btns .btn { flex: 1; }
+.btn-hard { background: #dc2626; }
+.btn-good { background: #f59e0b; }
+.btn-easy { background: #22c55e; }
+.empty { text-align: center; padding: 40px; color: #64748b; }
+.screen { display: none; }
+.screen.active { display: block; }
+.preset-verses { display: grid; gap: 10px; margin-top: 15px; }
+.preset-verse { padding: 12px; background: rgba(15, 23, 42, 0.4); border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
+.preset-verse:hover { border-color: rgba(124, 176, 131, 0.3); }
+.preset-verse-ref { color: #7cb083; font-size: 0.9rem; }
+.preset-verse-text { font-size: 0.85rem; color: #94a3b8; margin-top: 4px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="../index.html" class="back-btn" onclick="localStorage.setItem('rooted_nav','tools')">
+        <span>🌱</span> Back to Growth Tools
+    </a>
+
+    <div class="header">
+        <div class="header-icon">🧠</div>
+        <h1 class="header-title">Scripture Memory</h1>
+        <p class="header-sub">Hide God's Word in your heart</p>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('practice')">Practice</button>
+        <button class="tab" onclick="showTab('verses')">My Verses</button>
+        <button class="tab" onclick="showTab('add')">Add New</button>
+    </div>
+
+    <!-- PRACTICE TAB -->
+    <div id="practice-tab" class="screen active">
+        <div class="stats-row">
+            <div class="stat-box"><div class="stat-value" id="stat-total">0</div><div class="stat-label">Total Verses</div></div>
+            <div class="stat-box"><div class="stat-value" id="stat-due">0</div><div class="stat-label">Due Today</div></div>
+            <div class="stat-box"><div class="stat-value" id="stat-mastered">0</div><div class="stat-label">Mastered</div></div>
+        </div>
+
+        <div id="practice-area">
+            <div class="empty">
+                <p style="font-size:3rem;margin-bottom:15px">📖</p>
+                <p>No verses to review right now!</p>
+                <p style="font-size:0.9rem;margin-top:10px">Add verses to start memorizing.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MY VERSES TAB -->
+    <div id="verses-tab" class="screen">
+        <div id="verses-list"></div>
+    </div>
+
+    <!-- ADD NEW TAB -->
+    <div id="add-tab" class="screen">
+        <div class="card">
+            <h3 style="color:#7cb083;margin-bottom:15px">Add Custom Verse</h3>
+            <input type="text" class="input-field" id="new-ref" placeholder="Reference (e.g., John 3:16)">
+            <textarea class="input-field" id="new-text" placeholder="Type the verse text..."></textarea>
+            <button class="btn btn-block" onclick="addVerse()">Add to My Verses</button>
+        </div>
+
+        <div class="card">
+            <h3 style="color:#7cb083;margin-bottom:15px">Popular Verses to Start</h3>
+            <div class="preset-verses" id="preset-list"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+const PRESETS = [
+    { ref: "John 3:16", text: "For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life." },
+    { ref: "Jeremiah 29:11", text: "For I know the plans I have for you, declares the LORD, plans to prosper you and not to harm you, plans to give you hope and a future." },
+    { ref: "Philippians 4:13", text: "I can do all things through Christ who strengthens me." },
+    { ref: "Romans 8:28", text: "And we know that in all things God works for the good of those who love him, who have been called according to his purpose." },
+    { ref: "Proverbs 3:5-6", text: "Trust in the LORD with all your heart and lean not on your own understanding; in all your ways submit to him, and he will make your paths straight." },
+    { ref: "Isaiah 41:10", text: "So do not fear, for I am with you; do not be dismayed, for I am your God. I will strengthen you and help you; I will uphold you with my righteous right hand." },
+    { ref: "Psalm 23:1", text: "The LORD is my shepherd, I lack nothing." },
+    { ref: "Matthew 28:19-20", text: "Therefore go and make disciples of all nations, baptizing them in the name of the Father and of the Son and of the Holy Spirit, and teaching them to obey everything I have commanded you." },
+    { ref: "Romans 12:2", text: "Do not conform to the pattern of this world, but be transformed by the renewing of your mind." },
+    { ref: "Galatians 5:22-23", text: "But the fruit of the Spirit is love, joy, peace, forbearance, kindness, goodness, faithfulness, gentleness and self-control." }
+];
+
+let state = { verses: [], currentIndex: 0, showingAnswer: false };
+
+function loadState() {
+    const saved = localStorage.getItem('rooted_tool_memory');
+    if (saved) {
+        try { state = { ...state, ...JSON.parse(saved) }; } catch(e) {}
+    }
+}
+
+function saveState() {
+    localStorage.setItem('rooted_tool_memory', JSON.stringify(state));
+}
+
+function showTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelector(`.tab:nth-child(${tab === 'practice' ? 1 : tab === 'verses' ? 2 : 3})`).classList.add('active');
+    document.getElementById(`${tab}-tab`).classList.add('active');
+    
+    if (tab === 'practice') renderPractice();
+    if (tab === 'verses') renderVerses();
+    if (tab === 'add') renderPresets();
+}
+
+function renderPractice() {
+    const dueVerses = state.verses.filter(v => {
+        if (!v.nextReview) return true;
+        return new Date(v.nextReview) <= new Date();
+    });
+
+    document.getElementById('stat-total').textContent = state.verses.length;
+    document.getElementById('stat-due').textContent = dueVerses.length;
+    document.getElementById('stat-mastered').textContent = state.verses.filter(v => v.mastery >= 5).length;
+
+    if (dueVerses.length === 0) {
+        document.getElementById('practice-area').innerHTML = `
+            <div class="empty">
+                <p style="font-size:3rem;margin-bottom:15px">✅</p>
+                <p>All caught up!</p>
+                <p style="font-size:0.9rem;margin-top:10px;color:#94a3b8">${state.verses.length > 0 ? 'Check back later for more reviews.' : 'Add some verses to get started.'}</p>
+            </div>
+        `;
+        return;
+    }
+
+    const verse = dueVerses[0];
+    state.currentIndex = state.verses.indexOf(verse);
+    state.showingAnswer = false;
+
+    document.getElementById('practice-area').innerHTML = `
+        <div class="flashcard" onclick="flipCard()">
+            <div class="verse-ref">${sanitize(verse.ref)}</div>
+            <div class="verse-text" id="card-content">Tap to reveal verse</div>
+            <div class="verse-hint">Tap card to flip</div>
+        </div>
+        <div class="mastery" style="justify-content:center;margin-top:15px">
+            ${Array(5).fill(0).map((_, i) => `<div class="mastery-dot ${i < verse.mastery ? 'filled' : ''}"></div>`).join('')}
+        </div>
+        <div class="review-btns" id="review-btns" style="display:none">
+            <button class="btn btn-hard" onclick="reviewVerse(1)">Hard</button>
+            <button class="btn btn-good" onclick="reviewVerse(2)">Good</button>
+            <button class="btn btn-easy" onclick="reviewVerse(3)">Easy</button>
+        </div>
+    `;
+}
+
+function flipCard() {
+    if (state.showingAnswer) return;
+    state.showingAnswer = true;
+    const verse = state.verses[state.currentIndex];
+    document.getElementById('card-content').textContent = verse.text;
+    document.querySelector('.flashcard').classList.add('flipped');
+    document.querySelector('.verse-hint').textContent = 'How well did you know it?';
+    document.getElementById('review-btns').style.display = 'flex';
+}
+
+function reviewVerse(quality) {
+    const verse = state.verses[state.currentIndex];
+    
+    if (quality === 1) { // Hard
+        verse.mastery = Math.max(0, verse.mastery - 1);
+        verse.nextReview = new Date(Date.now() + 1000 * 60 * 10).toISOString(); // 10 min
+    } else if (quality === 2) { // Good
+        verse.mastery = Math.min(5, verse.mastery + 1);
+        const days = Math.pow(2, verse.mastery);
+        verse.nextReview = new Date(Date.now() + 1000 * 60 * 60 * 24 * days).toISOString();
+    } else { // Easy
+        verse.mastery = Math.min(5, verse.mastery + 2);
+        const days = Math.pow(2, verse.mastery + 1);
+        verse.nextReview = new Date(Date.now() + 1000 * 60 * 60 * 24 * days).toISOString();
+    }
+
+    saveState();
+    renderPractice();
+}
+
+function renderVerses() {
+    if (state.verses.length === 0) {
+        document.getElementById('verses-list').innerHTML = `
+            <div class="empty">
+                <p>No verses yet</p>
+                <button class="btn" style="margin-top:15px" onclick="showTab('add')">Add Your First Verse</button>
+            </div>
+        `;
+        return;
+    }
+
+    document.getElementById('verses-list').innerHTML = state.verses.map((v, i) => `
+        <div class="verse-item">
+            <div style="flex:1">
+                <div class="verse-item-ref">${sanitize(v.ref)}</div>
+                <div class="verse-item-status">Mastery: ${v.mastery}/5</div>
+            </div>
+            <div class="mastery">
+                ${Array(5).fill(0).map((_, j) => `<div class="mastery-dot ${j < v.mastery ? 'filled' : ''}"></div>`).join('')}
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="deleteVerse(${i})">×</button>
+        </div>
+    `).join('');
+}
+
+function renderPresets() {
+    const existingRefs = state.verses.map(v => v.ref.toLowerCase());
+    document.getElementById('preset-list').innerHTML = PRESETS
+        .filter(p => !existingRefs.includes(p.ref.toLowerCase()))
+        .map(p => `
+            <div class="preset-verse" onclick="addPreset('${p.ref}')">
+                <div class="preset-verse-ref">${p.ref}</div>
+                <div class="preset-verse-text">${p.text.substring(0, 80)}...</div>
+            </div>
+        `).join('') || '<p style="color:#64748b">You\'ve added all preset verses!</p>';
+}
+
+function addVerse() {
+    const ref = document.getElementById('new-ref').value.trim();
+    const text = document.getElementById('new-text').value.trim();
+    
+    if (!ref || !text) {
+        alert('Please enter both reference and text');
+        return;
+    }
+
+    state.verses.push({ ref, text, mastery: 0, nextReview: null, added: new Date().toISOString() });
+    saveState();
+    
+    document.getElementById('new-ref').value = '';
+    document.getElementById('new-text').value = '';
+    
+    alert('Verse added!');
+    showTab('practice');
+}
+
+function addPreset(ref) {
+    const preset = PRESETS.find(p => p.ref === ref);
+    if (!preset) return;
+    
+    state.verses.push({ ref: preset.ref, text: preset.text, mastery: 0, nextReview: null, added: new Date().toISOString() });
+    saveState();
+    renderPresets();
+    alert(`Added ${ref}!`);
+}
+
+function deleteVerse(index) {
+    if (!confirm('Delete this verse?')) return;
+    state.verses.splice(index, 1);
+    saveState();
+    renderVerses();
+}
+
+function sanitize(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// Initialize
+loadState();
+renderPractice();
+</script>
+</body>
+</html>

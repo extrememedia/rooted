@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Armor of God | Rooted</title>
+    <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { min-height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%); font-family: 'Segoe UI', system-ui, sans-serif; color: #f8fafc; line-height: 1.6; }
+.container { max-width: 700px; margin: 0 auto; padding: 20px; }
+.back-btn { display: inline-flex; align-items: center; gap: 8px; color: #7cb083; padding: 10px 16px; border-radius: 10px; background: rgba(45, 90, 71, 0.2); border: 1px solid rgba(45, 90, 71, 0.4); margin-bottom: 20px; text-decoration: none; }
+.back-btn:hover { background: rgba(45, 90, 71, 0.4); }
+.header { text-align: center; margin-bottom: 30px; }
+.header-icon { font-size: 3rem; margin-bottom: 10px; }
+.header-title { font-size: 1.8rem; color: #7cb083; margin-bottom: 5px; }
+.header-sub { color: #94a3b8; }
+.card { background: rgba(30, 41, 59, 0.9); border-radius: 16px; border: 1px solid rgba(124, 176, 131, 0.2); padding: 24px; margin-bottom: 20px; }
+.btn { background: linear-gradient(135deg, #2d5a47, #3d7a5f); color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 1rem; cursor: pointer; width: 100%; }
+.btn:hover { box-shadow: 0 4px 20px rgba(45, 90, 71, 0.4); }
+.btn-secondary { background: transparent; border: 1px solid #7cb083; color: #7cb083; }
+.armor-piece { background: rgba(15, 23, 42, 0.6); border-radius: 12px; padding: 20px; margin-bottom: 15px; cursor: pointer; border-left: 4px solid #64748b; transition: all 0.2s; }
+.armor-piece:hover { border-left-color: #7cb083; }
+.armor-piece.complete { border-left-color: #22c55e; }
+.armor-piece.today { border-left-color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+.armor-header { display: flex; align-items: center; gap: 15px; }
+.armor-icon { font-size: 2rem; }
+.armor-title { color: #7cb083; font-size: 1.1rem; }
+.armor-day { color: #64748b; font-size: 0.85rem; }
+.verse-box { background: rgba(124, 176, 131, 0.1); padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 3px solid #7cb083; font-style: italic; }
+.progress-bar { height: 8px; background: rgba(148, 163, 184, 0.2); border-radius: 4px; margin: 15px 0; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #2d5a47, #7cb083); }
+.lesson-section { margin-bottom: 25px; }
+.lesson-section h3 { color: #7cb083; margin-bottom: 12px; }
+.reflection { background: rgba(251, 191, 36, 0.1); padding: 15px; border-radius: 10px; margin: 10px 0; }
+.reflection strong { color: #fbbf24; }
+textarea { width: 100%; padding: 12px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 10px; color: #f8fafc; min-height: 80px; resize: vertical; margin-top: 10px; }
+textarea:focus { outline: none; border-color: #7cb083; }
+.screen { display: none; }
+.screen.active { display: block; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="../index.html" class="back-btn" onclick="localStorage.setItem('rooted_nav','tools')"><span>🌱</span> Back to Growth Tools</a>
+    
+    <div id="list-view" class="screen active">
+        <div class="header">
+            <div class="header-icon">🛡️</div>
+            <h1 class="header-title">Armor of God</h1>
+            <p class="header-sub">Ephesians 6:10-18 • 7 Day Study</p>
+        </div>
+        <div class="verse-box" style="text-align:center">
+            "Put on the full armor of God, so that you can take your stand against the devil's schemes."
+            <br><span style="color:#7cb083">— Ephesians 6:11</span>
+        </div>
+        <div class="card">
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+            <p style="text-align:center;color:#94a3b8;font-size:0.9rem"><span id="complete-count">0</span> of 7 days complete</p>
+        </div>
+        <div id="armor-list"></div>
+    </div>
+
+    <div id="lesson-view" class="screen">
+        <button class="btn btn-secondary" style="width:auto;margin-bottom:20px" onclick="backToList()">← Back</button>
+        <div id="lesson-content"></div>
+    </div>
+</div>
+<script>
+const ARMOR = [
+    { day: 1, piece: 'Introduction', icon: '⚔️', title: 'The Spiritual Battle',
+      content: `<h2 style="color:#7cb083;margin-bottom:20px">Day 1: The Spiritual Battle</h2>
+        <div class="lesson-section"><h3>📖 Read Ephesians 6:10-13</h3>
+        <div class="verse-box">"For our struggle is not against flesh and blood, but against the rulers, against the authorities, against the powers of this dark world and against the spiritual forces of evil in the heavenly realms."</div>
+        <p>Before we put on the armor, we must understand we are in a real battle. Our enemy is not people—it's spiritual forces of evil. But take heart: God has given us everything we need to stand firm!</p></div>
+        <div class="lesson-section"><h3>💭 Reflection</h3>
+        <div class="reflection"><strong>Question:</strong> Where do you see spiritual battle in your life right now?</div>
+        <textarea id="reflection-1" placeholder="Write your thoughts..."></textarea></div>` },
+    { day: 2, piece: 'Belt of Truth', icon: '🎗️', title: 'Girded with Truth',
+      content: `<h2 style="color:#7cb083;margin-bottom:20px">Day 2: Belt of Truth</h2>
+        <div class="lesson-section"><h3>📖 Ephesians 6:14a</h3>
+        <div class="verse-box">"Stand firm then, with the belt of truth buckled around your waist..."</div>
+        <p>Roman soldiers wore a belt that held everything together and allowed freedom of movement. God's truth holds our spiritual life together. It includes being truthful and knowing the truth of Scripture.</p></div>
+        <div class="lesson-section"><h3>🎯 Application</h3>
+        <div class="reflection"><strong>Practice:</strong> Identify one lie you've believed (about yourself, God, or your situation). Replace it with God's truth from Scripture.</div>
+        <textarea id="reflection-2" placeholder="The lie I've believed... The truth from God's Word..."></textarea></div>` },
+    { day: 3, piece: 'Breastplate of Righteousness', icon: '🛡️', title: 'Protected by Righteousness',
+      content: `<h2 style="color:#7cb083;margin-bottom:20px">Day 3: Breastplate of Righteousness</h2>
+        <div class="lesson-section"><h3>📖 Ephesians 6:14b</h3>
+        <div class="verse-box">"...with the breastplate of righteousness in place..."</div>
+        <p>The breastplate protected vital organs. Christ's righteousness protects our hearts from Satan's accusations. We are declared righteous through faith—and we live righteously by the Spirit's power.</p></div>
+        <div class="lesson-section"><h3>🎯 Application</h3>
+        <div class="reflection"><strong>Practice:</strong> When you feel guilt or shame, remember: In Christ, you are righteous! Write out 2 Corinthians 5:21.</div>
+        <textarea id="reflection-3" placeholder="Write out the verse and what it means for you..."></textarea></div>` },
+    { day: 4, piece: 'Shoes of the Gospel', icon: '👟', title: 'Ready with the Gospel',
+      content: `<h2 style="color:#7cb083;margin-bottom:20px">Day 4: Shoes of the Gospel of Peace</h2>
+        <div class="lesson-section"><h3>📖 Ephesians 6:15</h3>
+        <div class="verse-box">"...and with your feet fitted with the readiness that comes from the gospel of peace."</div>
+        <p>Roman soldiers wore studded sandals for firm footing. The gospel gives us peace with God and stability in battle. We're also ready to share this peace with others.</p></div>
+        <div class="lesson-section"><h3>🎯 Application</h3>
+        <div class="reflection"><strong>Practice:</strong> How has the gospel brought peace to your life? Be ready to share this with someone this week.</div>
+        <textarea id="reflection-4" placeholder="The peace the gospel has given me..."></textarea></div>` },
+    { day: 5, piece: 'Shield of Faith', icon: '🔰', title: 'Defended by Faith',
+      content: `<h2 style="color:#7cb083;margin-bottom:20px">Day 5: Shield of Faith</h2>
+        <div class="lesson-section"><h3>📖 Ephesians 6:16</h3>
+        <div class="verse-box">"In addition to all this, take up the shield of faith, with which you can extinguish all the flaming arrows of the evil one."</div>
+        <p>The Roman shield was large, covered in leather, and could be soaked with water to extinguish flaming arrows. Faith in God's promises quenches Satan's attacks of doubt, fear, and temptation.</p></div>
+        <div class="lesson-section"><h3>🎯 Application</h3>
+        <div class="reflection"><strong>Practice:</strong> What "flaming arrows" are you facing? (doubt, fear, temptation) What promise of God can you hold up as a shield?</div>
+        <textarea id="reflection-5" placeholder="The attack I'm facing... God's promise I'm trusting..."></textarea></div>` },
+    { day: 6, piece: 'Helmet of Salvation', icon: '⛑️', title: 'Mind Protected',
+      content: `<h2 style="color:#7cb083;margin-bottom:20px">Day 6: Helmet of Salvation</h2>
+        <div class="lesson-section"><h3>📖 Ephesians 6:17a</h3>
+        <div class="verse-box">"Take the helmet of salvation..."</div>
+        <p>The helmet protects the head—our mind. Knowing we are saved gives us confidence and protects our thoughts from the enemy's attacks. We have hope for the future!</p></div>
+        <div class="lesson-section"><h3>🎯 Application</h3>
+        <div class="reflection"><strong>Practice:</strong> Satan attacks our minds with doubt about salvation. Write out your assurance: "I know I am saved because..."</div>
+        <textarea id="reflection-6" placeholder="I know I am saved because..."></textarea></div>` },
+    { day: 7, piece: 'Sword of the Spirit', icon: '⚔️', title: 'Armed with the Word',
+      content: `<h2 style="color:#7cb083;margin-bottom:20px">Day 7: Sword of the Spirit</h2>
+        <div class="lesson-section"><h3>📖 Ephesians 6:17b-18</h3>
+        <div class="verse-box">"...and the sword of the Spirit, which is the word of God. And pray in the Spirit on all occasions..."</div>
+        <p>The sword is our only offensive weapon! Jesus used Scripture to defeat Satan's temptations (Matthew 4). Prayer keeps us connected to God's power. Together, Word and prayer are unstoppable.</p></div>
+        <div class="lesson-section"><h3>🎯 Application</h3>
+        <div class="reflection"><strong>Practice:</strong> Memorize one verse this week to use as your sword. What verse will you choose?</div>
+        <textarea id="reflection-7" placeholder="The verse I will memorize..."></textarea></div>
+        <div class="card" style="background:rgba(34,197,94,0.1);border-color:rgba(34,197,94,0.3);margin-top:20px">
+            <h3 style="color:#22c55e">🎉 Congratulations!</h3>
+            <p>You've completed the Armor of God study! Now go out armored and ready for battle. Remember: the battle is the Lord's!</p>
+        </div>` }
+];
+
+let progress = JSON.parse(localStorage.getItem('rooted_tool_armor') || '{}');
+
+function renderList() {
+    const completeCount = Object.values(progress).filter(v => v).length;
+    document.getElementById('progress-fill').style.width = (completeCount / 7 * 100) + '%';
+    document.getElementById('complete-count').textContent = completeCount;
+    
+    document.getElementById('armor-list').innerHTML = ARMOR.map(a => {
+        const isComplete = progress[a.day];
+        return `<div class="armor-piece ${isComplete ? 'complete' : ''}" onclick="openDay(${a.day})">
+            <div class="armor-header">
+                <div class="armor-icon">${a.icon}</div>
+                <div>
+                    <div class="armor-day">Day ${a.day}</div>
+                    <div class="armor-title">${a.piece}</div>
+                </div>
+                ${isComplete ? '<span style="margin-left:auto;color:#22c55e">✓</span>' : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function openDay(day) {
+    const a = ARMOR.find(x => x.day === day);
+    document.getElementById('lesson-content').innerHTML = a.content + 
+        `<button class="btn" style="margin-top:20px" onclick="completeDay(${day})">Complete Day ${day}</button>`;
+    document.getElementById('list-view').classList.remove('active');
+    document.getElementById('lesson-view').classList.add('active');
+}
+
+function completeDay(day) {
+    const textarea = document.querySelector('#lesson-content textarea');
+    if (textarea) {
+        const reflections = JSON.parse(localStorage.getItem('rooted_tool_armor_reflections') || '{}');
+        reflections[day] = textarea.value;
+        localStorage.setItem('rooted_tool_armor_reflections', JSON.stringify(reflections));
+    }
+    progress[day] = true;
+    localStorage.setItem('rooted_tool_armor', JSON.stringify(progress));
+    alert('Day ' + day + ' complete! 🛡️');
+    backToList();
+}
+
+function backToList() {
+    document.getElementById('lesson-view').classList.remove('active');
+    document.getElementById('list-view').classList.add('active');
+    renderList();
+}
+
+renderList();
+</script>
+</body>
+</html>

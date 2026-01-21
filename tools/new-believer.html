@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Believer Track | Rooted</title>
+    <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { min-height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%); font-family: 'Segoe UI', system-ui, sans-serif; color: #f8fafc; line-height: 1.6; }
+.container { max-width: 700px; margin: 0 auto; padding: 20px; }
+.back-btn { display: inline-flex; align-items: center; gap: 8px; color: #7cb083; padding: 10px 16px; border-radius: 10px; background: rgba(45, 90, 71, 0.2); border: 1px solid rgba(45, 90, 71, 0.4); margin-bottom: 20px; text-decoration: none; }
+.back-btn:hover { background: rgba(45, 90, 71, 0.4); }
+.header { text-align: center; margin-bottom: 30px; }
+.header-icon { font-size: 3rem; margin-bottom: 10px; }
+.header-title { font-size: 1.8rem; color: #7cb083; margin-bottom: 5px; }
+.header-sub { color: #94a3b8; }
+.card { background: rgba(30, 41, 59, 0.9); border-radius: 16px; border: 1px solid rgba(124, 176, 131, 0.2); padding: 24px; margin-bottom: 20px; }
+.btn { background: linear-gradient(135deg, #2d5a47, #3d7a5f); color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 1rem; cursor: pointer; width: 100%; }
+.btn:hover { box-shadow: 0 4px 20px rgba(45, 90, 71, 0.4); }
+.btn-secondary { background: transparent; border: 1px solid #7cb083; color: #7cb083; }
+.week-card { background: rgba(15, 23, 42, 0.6); border-radius: 12px; padding: 20px; margin-bottom: 15px; cursor: pointer; border-left: 4px solid #7cb083; transition: all 0.2s; }
+.week-card:hover { transform: translateX(5px); }
+.week-card.locked { opacity: 0.5; border-left-color: #64748b; }
+.week-card.complete { border-left-color: #22c55e; }
+.week-num { color: #7cb083; font-size: 0.85rem; margin-bottom: 5px; }
+.week-title { font-size: 1.1rem; margin-bottom: 5px; }
+.week-desc { color: #94a3b8; font-size: 0.9rem; }
+.progress-bar { height: 8px; background: rgba(148, 163, 184, 0.2); border-radius: 4px; margin: 20px 0; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #2d5a47, #7cb083); }
+.lesson-section { margin-bottom: 25px; }
+.lesson-section h3 { color: #7cb083; margin-bottom: 12px; }
+.verse-box { background: rgba(124, 176, 131, 0.1); padding: 15px; border-radius: 10px; margin: 10px 0; border-left: 3px solid #7cb083; font-style: italic; }
+.action-item { padding: 12px; background: rgba(251, 191, 36, 0.1); border-radius: 8px; margin: 8px 0; }
+.action-item strong { color: #fbbf24; }
+.check-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(148, 163, 184, 0.1); }
+.check-box { width: 24px; height: 24px; border: 2px solid #64748b; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.check-box.checked { background: #7cb083; border-color: #7cb083; }
+.screen { display: none; }
+.screen.active { display: block; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="../index.html" class="back-btn" onclick="localStorage.setItem('rooted_nav','tools')"><span>🌱</span> Back to Growth Tools</a>
+    
+    <div id="track-view" class="screen active">
+        <div class="header">
+            <div class="header-icon">🌟</div>
+            <h1 class="header-title">New Believer Track</h1>
+            <p class="header-sub">6-Week Foundation Course</p>
+        </div>
+        <div class="card">
+            <p style="margin-bottom:15px">Welcome to your journey of faith! This 6-week course covers the essentials every new believer needs to know.</p>
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+            <p style="text-align:center;color:#94a3b8;font-size:0.9rem"><span id="complete-count">0</span> of 6 weeks complete</p>
+        </div>
+        <div id="weeks-list"></div>
+    </div>
+
+    <div id="lesson-view" class="screen">
+        <button class="btn btn-secondary" style="width:auto;margin-bottom:20px" onclick="backToTrack()">← Back to Track</button>
+        <div id="lesson-content"></div>
+    </div>
+</div>
+<script>
+const WEEKS = [
+    { week: 1, title: 'Your New Life in Christ', desc: 'Understanding salvation and what it means to be saved',
+      content: `<h2 style="color:#7cb083;margin-bottom:20px">Week 1: Your New Life in Christ</h2>
+        <div class="lesson-section"><h3>🎉 What Happened When You Believed?</h3>
+        <p>When you put your faith in Jesus, something amazing happened! The Bible calls it being "born again" - you received a completely new spiritual life.</p>
+        <div class="verse-box">"Therefore, if anyone is in Christ, the new creation has come: The old has gone, the new is here!" — 2 Corinthians 5:17</div></div>
+        <div class="lesson-section"><h3>🎁 What You Received</h3>
+        <div class="action-item"><strong>Forgiveness:</strong> All your sins—past, present, future—are forgiven.</div>
+        <div class="action-item"><strong>Eternal Life:</strong> You have the promise of heaven and God's presence forever.</div>
+        <div class="action-item"><strong>The Holy Spirit:</strong> God Himself now lives inside you!</div>
+        <div class="action-item"><strong>A New Identity:</strong> You are now a child of God.</div></div>
+        <div class="lesson-section"><h3>✅ This Week's Actions</h3>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div><span>Read John 3:1-21 about being born again</span></div>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div><span>Thank God daily for your salvation</span></div>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div><span>Tell one person about your decision</span></div></div>` },
+    { week: 2, title: 'The Bible - God\'s Word', desc: 'How to read and understand Scripture',
+      content: `<h2 style="color:#7cb083;margin-bottom:20px">Week 2: The Bible - God's Word</h2>
+        <div class="lesson-section"><h3>📖 Why the Bible Matters</h3>
+        <p>The Bible is God's personal message to you. It's how He speaks, guides, and transforms your life.</p>
+        <div class="verse-box">"Your word is a lamp for my feet, a light on my path." — Psalm 119:105</div></div>
+        <div class="lesson-section"><h3>📚 Bible Basics</h3>
+        <div class="action-item"><strong>Old Testament:</strong> 39 books about creation, God's people Israel, and prophecies of Jesus.</div>
+        <div class="action-item"><strong>New Testament:</strong> 27 books about Jesus' life, the early church, and how to live as a Christian.</div>
+        <div class="action-item"><strong>Start Here:</strong> The Gospel of John is perfect for new believers!</div></div>
+        <div class="lesson-section"><h3>✅ This Week's Actions</h3>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div><span>Read one chapter of John each day</span></div>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div><span>Get a Bible you can understand (NIV, ESV, NLT)</span></div>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div><span>Highlight verses that speak to you</span></div></div>` },
+    { week: 3, title: 'Prayer - Talking with God', desc: 'Building a relationship through prayer',
+      content: `<h2 style="color:#7cb083;margin-bottom:20px">Week 3: Prayer - Talking with God</h2>
+        <div class="lesson-section"><h3>🙏 What is Prayer?</h3>
+        <p>Prayer is simply talking with God. It's not about fancy words—it's about honest conversation with your Father.</p>
+        <div class="verse-box">"Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God." — Philippians 4:6</div></div>
+        <div class="lesson-section"><h3>💬 How to Pray</h3>
+        <div class="action-item"><strong>Praise:</strong> Tell God what you love about Him.</div>
+        <div class="action-item"><strong>Confess:</strong> Admit your sins and receive forgiveness.</div>
+        <div class="action-item"><strong>Thank:</strong> Express gratitude for His blessings.</div>
+        <div class="action-item"><strong>Ask:</strong> Bring your needs and others' needs to Him.</div></div>
+        <div class="lesson-section"><h3>✅ This Week's Actions</h3>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div><span>Set a daily prayer time (even 5 minutes!)</span></div>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div><span>Keep a simple prayer list</span></div>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div><span>Pray the Lord's Prayer (Matthew 6:9-13)</span></div></div>` },
+    { week: 4, title: 'Baptism & Communion', desc: 'Understanding these important practices',
+      content: `<h2 style="color:#7cb083;margin-bottom:20px">Week 4: Baptism & Communion</h2>
+        <div class="lesson-section"><h3>💧 Baptism</h3>
+        <p>Baptism is your public declaration that you belong to Jesus. It symbolizes dying to your old life and rising to new life in Christ.</p>
+        <div class="verse-box">"We were therefore buried with him through baptism into death in order that, just as Christ was raised from the dead... we too may live a new life." — Romans 6:4</div></div>
+        <div class="lesson-section"><h3>🍞 Communion (Lord's Supper)</h3>
+        <p>Communion is a regular practice where we remember Jesus' sacrifice. The bread represents His body; the cup represents His blood.</p>
+        <div class="verse-box">"Do this in remembrance of me." — Luke 22:19</div></div>
+        <div class="lesson-section"><h3>✅ This Week's Actions</h3>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div><span>If not baptized, talk to a pastor about it</span></div>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div><span>Participate in communion at church</span></div>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div><span>Read 1 Corinthians 11:23-26</span></div></div>` },
+    { week: 5, title: 'The Church - Your Family', desc: 'Why community matters',
+      content: `<h2 style="color:#7cb083;margin-bottom:20px">Week 5: The Church - Your Family</h2>
+        <div class="lesson-section"><h3>🏠 Why Church?</h3>
+        <p>The church isn't a building—it's a family! God designed us to grow together, not alone.</p>
+        <div class="verse-box">"Let us not give up meeting together, as some are in the habit of doing, but let us encourage one another." — Hebrews 10:25</div></div>
+        <div class="lesson-section"><h3>👥 Finding Your Place</h3>
+        <div class="action-item"><strong>Worship:</strong> Gather to praise God together.</div>
+        <div class="action-item"><strong>Learn:</strong> Grow through teaching and Bible study.</div>
+        <div class="action-item"><strong>Serve:</strong> Use your gifts to help others.</div>
+        <div class="action-item"><strong>Connect:</strong> Build relationships in small groups.</div></div>
+        <div class="lesson-section"><h3>✅ This Week's Actions</h3>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div><span>Attend church this Sunday</span></div>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div><span>Introduce yourself to someone new</span></div>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div><span>Look into joining a small group</span></div></div>` },
+    { week: 6, title: 'Sharing Your Faith', desc: 'Telling others about Jesus',
+      content: `<h2 style="color:#7cb083;margin-bottom:20px">Week 6: Sharing Your Faith</h2>
+        <div class="lesson-section"><h3>📣 Your Story Matters</h3>
+        <p>You don't need to be a Bible expert to share your faith. Your personal story of what Jesus has done is powerful!</p>
+        <div class="verse-box">"Always be prepared to give an answer to everyone who asks you to give the reason for the hope that you have." — 1 Peter 3:15</div></div>
+        <div class="lesson-section"><h3>📝 Your Testimony in 3 Parts</h3>
+        <div class="action-item"><strong>Before:</strong> What was your life like before Christ?</div>
+        <div class="action-item"><strong>How:</strong> How did you come to faith?</div>
+        <div class="action-item"><strong>After:</strong> How has your life changed?</div></div>
+        <div class="lesson-section"><h3>✅ This Week's Actions</h3>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div><span>Write out your testimony</span></div>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div><span>Practice sharing it in 2-3 minutes</span></div>
+        <div class="check-item" onclick="toggleCheck(this)"><div class="check-box"></div><span>Pray for opportunities to share</span></div></div>
+        <div class="card" style="margin-top:20px;background:rgba(34,197,94,0.1);border-color:rgba(34,197,94,0.3)">
+        <h3 style="color:#22c55e">🎉 Congratulations!</h3>
+        <p>You've completed the New Believer Track! This is just the beginning of an amazing journey with Jesus.</p></div>` }
+];
+
+let progress = JSON.parse(localStorage.getItem('rooted_tool_newbeliever') || '{}');
+
+function renderWeeks() {
+    const completeCount = Object.values(progress).filter(v => v === 'complete').length;
+    document.getElementById('progress-fill').style.width = (completeCount / 6 * 100) + '%';
+    document.getElementById('complete-count').textContent = completeCount;
+    
+    document.getElementById('weeks-list').innerHTML = WEEKS.map((w, i) => {
+        const status = progress[w.week] || (i === 0 ? 'available' : 'locked');
+        const prevComplete = i === 0 || progress[WEEKS[i-1].week] === 'complete';
+        const isLocked = !prevComplete && status !== 'complete';
+        return `<div class="week-card ${isLocked ? 'locked' : ''} ${status === 'complete' ? 'complete' : ''}" onclick="${isLocked ? '' : `openWeek(${w.week})`}">
+            <div class="week-num">Week ${w.week} ${status === 'complete' ? '✅' : isLocked ? '🔒' : ''}</div>
+            <div class="week-title">${w.title}</div>
+            <div class="week-desc">${w.desc}</div>
+        </div>`;
+    }).join('');
+}
+
+function openWeek(week) {
+    const w = WEEKS.find(x => x.week === week);
+    document.getElementById('lesson-content').innerHTML = w.content + 
+        `<button class="btn" style="margin-top:20px" onclick="completeWeek(${week})">Complete Week ${week}</button>`;
+    document.getElementById('track-view').classList.remove('active');
+    document.getElementById('lesson-view').classList.add('active');
+}
+
+function completeWeek(week) {
+    progress[week] = 'complete';
+    localStorage.setItem('rooted_tool_newbeliever', JSON.stringify(progress));
+    alert('Week ' + week + ' complete! 🎉');
+    backToTrack();
+}
+
+function backToTrack() {
+    document.getElementById('lesson-view').classList.remove('active');
+    document.getElementById('track-view').classList.add('active');
+    renderWeeks();
+}
+
+function toggleCheck(el) {
+    el.querySelector('.check-box').classList.toggle('checked');
+}
+
+renderWeeks();
+</script>
+</body>
+</html>
