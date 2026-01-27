@@ -555,7 +555,7 @@ const State = {
 
 // ========== CHURCH DATABASE (Beta) ==========
 const CHURCH_ADMIN_ACCOUNTS = {
-    'admin': { password: '1234', churchId: 'faith-fellowship', churchName: 'Faith Fellowship Church' }
+    'admin': { password: '1234', churchId: 'faith-fellowship', churchName: 'Faith Fellowship Church', onboarded: true }
 };
 
 const CHURCHES_DB = {
@@ -578,7 +578,25 @@ const CHURCHES_DB = {
             { id: 1, title: 'Wednesday Discipleship Study - Week 4', type: 'pdf', date: '2026-01-22', url: '#study-week4' },
             { id: 2, title: 'Sunday Sermon Notes - January 19', type: 'pdf', date: '2026-01-19', url: '#sermon-notes' }
         ],
-        enabledTools: ['seasons', 'spiritual-formation', 'bible-reading', 'prayer-journal', 'scripture-memory']
+        enabledTools: ['seasons', 'spiritual-formation', 'bible-reading', 'prayer-journal', 'scripture-memory'],
+        onboarded: true
+    }
+};
+
+// Church onboarding state
+let churchOnboarding = {
+    step: 1,
+    data: {
+        name: '',
+        address: '',
+        phone: '',
+        website: '',
+        socialMedia: {
+            facebook: '',
+            instagram: '',
+            youtube: '',
+            twitter: ''
+        }
     }
 };
 
@@ -602,8 +620,33 @@ function getChurchData(churchId) {
 
 function updateChurchData(churchId, updates) {
     const stored = JSON.parse(localStorage.getItem('rooted_church_data') || '{}');
-    stored[churchId] = { ...stored[churchId], ...updates };
+    stored[churchId] = { ...(stored[churchId] || {}), ...updates };
     localStorage.setItem('rooted_church_data', JSON.stringify(stored));
+}
+
+function createNewChurch(churchData) {
+    const churchId = churchData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    const stored = JSON.parse(localStorage.getItem('rooted_church_data') || '{}');
+    stored[churchId] = {
+        id: churchId,
+        ...churchData,
+        announcements: [],
+        resources: [],
+        enabledTools: ['seasons', 'spiritual-formation', 'bible-reading', 'prayer-journal', 'scripture-memory'],
+        onboarded: true,
+        createdAt: new Date().toISOString()
+    };
+    localStorage.setItem('rooted_church_data', JSON.stringify(stored));
+    
+    // Also add to local churches DB for searching
+    CHURCHES_DB[churchId] = stored[churchId];
+    
+    return churchId;
+}
+
+function isChurchOnboarded(churchId) {
+    const church = getChurchData(churchId);
+    return church && church.onboarded === true;
 }
 
 // ========== HELPERS ==========
@@ -658,6 +701,9 @@ function render() {
             break;
         case 'church-login':
             app.innerHTML = renderChurchLogin();
+            break;
+        case 'church-onboarding':
+            app.innerHTML = renderChurchOnboarding();
             break;
         case 'signup':
             app.innerHTML = renderSignup();
@@ -762,6 +808,25 @@ function handleChurchAdminLogin(e) {
     
     const admin = CHURCH_ADMIN_ACCOUNTS[username];
     if (admin && admin.password === password) {
+        // Check if church needs onboarding
+        if (!admin.onboarded || !isChurchOnboarded(admin.churchId)) {
+            // Start onboarding flow
+            churchOnboarding = {
+                step: 1,
+                adminUsername: username,
+                churchId: admin.churchId,
+                data: {
+                    name: admin.churchName || '',
+                    address: '',
+                    phone: '',
+                    website: '',
+                    socialMedia: { facebook: '', instagram: '', youtube: '', twitter: '' }
+                }
+            };
+            State.set({ screen: 'church-onboarding' });
+            return;
+        }
+        
         const church = getChurchData(admin.churchId);
         State.set({ 
             screen: 'app', 
@@ -773,6 +838,304 @@ function handleChurchAdminLogin(e) {
     } else {
         toast('Invalid admin credentials', 'error');
     }
+}
+
+function renderChurchOnboarding() {
+    const step = churchOnboarding.step;
+    const data = churchOnboarding.data;
+    const totalSteps = 4;
+    
+    return `
+    <div class="auth-container fade-up">
+        <div class="auth-left">
+            <div class="auth-brand">
+                <div class="auth-logo" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">⛪</div>
+                <h1 class="auth-brand-name">Rooted</h1>
+                <p class="auth-tagline">Church Setup</p>
+            </div>
+        </div>
+        <div class="auth-right">
+            <div class="auth-form-container" style="max-width:500px">
+                <!-- Progress Bar -->
+                <div style="margin-bottom:var(--space-xl)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm)">
+                        <span style="font-size:0.85rem;color:var(--text-tertiary)">Step ${step} of ${totalSteps}</span>
+                        <span style="font-size:0.85rem;color:var(--text-tertiary)">${Math.round((step/totalSteps)*100)}% Complete</span>
+                    </div>
+                    <div style="height:8px;background:var(--hover-bg);border-radius:4px;overflow:hidden">
+                        <div style="height:100%;width:${(step/totalSteps)*100}%;background:linear-gradient(90deg,#7c3aed,#a78bfa);border-radius:4px;transition:width 0.3s"></div>
+                    </div>
+                </div>
+                
+                ${renderOnboardingStep(step, data)}
+            </div>
+        </div>
+    </div>`;
+}
+
+function renderOnboardingStep(step, data) {
+    switch(step) {
+        case 1:
+            return `
+                <div class="fade-up">
+                    <h2 class="auth-form-title">Let's set up your church</h2>
+                    <p class="auth-form-subtitle">First, tell us about your church</p>
+                    
+                    <form onsubmit="onboardingNext(event)">
+                        <div class="input-group">
+                            <label class="input-label">Church Name *</label>
+                            <input type="text" class="input-field" id="ob_name" placeholder="e.g. Faith Fellowship Church" value="${data.name}" required>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Address *</label>
+                            <input type="text" class="input-field" id="ob_address" placeholder="123 Main St, City, State ZIP" value="${data.address}" required>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Phone Number</label>
+                            <input type="tel" class="input-field" id="ob_phone" placeholder="(555) 123-4567" value="${data.phone}">
+                        </div>
+                        
+                        <div style="display:flex;gap:var(--space-md);margin-top:var(--space-xl)">
+                            <button type="button" class="btn btn-ghost" onclick="State.set({screen:'church-login'})" style="flex:1">
+                                ← Back
+                            </button>
+                            <button type="submit" class="btn btn-primary" style="flex:2">
+                                Continue →
+                            </button>
+                        </div>
+                    </form>
+                </div>`;
+        
+        case 2:
+            return `
+                <div class="fade-up">
+                    <h2 class="auth-form-title">Church Website</h2>
+                    <p class="auth-form-subtitle">We'll try to find your social media links automatically</p>
+                    
+                    <form onsubmit="onboardingNext(event)">
+                        <div class="input-group">
+                            <label class="input-label">Website URL</label>
+                            <input type="url" class="input-field" id="ob_website" placeholder="https://yourchurch.com" value="${data.website}">
+                            <p style="font-size:0.8rem;color:var(--text-tertiary);margin-top:var(--space-xs)">Enter your website and we'll look for social media links</p>
+                        </div>
+                        
+                        <div id="websiteLookupStatus" style="margin:var(--space-lg) 0;padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);display:none">
+                            <div style="display:flex;align-items:center;gap:var(--space-sm)">
+                                <div class="loading-spinner" style="width:20px;height:20px;border-width:2px"></div>
+                                <span style="color:var(--text-secondary)">Looking up social media...</span>
+                            </div>
+                        </div>
+                        
+                        <div style="display:flex;gap:var(--space-md);margin-top:var(--space-xl)">
+                            <button type="button" class="btn btn-ghost" onclick="onboardingBack()" style="flex:1">
+                                ← Back
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="onboardingSkip()" style="flex:1">
+                                Skip
+                            </button>
+                            <button type="submit" class="btn btn-primary" style="flex:1">
+                                Continue →
+                            </button>
+                        </div>
+                    </form>
+                </div>`;
+        
+        case 3:
+            return `
+                <div class="fade-up">
+                    <h2 class="auth-form-title">Social Media Links</h2>
+                    <p class="auth-form-subtitle">Help your congregation stay connected</p>
+                    
+                    <form onsubmit="onboardingNext(event)">
+                        <div class="input-group">
+                            <label class="input-label">📘 Facebook Page</label>
+                            <input type="url" class="input-field" id="ob_facebook" placeholder="https://facebook.com/yourchurch" value="${data.socialMedia.facebook}">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">📸 Instagram</label>
+                            <input type="url" class="input-field" id="ob_instagram" placeholder="https://instagram.com/yourchurch" value="${data.socialMedia.instagram}">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">🎥 YouTube Channel</label>
+                            <input type="url" class="input-field" id="ob_youtube" placeholder="https://youtube.com/@yourchurch" value="${data.socialMedia.youtube}">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">🐦 Twitter/X</label>
+                            <input type="url" class="input-field" id="ob_twitter" placeholder="https://twitter.com/yourchurch" value="${data.socialMedia.twitter || ''}">
+                        </div>
+                        
+                        <div style="display:flex;gap:var(--space-md);margin-top:var(--space-xl)">
+                            <button type="button" class="btn btn-ghost" onclick="onboardingBack()" style="flex:1">
+                                ← Back
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="onboardingSkip()" style="flex:1">
+                                Skip
+                            </button>
+                            <button type="submit" class="btn btn-primary" style="flex:1">
+                                Continue →
+                            </button>
+                        </div>
+                    </form>
+                </div>`;
+        
+        case 4:
+            return `
+                <div class="fade-up">
+                    <h2 class="auth-form-title">Review & Confirm</h2>
+                    <p class="auth-form-subtitle">Make sure everything looks correct</p>
+                    
+                    <div style="background:var(--hover-bg);border-radius:var(--radius-lg);padding:var(--space-lg);margin-bottom:var(--space-lg)">
+                        <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-lg);padding-bottom:var(--space-lg);border-bottom:1px solid var(--border-color)">
+                            <div style="width:60px;height:60px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:2rem">⛪</div>
+                            <div>
+                                <h3 style="margin:0">${data.name || 'Your Church'}</h3>
+                                <p style="color:var(--text-tertiary);font-size:0.9rem;margin:0">${data.address || 'Address not set'}</p>
+                            </div>
+                            <button type="button" class="btn btn-ghost" onclick="onboardingEdit(1)" style="margin-left:auto;font-size:0.85rem">Edit</button>
+                        </div>
+                        
+                        <div style="margin-bottom:var(--space-md)">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm)">
+                                <strong style="font-size:0.9rem">Contact Info</strong>
+                                <button type="button" class="btn btn-ghost" onclick="onboardingEdit(1)" style="font-size:0.8rem;padding:4px 8px">Edit</button>
+                            </div>
+                            <p style="color:var(--text-secondary);font-size:0.9rem;margin:0">📞 ${data.phone || 'Not provided'}</p>
+                            <p style="color:var(--text-secondary);font-size:0.9rem;margin:var(--space-xs) 0 0 0">🌐 ${data.website || 'Not provided'}</p>
+                        </div>
+                        
+                        <div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm)">
+                                <strong style="font-size:0.9rem">Social Media</strong>
+                                <button type="button" class="btn btn-ghost" onclick="onboardingEdit(3)" style="font-size:0.8rem;padding:4px 8px">Edit</button>
+                            </div>
+                            <div style="display:flex;flex-wrap:wrap;gap:var(--space-sm)">
+                                ${data.socialMedia.facebook ? '<span style="background:var(--bg-secondary);padding:4px 10px;border-radius:20px;font-size:0.8rem">📘 Facebook</span>' : ''}
+                                ${data.socialMedia.instagram ? '<span style="background:var(--bg-secondary);padding:4px 10px;border-radius:20px;font-size:0.8rem">📸 Instagram</span>' : ''}
+                                ${data.socialMedia.youtube ? '<span style="background:var(--bg-secondary);padding:4px 10px;border-radius:20px;font-size:0.8rem">🎥 YouTube</span>' : ''}
+                                ${data.socialMedia.twitter ? '<span style="background:var(--bg-secondary);padding:4px 10px;border-radius:20px;font-size:0.8rem">🐦 Twitter</span>' : ''}
+                                ${!data.socialMedia.facebook && !data.socialMedia.instagram && !data.socialMedia.youtube && !data.socialMedia.twitter ? '<span style="color:var(--text-tertiary);font-size:0.85rem">None added yet</span>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display:flex;gap:var(--space-md)">
+                        <button type="button" class="btn btn-ghost" onclick="onboardingBack()" style="flex:1">
+                            ← Back
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="completeOnboarding()" style="flex:2">
+                            🎉 Complete Setup
+                        </button>
+                    </div>
+                </div>`;
+        
+        default:
+            return '<p>Unknown step</p>';
+    }
+}
+
+function onboardingNext(e) {
+    if (e) e.preventDefault();
+    const step = churchOnboarding.step;
+    
+    // Save current step data
+    if (step === 1) {
+        churchOnboarding.data.name = document.getElementById('ob_name')?.value || '';
+        churchOnboarding.data.address = document.getElementById('ob_address')?.value || '';
+        churchOnboarding.data.phone = document.getElementById('ob_phone')?.value || '';
+    } else if (step === 2) {
+        churchOnboarding.data.website = document.getElementById('ob_website')?.value || '';
+        // Simulate website lookup for social media (in real app, would scrape or use API)
+        simulateWebsiteLookup();
+    } else if (step === 3) {
+        churchOnboarding.data.socialMedia = {
+            facebook: document.getElementById('ob_facebook')?.value || '',
+            instagram: document.getElementById('ob_instagram')?.value || '',
+            youtube: document.getElementById('ob_youtube')?.value || '',
+            twitter: document.getElementById('ob_twitter')?.value || ''
+        };
+    }
+    
+    churchOnboarding.step = Math.min(step + 1, 4);
+    render();
+}
+
+function onboardingBack() {
+    churchOnboarding.step = Math.max(churchOnboarding.step - 1, 1);
+    render();
+}
+
+function onboardingSkip() {
+    churchOnboarding.step = Math.min(churchOnboarding.step + 1, 4);
+    render();
+}
+
+function onboardingEdit(step) {
+    churchOnboarding.step = step;
+    render();
+}
+
+function simulateWebsiteLookup() {
+    const website = churchOnboarding.data.website;
+    if (!website) return;
+    
+    // In a real app, this would call an API to scrape social links
+    // For demo, we'll just show common patterns
+    const domain = website.replace(/https?:\/\/(www\.)?/, '').replace(/\/$/, '');
+    const name = domain.split('.')[0];
+    
+    // Auto-fill with common social patterns if empty
+    if (!churchOnboarding.data.socialMedia.facebook) {
+        churchOnboarding.data.socialMedia.facebook = `https://facebook.com/${name}`;
+    }
+    if (!churchOnboarding.data.socialMedia.instagram) {
+        churchOnboarding.data.socialMedia.instagram = `https://instagram.com/${name}`;
+    }
+}
+
+function completeOnboarding() {
+    const data = churchOnboarding.data;
+    
+    if (!data.name) {
+        toast('Please enter a church name', 'error');
+        churchOnboarding.step = 1;
+        render();
+        return;
+    }
+    
+    // Create or update the church
+    let churchId = churchOnboarding.churchId;
+    
+    if (churchId && CHURCHES_DB[churchId]) {
+        // Update existing church
+        updateChurchData(churchId, {
+            name: data.name,
+            address: data.address,
+            phone: data.phone,
+            website: data.website,
+            socialMedia: data.socialMedia,
+            onboarded: true
+        });
+    } else {
+        // Create new church
+        churchId = createNewChurch(data);
+    }
+    
+    // Update admin account to mark as onboarded
+    if (churchOnboarding.adminUsername) {
+        CHURCH_ADMIN_ACCOUNTS[churchOnboarding.adminUsername].onboarded = true;
+        CHURCH_ADMIN_ACCOUNTS[churchOnboarding.adminUsername].churchId = churchId;
+    }
+    
+    // Go to church admin dashboard
+    const church = getChurchData(churchId);
+    State.set({ 
+        screen: 'app', 
+        accountType: 'church',
+        user: { name: church.name, email: 'admin@' + churchId, churchId: churchId },
+        activeNav: 'church-dashboard'
+    });
+    
+    toast('🎉 Church setup complete! Welcome to Rooted!', 'success');
 }
 
 function renderLogin() {
