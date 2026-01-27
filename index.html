@@ -546,12 +546,65 @@ const TOOLS = {
 
 // ========== STATE ==========
 const State = {
-    current: { screen: 'loading', user: null, activeNav: 'dashboard', sidebarOpen: false },
+    current: { screen: 'loading', user: null, activeNav: 'dashboard', sidebarOpen: false, accountType: 'user', userChurch: null, signupStep: 1, churchSearchResults: [] },
     listeners: [],
     set(updates) { this.current = { ...this.current, ...updates }; this.notify(); },
     subscribe(fn) { this.listeners.push(fn); },
     notify() { this.listeners.forEach(fn => fn(this.current)); }
 };
+
+// ========== CHURCH DATABASE (Beta) ==========
+const CHURCH_ADMIN_ACCOUNTS = {
+    'admin': { password: '1234', churchId: 'faith-fellowship', churchName: 'Faith Fellowship Church' }
+};
+
+const CHURCHES_DB = {
+    'faith-fellowship': {
+        id: 'faith-fellowship',
+        name: 'Faith Fellowship Church',
+        address: '123 Main St, Hayward, CA 94541',
+        phone: '(510) 555-0123',
+        website: 'https://faithfellowship.example.com',
+        socialMedia: {
+            facebook: 'https://facebook.com/faithfellowship',
+            instagram: 'https://instagram.com/faithfellowship',
+            youtube: 'https://youtube.com/@faithfellowship'
+        },
+        announcements: [
+            { id: 1, title: 'Wednesday Night Discipleship', date: '2026-01-29', content: 'Join us for our weekly study at 7pm!' },
+            { id: 2, title: 'Youth Group Winter Retreat', date: '2026-02-15', content: 'Sign up deadline is Feb 1st. See Pastor Mike for details.' }
+        ],
+        resources: [
+            { id: 1, title: 'Wednesday Discipleship Study - Week 4', type: 'pdf', date: '2026-01-22', url: '#study-week4' },
+            { id: 2, title: 'Sunday Sermon Notes - January 19', type: 'pdf', date: '2026-01-19', url: '#sermon-notes' }
+        ],
+        enabledTools: ['seasons', 'spiritual-formation', 'bible-reading', 'prayer-journal', 'scripture-memory']
+    }
+};
+
+// Store user church selections
+function getUserChurch(userId) {
+    const data = JSON.parse(localStorage.getItem('rooted_user_churches') || '{}');
+    return data[userId] || null;
+}
+
+function setUserChurch(userId, churchId) {
+    const data = JSON.parse(localStorage.getItem('rooted_user_churches') || '{}');
+    data[userId] = churchId;
+    localStorage.setItem('rooted_user_churches', JSON.stringify(data));
+}
+
+// Store church data (for admin uploads)
+function getChurchData(churchId) {
+    const stored = JSON.parse(localStorage.getItem('rooted_church_data') || '{}');
+    return { ...CHURCHES_DB[churchId], ...stored[churchId] };
+}
+
+function updateChurchData(churchId, updates) {
+    const stored = JSON.parse(localStorage.getItem('rooted_church_data') || '{}');
+    stored[churchId] = { ...stored[churchId], ...updates };
+    localStorage.setItem('rooted_church_data', JSON.stringify(stored));
+}
 
 // ========== HELPERS ==========
 function toast(message, type = 'info') {
@@ -591,7 +644,7 @@ function closeModal() {
 // ========== RENDER ==========
 function render() {
     const app = document.getElementById('app');
-    const { screen } = State.current;
+    const { screen, accountType } = State.current;
     
     switch(screen) {
         case 'loading':
@@ -603,14 +656,20 @@ function render() {
         case 'login':
             app.innerHTML = renderLogin();
             break;
+        case 'church-login':
+            app.innerHTML = renderChurchLogin();
+            break;
         case 'signup':
             app.innerHTML = renderSignup();
+            break;
+        case 'signup-church':
+            app.innerHTML = renderSignupChurchSelection();
             break;
         case 'forgot-password':
             app.innerHTML = renderForgotPassword();
             break;
         case 'app':
-            app.innerHTML = renderApp();
+            app.innerHTML = accountType === 'church' ? renderChurchAdminApp() : renderApp();
             break;
         case 'tool-seasons':
             app.innerHTML = renderSeasonsTool();
@@ -645,15 +704,75 @@ function renderWelcome() {
                 </button>
                 
                 <div style="margin-top:var(--space-2xl);padding:var(--space-lg);background:var(--hover-bg);border-radius:var(--radius-lg);text-align:center">
-                    <div class="coming-soon-badge" style="margin-bottom:var(--space-md)">
-                        <span>⛪</span> Coming Soon
+                    <div style="display:flex;align-items:center;justify-content:center;gap:var(--space-sm);margin-bottom:var(--space-sm)">
+                        <span>⛪</span>
+                        <strong style="font-size:0.9rem">Church Admin?</strong>
                     </div>
-                    <h4 style="margin-bottom:var(--space-sm)">Church Accounts</h4>
-                    <p style="font-size:0.9rem;color:var(--text-secondary)">Connect your entire congregation with shared resources, group studies, and church-wide growth tracking.</p>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:var(--space-md)">Manage your church's discipleship content and connect with your congregation.</p>
+                    <button class="btn btn-ghost" onclick="State.set({screen:'church-login'})" style="font-size:0.9rem">
+                        Church Admin Login →
+                    </button>
                 </div>
             </div>
         </div>
     </div>`;
+}
+
+function renderChurchLogin() {
+    return `
+    <div class="auth-container fade-up">
+        <div class="auth-left">
+            <div class="auth-brand">
+                <div class="auth-logo">⛪</div>
+                <h1 class="auth-brand-name">Rooted</h1>
+                <p class="auth-tagline">Church Admin Portal</p>
+            </div>
+        </div>
+        <div class="auth-right">
+            <div class="auth-form-container">
+                <button class="btn btn-ghost" onclick="State.set({screen:'welcome'})" style="margin-bottom:var(--space-lg)">← Back</button>
+                
+                <h2 class="auth-form-title">Church Admin Login</h2>
+                <p class="auth-form-subtitle">Manage your church's discipleship content</p>
+                
+                <form onsubmit="handleChurchAdminLogin(event)">
+                    <div class="input-group">
+                        <label class="input-label">Admin Username</label>
+                        <input type="text" class="input-field" id="churchUsername" placeholder="admin" required>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Password</label>
+                        <input type="password" class="input-field" id="churchPassword" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg btn-block" id="churchLoginBtn">Sign In as Admin</button>
+                </form>
+                
+                <div class="auth-footer" style="margin-top:var(--space-xl)">
+                    <p style="font-size:0.85rem;color:var(--text-tertiary)">Church accounts are available for premium subscribers. Contact us to set up your church.</p>
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
+function handleChurchAdminLogin(e) {
+    e.preventDefault();
+    const username = document.getElementById('churchUsername').value;
+    const password = document.getElementById('churchPassword').value;
+    
+    const admin = CHURCH_ADMIN_ACCOUNTS[username];
+    if (admin && admin.password === password) {
+        const church = getChurchData(admin.churchId);
+        State.set({ 
+            screen: 'app', 
+            accountType: 'church',
+            user: { name: church.name, email: 'admin@' + admin.churchId, churchId: admin.churchId },
+            activeNav: 'church-dashboard'
+        });
+        toast('Welcome, ' + church.name + ' Admin! ⛪', 'success');
+    } else {
+        toast('Invalid admin credentials', 'error');
+    }
 }
 
 function renderLogin() {
@@ -859,7 +978,360 @@ async function handlePasswordReset(e) {
 async function handleSignOut() {
     await Auth.signOut();
     toast('Signed out', 'info');
-    State.set({ screen: 'welcome', user: null });
+    State.set({ screen: 'welcome', user: null, accountType: 'user' });
+}
+
+// ========== CHURCH ADMIN PORTAL ==========
+function renderChurchAdminApp() {
+    const { user, activeNav } = State.current;
+    const church = getChurchData(user.churchId);
+    
+    return `
+    <aside class="sidebar ${State.current.sidebarOpen ? 'open' : ''}">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <div class="sidebar-logo-icon" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">⛪</div>
+                <span class="sidebar-logo-text">Rooted</span>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <div class="nav-section-title">Church Admin</div>
+                <div class="nav-item ${activeNav === 'church-dashboard' ? 'active' : ''}" onclick="navigate('church-dashboard')">
+                    <span class="nav-item-icon">📊</span> Dashboard
+                </div>
+                <div class="nav-item ${activeNav === 'church-resources' ? 'active' : ''}" onclick="navigate('church-resources')">
+                    <span class="nav-item-icon">📄</span> Resources & PDFs
+                </div>
+                <div class="nav-item ${activeNav === 'church-announcements' ? 'active' : ''}" onclick="navigate('church-announcements')">
+                    <span class="nav-item-icon">📢</span> Announcements
+                </div>
+                <div class="nav-item ${activeNav === 'church-social' ? 'active' : ''}" onclick="navigate('church-social')">
+                    <span class="nav-item-icon">🔗</span> Social Media
+                </div>
+                <div class="nav-item ${activeNav === 'church-tools' ? 'active' : ''}" onclick="navigate('church-tools')">
+                    <span class="nav-item-icon">🧰</span> Enabled Tools
+                </div>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-menu" onclick="handleSignOut()">
+                <div class="user-avatar" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">⛪</div>
+                <div class="user-info">
+                    <div class="user-name">${church.name}</div>
+                    <div class="user-email">Church Admin</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+    <main class="main-content">
+        <header class="main-header">
+            <div class="header-left">
+                <button class="menu-toggle" onclick="toggleSidebar(true)">☰</button>
+                <h1 class="page-title">${getChurchPageTitle(activeNav)}</h1>
+            </div>
+            <div class="header-right">
+                <span class="coming-soon-badge" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">Admin Mode</span>
+            </div>
+        </header>
+        <div class="main-body">
+            ${renderChurchPage(activeNav)}
+        </div>
+    </main>`;
+}
+
+function getChurchPageTitle(nav) {
+    const titles = { 
+        'church-dashboard': 'Church Dashboard', 
+        'church-resources': 'Resources & PDFs', 
+        'church-announcements': 'Announcements',
+        'church-social': 'Social Media Links',
+        'church-tools': 'Enabled Tools'
+    };
+    return titles[nav] || 'Dashboard';
+}
+
+function renderChurchPage(page) {
+    switch(page) {
+        case 'church-dashboard': return renderChurchDashboard();
+        case 'church-resources': return renderChurchResources();
+        case 'church-announcements': return renderChurchAnnouncements();
+        case 'church-social': return renderChurchSocial();
+        case 'church-tools': return renderChurchTools();
+        default: return renderChurchDashboard();
+    }
+}
+
+function renderChurchDashboard() {
+    const church = getChurchData(State.current.user.churchId);
+    return `
+    <div class="fade-up">
+        <div class="welcome-banner" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">
+            <h2 class="welcome-title">⛪ ${church.name}</h2>
+            <p class="welcome-subtitle">Manage your church's digital discipleship content</p>
+        </div>
+        
+        <div class="stat-grid" style="margin:var(--space-xl) 0">
+            <div class="stat-card">
+                <div class="stat-label">Resources</div>
+                <div class="stat-value">${church.resources?.length || 0}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Announcements</div>
+                <div class="stat-value">${church.announcements?.length || 0}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Enabled Tools</div>
+                <div class="stat-value">${church.enabledTools?.length || 0}</div>
+            </div>
+        </div>
+        
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="margin-bottom:var(--space-md)">Quick Actions</h3>
+            <div style="display:grid;gap:var(--space-md);grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+                <button class="btn btn-primary" onclick="navigate('church-resources')">📄 Upload New Resource</button>
+                <button class="btn btn-secondary" onclick="navigate('church-announcements')">📢 Post Announcement</button>
+                <button class="btn btn-secondary" onclick="navigate('church-social')">🔗 Update Social Links</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3 style="margin-bottom:var(--space-md)">Church Information</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-sm)"><strong>Address:</strong> ${church.address}</p>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-sm)"><strong>Phone:</strong> ${church.phone}</p>
+            <p style="color:var(--text-secondary)"><strong>Website:</strong> <a href="${church.website}" target="_blank" style="color:var(--root-green)">${church.website}</a></p>
+        </div>
+    </div>`;
+}
+
+function renderChurchResources() {
+    const church = getChurchData(State.current.user.churchId);
+    return `
+    <div class="fade-up">
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="margin-bottom:var(--space-md)">📄 Upload New Resource</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Upload PDF files for your congregation to access (discipleship materials, study guides, sermon notes, etc.)</p>
+            
+            <form onsubmit="handleResourceUpload(event)">
+                <div class="input-group">
+                    <label class="input-label">Resource Title</label>
+                    <input type="text" class="input-field" id="resourceTitle" placeholder="e.g. Wednesday Night Discipleship - Week 5" required>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Resource Type</label>
+                    <select class="input-field" id="resourceType">
+                        <option value="pdf">PDF Document</option>
+                        <option value="study">Bible Study Guide</option>
+                        <option value="sermon">Sermon Notes</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Upload File (PDF)</label>
+                    <input type="file" class="input-field" id="resourceFile" accept=".pdf" style="padding:var(--space-md)">
+                    <p style="font-size:0.8rem;color:var(--text-tertiary);margin-top:var(--space-xs)">Max 10MB. PDF files only.</p>
+                </div>
+                <button type="submit" class="btn btn-primary">Upload Resource</button>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h3 style="margin-bottom:var(--space-lg)">Current Resources</h3>
+            ${church.resources?.length ? church.resources.map(r => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm)">
+                    <div>
+                        <strong>${r.title}</strong>
+                        <p style="font-size:0.85rem;color:var(--text-tertiary)">${r.type.toUpperCase()} • Added ${r.date}</p>
+                    </div>
+                    <button class="btn btn-ghost" style="color:var(--error)" onclick="deleteResource(${r.id})">🗑️</button>
+                </div>
+            `).join('') : '<p style="color:var(--text-tertiary)">No resources uploaded yet.</p>'}
+        </div>
+    </div>`;
+}
+
+function handleResourceUpload(e) {
+    e.preventDefault();
+    const title = document.getElementById('resourceTitle').value;
+    const type = document.getElementById('resourceType').value;
+    const file = document.getElementById('resourceFile').files[0];
+    
+    if (!file) {
+        toast('Please select a file to upload', 'error');
+        return;
+    }
+    
+    // In a real app, this would upload to cloud storage
+    // For demo, we'll store metadata locally
+    const church = getChurchData(State.current.user.churchId);
+    const resources = church.resources || [];
+    resources.push({
+        id: Date.now(),
+        title,
+        type,
+        date: new Date().toISOString().split('T')[0],
+        url: URL.createObjectURL(file),
+        fileName: file.name
+    });
+    
+    updateChurchData(State.current.user.churchId, { resources });
+    toast('Resource uploaded successfully! 📄', 'success');
+    render();
+}
+
+function deleteResource(id) {
+    const church = getChurchData(State.current.user.churchId);
+    const resources = (church.resources || []).filter(r => r.id !== id);
+    updateChurchData(State.current.user.churchId, { resources });
+    toast('Resource deleted', 'info');
+    render();
+}
+
+function renderChurchAnnouncements() {
+    const church = getChurchData(State.current.user.churchId);
+    return `
+    <div class="fade-up">
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="margin-bottom:var(--space-md)">📢 Post New Announcement</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Announcements will appear on your members' church feed.</p>
+            
+            <form onsubmit="handleAnnouncementPost(event)">
+                <div class="input-group">
+                    <label class="input-label">Title</label>
+                    <input type="text" class="input-field" id="announcementTitle" placeholder="e.g. Youth Group Winter Retreat" required>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Content</label>
+                    <textarea class="input-field" id="announcementContent" rows="4" placeholder="Details about the announcement..." required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Post Announcement</button>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h3 style="margin-bottom:var(--space-lg)">Current Announcements</h3>
+            ${church.announcements?.length ? church.announcements.map(a => `
+                <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm)">
+                    <div style="display:flex;justify-content:space-between;align-items:start">
+                        <div>
+                            <strong>${a.title}</strong>
+                            <p style="font-size:0.85rem;color:var(--text-tertiary)">${a.date}</p>
+                            <p style="margin-top:var(--space-sm);color:var(--text-secondary)">${a.content}</p>
+                        </div>
+                        <button class="btn btn-ghost" style="color:var(--error)" onclick="deleteAnnouncement(${a.id})">🗑️</button>
+                    </div>
+                </div>
+            `).join('') : '<p style="color:var(--text-tertiary)">No announcements posted yet.</p>'}
+        </div>
+    </div>`;
+}
+
+function handleAnnouncementPost(e) {
+    e.preventDefault();
+    const title = document.getElementById('announcementTitle').value;
+    const content = document.getElementById('announcementContent').value;
+    
+    const church = getChurchData(State.current.user.churchId);
+    const announcements = church.announcements || [];
+    announcements.unshift({
+        id: Date.now(),
+        title,
+        content,
+        date: new Date().toISOString().split('T')[0]
+    });
+    
+    updateChurchData(State.current.user.churchId, { announcements });
+    toast('Announcement posted! 📢', 'success');
+    render();
+}
+
+function deleteAnnouncement(id) {
+    const church = getChurchData(State.current.user.churchId);
+    const announcements = (church.announcements || []).filter(a => a.id !== id);
+    updateChurchData(State.current.user.churchId, { announcements });
+    toast('Announcement deleted', 'info');
+    render();
+}
+
+function renderChurchSocial() {
+    const church = getChurchData(State.current.user.churchId);
+    const social = church.socialMedia || {};
+    return `
+    <div class="fade-up">
+        <div class="card">
+            <h3 style="margin-bottom:var(--space-md)">🔗 Social Media Links</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">These links will be displayed on your members' app for easy access.</p>
+            
+            <form onsubmit="handleSocialUpdate(event)">
+                <div class="input-group">
+                    <label class="input-label">📘 Facebook Page</label>
+                    <input type="url" class="input-field" id="socialFacebook" placeholder="https://facebook.com/yourchurch" value="${social.facebook || ''}">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">📸 Instagram</label>
+                    <input type="url" class="input-field" id="socialInstagram" placeholder="https://instagram.com/yourchurch" value="${social.instagram || ''}">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">🎥 YouTube Channel</label>
+                    <input type="url" class="input-field" id="socialYoutube" placeholder="https://youtube.com/@yourchurch" value="${social.youtube || ''}">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">🌐 Church Website</label>
+                    <input type="url" class="input-field" id="socialWebsite" placeholder="https://yourchurch.com" value="${church.website || ''}">
+                </div>
+                <button type="submit" class="btn btn-primary">Save Social Links</button>
+            </form>
+        </div>
+    </div>`;
+}
+
+function handleSocialUpdate(e) {
+    e.preventDefault();
+    const socialMedia = {
+        facebook: document.getElementById('socialFacebook').value,
+        instagram: document.getElementById('socialInstagram').value,
+        youtube: document.getElementById('socialYoutube').value
+    };
+    const website = document.getElementById('socialWebsite').value;
+    
+    updateChurchData(State.current.user.churchId, { socialMedia, website });
+    toast('Social links updated! 🔗', 'success');
+}
+
+function renderChurchTools() {
+    const church = getChurchData(State.current.user.churchId);
+    const enabledTools = church.enabledTools || [];
+    
+    return `
+    <div class="fade-up">
+        <div class="card">
+            <h3 style="margin-bottom:var(--space-md)">🧰 Enabled Tools</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Select which spiritual growth tools your members can access.</p>
+            
+            <form onsubmit="handleToolsUpdate(event)">
+                <div style="display:grid;gap:var(--space-md)">
+                    ${Object.entries(TOOLS).map(([id, tool]) => `
+                        <label style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);cursor:pointer">
+                            <input type="checkbox" id="tool-${id}" ${enabledTools.includes(id) ? 'checked' : ''} style="width:20px;height:20px">
+                            <span style="font-size:1.5rem">${tool.icon}</span>
+                            <div>
+                                <strong>${tool.name}</strong>
+                                <p style="font-size:0.85rem;color:var(--text-tertiary)">${tool.desc}</p>
+                            </div>
+                        </label>
+                    `).join('')}
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top:var(--space-lg)">Save Tool Settings</button>
+            </form>
+        </div>
+    </div>`;
+}
+
+function handleToolsUpdate(e) {
+    e.preventDefault();
+    const enabledTools = Object.keys(TOOLS).filter(id => document.getElementById('tool-' + id)?.checked);
+    updateChurchData(State.current.user.churchId, { enabledTools });
+    toast('Tool settings updated! 🧰', 'success');
 }
 
 // ========== MAIN APP ==========
@@ -897,10 +1369,9 @@ function renderApp() {
                 </div>
             </div>
             <div class="nav-section">
-                <div class="nav-section-title">Coming Soon</div>
-                <div class="nav-item" style="opacity:0.5;cursor:default">
-                    <span class="nav-item-icon">⛪</span> Church Account
-                    <span class="coming-soon-badge" style="font-size:0.65rem;padding:2px 6px;margin-left:auto">Soon</span>
+                <div class="nav-section-title">My Church</div>
+                <div class="nav-item ${activeNav === 'my-church' ? 'active' : ''}" onclick="navigate('my-church')">
+                    <span class="nav-item-icon">⛪</span> Church Feed
                 </div>
             </div>
         </nav>
@@ -935,7 +1406,7 @@ function renderApp() {
 }
 
 function getPageTitle(nav) {
-    const titles = { dashboard: 'Dashboard', tools: 'Growth Tools', progress: 'My Progress', profile: 'Profile', settings: 'Settings' };
+    const titles = { dashboard: 'Dashboard', tools: 'Growth Tools', progress: 'My Progress', profile: 'Profile', settings: 'Settings', 'my-church': 'My Church' };
     return titles[nav] || 'Dashboard';
 }
 
@@ -946,6 +1417,7 @@ function renderPage(page) {
         case 'progress': return renderProgress();
         case 'profile': return renderProfile();
         case 'settings': return renderSettings();
+        case 'my-church': return renderMyChurch();
         default: return renderDashboard();
     }
 }
@@ -1092,8 +1564,27 @@ async function saveProfile() {
 }
 
 function renderSettings() {
+    const userChurchId = Auth.currentUser ? getUserChurch(Auth.currentUser.uid) : null;
+    const userChurch = userChurchId ? getChurchData(userChurchId) : null;
+    
     return `
     <div class="fade-up">
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="margin-bottom:var(--space-lg)">⛪ My Church</h3>
+            ${userChurch ? `
+                <div style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-md)">
+                    <div style="width:50px;height:50px;background:linear-gradient(135deg,var(--root-green),var(--leaf-green));border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.5rem">⛪</div>
+                    <div>
+                        <strong>${userChurch.name}</strong>
+                        <p style="font-size:0.85rem;color:var(--text-tertiary)">${userChurch.address}</p>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="showChurchSearch()">Change Church</button>
+            ` : `
+                <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">Connect with your local church to access discipleship materials, announcements, and more.</p>
+                <button class="btn btn-primary" onclick="showChurchSearch()">Find My Church</button>
+            `}
+        </div>
         <div class="card" style="margin-bottom:var(--space-lg)">
             <h3 style="margin-bottom:var(--space-lg)">🎨 Appearance</h3>
             <div style="display:flex;align-items:center;justify-content:space-between">
@@ -1115,6 +1606,147 @@ function renderSettings() {
             <h3 style="margin-bottom:var(--space-md);color:var(--error)">⚠️ Danger Zone</h3>
             <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Permanently delete your account and all data.</p>
             <button class="btn btn-secondary" style="color:var(--error);border-color:var(--error)" onclick="confirmDeleteAccount()">Delete Account</button>
+        </div>
+    </div>`;
+}
+
+function showChurchSearch() {
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
+            <div class="modal-header">
+                <h3 class="modal-title">⛪ Find Your Church</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label class="input-label">Search by Address or Church Name</label>
+                    <input type="text" class="input-field" id="churchSearchInput" placeholder="e.g. Hayward, CA or Faith Fellowship" onkeyup="searchChurches()">
+                </div>
+                <div id="churchSearchResults" style="margin-top:var(--space-lg);max-height:300px;overflow-y:auto"></div>
+            </div>
+        </div>
+    `);
+}
+
+function searchChurches() {
+    const query = document.getElementById('churchSearchInput').value.toLowerCase();
+    const results = document.getElementById('churchSearchResults');
+    
+    if (query.length < 2) {
+        results.innerHTML = '<p style="color:var(--text-tertiary);text-align:center">Enter at least 2 characters to search...</p>';
+        return;
+    }
+    
+    // Search in our church database
+    const matches = Object.entries(CHURCHES_DB).filter(([id, church]) => 
+        church.name.toLowerCase().includes(query) || 
+        church.address.toLowerCase().includes(query)
+    );
+    
+    if (matches.length === 0) {
+        results.innerHTML = `
+            <div style="text-align:center;padding:var(--space-lg)">
+                <p style="color:var(--text-tertiary);margin-bottom:var(--space-md)">No churches found.</p>
+                <p style="font-size:0.85rem;color:var(--text-tertiary)">Your church may not be on Rooted yet. Contact us to get your church added!</p>
+            </div>`;
+        return;
+    }
+    
+    results.innerHTML = matches.map(([id, church]) => `
+        <div style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);cursor:pointer" onclick="selectChurch('${id}')">
+            <div style="width:50px;height:50px;background:linear-gradient(135deg,var(--root-green),var(--leaf-green));border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0">⛪</div>
+            <div style="flex:1;min-width:0">
+                <strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${church.name}</strong>
+                <p style="font-size:0.85rem;color:var(--text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${church.address}</p>
+            </div>
+            <span style="color:var(--root-green)">→</span>
+        </div>
+    `).join('');
+}
+
+function selectChurch(churchId) {
+    if (Auth.currentUser) {
+        setUserChurch(Auth.currentUser.uid, churchId);
+        closeModal();
+        toast('Church connected! ⛪', 'success');
+        render();
+    }
+}
+
+function renderMyChurch() {
+    const userChurchId = Auth.currentUser ? getUserChurch(Auth.currentUser.uid) : null;
+    
+    if (!userChurchId) {
+        return `
+        <div class="fade-up">
+            <div class="card" style="text-align:center;padding:var(--space-2xl)">
+                <div style="font-size:4rem;margin-bottom:var(--space-lg)">⛪</div>
+                <h2 style="margin-bottom:var(--space-md)">Connect to Your Church</h2>
+                <p style="color:var(--text-secondary);margin-bottom:var(--space-xl);max-width:400px;margin-left:auto;margin-right:auto">
+                    Link your account to your local church to access discipleship materials, announcements, and stay connected with your congregation.
+                </p>
+                <button class="btn btn-primary btn-lg" onclick="showChurchSearch()">Find My Church</button>
+            </div>
+        </div>`;
+    }
+    
+    const church = getChurchData(userChurchId);
+    const social = church.socialMedia || {};
+    
+    return `
+    <div class="fade-up">
+        <!-- Church Header -->
+        <div class="welcome-banner" style="background:linear-gradient(135deg,var(--root-green),var(--leaf-green))">
+            <h2 class="welcome-title">⛪ ${church.name}</h2>
+            <p class="welcome-subtitle">${church.address}</p>
+        </div>
+        
+        <!-- Social Media Links -->
+        <div class="card" style="margin:var(--space-lg) 0">
+            <h3 style="margin-bottom:var(--space-md)">🔗 Connect With Us</h3>
+            <div style="display:flex;flex-wrap:wrap;gap:var(--space-sm)">
+                ${social.facebook ? `<a href="${social.facebook}" target="_blank" class="btn btn-secondary" style="flex:1;min-width:120px;justify-content:center">📘 Facebook</a>` : ''}
+                ${social.instagram ? `<a href="${social.instagram}" target="_blank" class="btn btn-secondary" style="flex:1;min-width:120px;justify-content:center">📸 Instagram</a>` : ''}
+                ${social.youtube ? `<a href="${social.youtube}" target="_blank" class="btn btn-secondary" style="flex:1;min-width:120px;justify-content:center">🎥 YouTube</a>` : ''}
+                ${church.website ? `<a href="${church.website}" target="_blank" class="btn btn-secondary" style="flex:1;min-width:120px;justify-content:center">🌐 Website</a>` : ''}
+            </div>
+        </div>
+        
+        <!-- Announcements -->
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="margin-bottom:var(--space-lg)">📢 Announcements</h3>
+            ${church.announcements?.length ? church.announcements.map(a => `
+                <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);border-left:4px solid var(--root-green)">
+                    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:var(--space-sm)">
+                        <strong>${a.title}</strong>
+                        <span style="font-size:0.8rem;color:var(--text-tertiary)">${a.date}</span>
+                    </div>
+                    <p style="color:var(--text-secondary);font-size:0.95rem">${a.content}</p>
+                </div>
+            `).join('') : '<p style="color:var(--text-tertiary)">No announcements at this time.</p>'}
+        </div>
+        
+        <!-- Resources / Discipleship Materials -->
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="margin-bottom:var(--space-lg)">📄 Discipleship Resources</h3>
+            ${church.resources?.length ? church.resources.map(r => `
+                <a href="${r.url}" target="_blank" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);text-decoration:none;color:inherit">
+                    <div style="width:50px;height:50px;background:linear-gradient(135deg,#ef4444,#f97316);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0">📄</div>
+                    <div style="flex:1;min-width:0">
+                        <strong style="display:block">${r.title}</strong>
+                        <p style="font-size:0.85rem;color:var(--text-tertiary)">${r.type.toUpperCase()} • ${r.date}</p>
+                    </div>
+                    <span style="color:var(--root-green)">↓</span>
+                </a>
+            `).join('') : '<p style="color:var(--text-tertiary)">No resources available yet. Check back soon!</p>'}
+        </div>
+        
+        <!-- Church Info -->
+        <div class="card">
+            <h3 style="margin-bottom:var(--space-md)">📍 Contact Information</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-sm)"><strong>Address:</strong> ${church.address}</p>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-sm)"><strong>Phone:</strong> ${church.phone}</p>
+            ${church.website ? `<p style="color:var(--text-secondary)"><strong>Website:</strong> <a href="${church.website}" target="_blank" style="color:var(--root-green)">${church.website}</a></p>` : ''}
         </div>
     </div>`;
 }
