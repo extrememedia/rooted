@@ -600,16 +600,62 @@ let churchOnboarding = {
     }
 };
 
-// Store user church selections
-function getUserChurch(userId) {
+// Store user church selections (supports up to 5 churches)
+function getUserChurches(userId) {
     const data = JSON.parse(localStorage.getItem('rooted_user_churches') || '{}');
-    return data[userId] || null;
+    return data[userId] || [];
+}
+
+function getUserChurch(userId) {
+    // Returns the active/primary church
+    const churches = getUserChurches(userId);
+    const activeIdx = parseInt(localStorage.getItem('rooted_active_church_' + userId) || '0');
+    return churches[activeIdx] || churches[0] || null;
+}
+
+function addUserChurch(userId, churchId) {
+    const data = JSON.parse(localStorage.getItem('rooted_user_churches') || '{}');
+    const churches = data[userId] || [];
+    
+    if (churches.includes(churchId)) {
+        return false; // Already added
+    }
+    
+    if (churches.length >= 5) {
+        return false; // Max 5 churches
+    }
+    
+    churches.push(churchId);
+    data[userId] = churches;
+    localStorage.setItem('rooted_user_churches', JSON.stringify(data));
+    return true;
+}
+
+function removeUserChurch(userId, churchId) {
+    const data = JSON.parse(localStorage.getItem('rooted_user_churches') || '{}');
+    const churches = data[userId] || [];
+    data[userId] = churches.filter(id => id !== churchId);
+    localStorage.setItem('rooted_user_churches', JSON.stringify(data));
+    
+    // Reset active church if removed
+    const activeIdx = parseInt(localStorage.getItem('rooted_active_church_' + userId) || '0');
+    if (activeIdx >= data[userId].length) {
+        localStorage.setItem('rooted_active_church_' + userId, '0');
+    }
+}
+
+function setActiveChurch(userId, churchId) {
+    const churches = getUserChurches(userId);
+    const idx = churches.indexOf(churchId);
+    if (idx !== -1) {
+        localStorage.setItem('rooted_active_church_' + userId, idx.toString());
+    }
 }
 
 function setUserChurch(userId, churchId) {
-    const data = JSON.parse(localStorage.getItem('rooted_user_churches') || '{}');
-    data[userId] = churchId;
-    localStorage.setItem('rooted_user_churches', JSON.stringify(data));
+    // Legacy support - adds church if not exists, sets as active
+    addUserChurch(userId, churchId);
+    setActiveChurch(userId, churchId);
 }
 
 // Store church data (for admin uploads)
@@ -1459,12 +1505,74 @@ function renderChurchDashboard() {
         </div>
         
         <div class="card">
-            <h3 style="margin-bottom:var(--space-md)">Church Information</h3>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-sm)"><strong>Address:</strong> ${church.address}</p>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-sm)"><strong>Phone:</strong> ${church.phone}</p>
-            <p style="color:var(--text-secondary)"><strong>Website:</strong> <a href="${church.website}" target="_blank" style="color:var(--root-green)">${church.website}</a></p>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
+                <h3 style="margin:0">Church Information</h3>
+                <button class="btn btn-ghost" onclick="showEditChurchInfoModal()" style="font-size:0.9rem">✏️ Edit</button>
+            </div>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-sm)"><strong>Name:</strong> ${church.name}</p>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-sm)"><strong>Address:</strong> ${church.address || 'Not set'}</p>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-sm)"><strong>Phone:</strong> ${church.phone || 'Not set'}</p>
+            <p style="color:var(--text-secondary)"><strong>Website:</strong> ${church.website ? `<a href="${church.website}" target="_blank" style="color:var(--root-green)">${church.website}</a>` : 'Not set'}</p>
         </div>
     </div>`;
+}
+
+function showEditChurchInfoModal() {
+    const church = getChurchData(State.current.user.churchId);
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
+            <div class="modal-header">
+                <h3 class="modal-title">✏️ Edit Church Information</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <form onsubmit="saveChurchInfo(event)">
+                    <div class="input-group">
+                        <label class="input-label">Church Name</label>
+                        <input type="text" class="input-field" id="editChurchName" value="${church.name || ''}" required>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Address</label>
+                        <input type="text" class="input-field" id="editChurchAddress" value="${church.address || ''}" placeholder="123 Main St, City, State ZIP">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Phone Number</label>
+                        <input type="tel" class="input-field" id="editChurchPhone" value="${church.phone || ''}" placeholder="(555) 123-4567">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Website</label>
+                        <input type="url" class="input-field" id="editChurchWebsite" value="${church.website || ''}" placeholder="https://yourchurch.com">
+                    </div>
+                    <div style="display:flex;gap:var(--space-md);margin-top:var(--space-lg)">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()" style="flex:1">Cancel</button>
+                        <button type="submit" class="btn btn-primary" style="flex:1">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `);
+}
+
+function saveChurchInfo(e) {
+    e.preventDefault();
+    const churchId = State.current.user.churchId;
+    const updates = {
+        name: document.getElementById('editChurchName').value,
+        address: document.getElementById('editChurchAddress').value,
+        phone: document.getElementById('editChurchPhone').value,
+        website: document.getElementById('editChurchWebsite').value
+    };
+    
+    updateChurchData(churchId, updates);
+    
+    // Update user state with new name
+    State.set({
+        user: { ...State.current.user, name: updates.name }
+    });
+    
+    closeModal();
+    toast('Church information updated! ⛪', 'success');
+    render();
 }
 
 function renderChurchResources() {
@@ -2037,9 +2145,10 @@ function selectChurch(churchId) {
 }
 
 function renderMyChurch() {
-    const userChurchId = Auth.currentUser ? getUserChurch(Auth.currentUser.uid) : null;
+    const userChurches = Auth.currentUser ? getUserChurches(Auth.currentUser.uid) : [];
+    const activeChurchId = Auth.currentUser ? getUserChurch(Auth.currentUser.uid) : null;
     
-    if (!userChurchId) {
+    if (userChurches.length === 0) {
         return `
         <div class="fade-up">
             <div class="card" style="text-align:center;padding:var(--space-2xl)">
@@ -2049,19 +2158,48 @@ function renderMyChurch() {
                     Link your account to your local church to access discipleship materials, announcements, and stay connected with your congregation.
                 </p>
                 <button class="btn btn-primary btn-lg" onclick="showChurchSearch()">Find My Church</button>
+                <p style="font-size:0.85rem;color:var(--text-tertiary);margin-top:var(--space-md)">You can connect up to 5 churches</p>
             </div>
         </div>`;
     }
     
-    const church = getChurchData(userChurchId);
-    const social = church.socialMedia || {};
+    const church = getChurchData(activeChurchId);
+    const social = church?.socialMedia || {};
     
     return `
     <div class="fade-up">
-        <!-- Church Header -->
+        <!-- Church Switcher -->
+        ${userChurches.length > 1 || userChurches.length < 5 ? `
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
+                <h3 style="margin:0">My Churches</h3>
+                ${userChurches.length < 5 ? `<button class="btn btn-ghost" onclick="showChurchSearch()" style="font-size:0.9rem">+ Add Church</button>` : ''}
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:var(--space-sm)">
+                ${userChurches.map(cId => {
+                    const c = getChurchData(cId);
+                    const isActive = cId === activeChurchId;
+                    return `
+                    <div style="display:flex;align-items:center;gap:var(--space-sm);padding:var(--space-sm) var(--space-md);background:${isActive ? 'linear-gradient(135deg,var(--root-green),var(--leaf-green))' : 'var(--hover-bg)'};border-radius:var(--radius-md);cursor:pointer;${isActive ? 'color:white' : ''}" onclick="switchChurch('${cId}')">
+                        <span>⛪</span>
+                        <span style="font-size:0.9rem;font-weight:${isActive ? '600' : '400'}">${c?.name || 'Unknown'}</span>
+                        ${isActive ? '<span style="font-size:0.8rem">✓</span>' : ''}
+                    </div>`;
+                }).join('')}
+            </div>
+            <p style="font-size:0.8rem;color:var(--text-tertiary);margin-top:var(--space-sm)">${userChurches.length}/5 churches connected</p>
+        </div>
+        ` : ''}
+        
+        <!-- Active Church Header -->
         <div class="welcome-banner" style="background:linear-gradient(135deg,var(--root-green),var(--leaf-green))">
-            <h2 class="welcome-title">⛪ ${church.name}</h2>
-            <p class="welcome-subtitle">${church.address}</p>
+            <div style="display:flex;justify-content:space-between;align-items:start">
+                <div>
+                    <h2 class="welcome-title">⛪ ${church?.name || 'Church'}</h2>
+                    <p class="welcome-subtitle">${church?.address || ''}</p>
+                </div>
+                <button class="btn btn-ghost" onclick="showManageChurchModal('${activeChurchId}')" style="color:white;font-size:0.85rem;opacity:0.8">⚙️</button>
+            </div>
         </div>
         
         <!-- Social Media Links -->
@@ -2071,14 +2209,15 @@ function renderMyChurch() {
                 ${social.facebook ? `<a href="${social.facebook}" target="_blank" class="btn btn-secondary" style="flex:1;min-width:120px;justify-content:center">📘 Facebook</a>` : ''}
                 ${social.instagram ? `<a href="${social.instagram}" target="_blank" class="btn btn-secondary" style="flex:1;min-width:120px;justify-content:center">📸 Instagram</a>` : ''}
                 ${social.youtube ? `<a href="${social.youtube}" target="_blank" class="btn btn-secondary" style="flex:1;min-width:120px;justify-content:center">🎥 YouTube</a>` : ''}
-                ${church.website ? `<a href="${church.website}" target="_blank" class="btn btn-secondary" style="flex:1;min-width:120px;justify-content:center">🌐 Website</a>` : ''}
+                ${church?.website ? `<a href="${church.website}" target="_blank" class="btn btn-secondary" style="flex:1;min-width:120px;justify-content:center">🌐 Website</a>` : ''}
+                ${!social.facebook && !social.instagram && !social.youtube && !church?.website ? '<p style="color:var(--text-tertiary)">No social links available</p>' : ''}
             </div>
         </div>
         
         <!-- Announcements -->
         <div class="card" style="margin-bottom:var(--space-lg)">
             <h3 style="margin-bottom:var(--space-lg)">📢 Announcements</h3>
-            ${church.announcements?.length ? church.announcements.map(a => `
+            ${church?.announcements?.length ? church.announcements.map(a => `
                 <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);border-left:4px solid var(--root-green)">
                     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:var(--space-sm)">
                         <strong>${a.title}</strong>
@@ -2092,7 +2231,7 @@ function renderMyChurch() {
         <!-- Resources / Discipleship Materials -->
         <div class="card" style="margin-bottom:var(--space-lg)">
             <h3 style="margin-bottom:var(--space-lg)">📄 Discipleship Resources</h3>
-            ${church.resources?.length ? church.resources.map(r => `
+            ${church?.resources?.length ? church.resources.map(r => `
                 <a href="${r.url}" target="_blank" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);text-decoration:none;color:inherit">
                     <div style="width:50px;height:50px;background:linear-gradient(135deg,#ef4444,#f97316);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0">📄</div>
                     <div style="flex:1;min-width:0">
@@ -2107,11 +2246,72 @@ function renderMyChurch() {
         <!-- Church Info -->
         <div class="card">
             <h3 style="margin-bottom:var(--space-md)">📍 Contact Information</h3>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-sm)"><strong>Address:</strong> ${church.address}</p>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-sm)"><strong>Phone:</strong> ${church.phone}</p>
-            ${church.website ? `<p style="color:var(--text-secondary)"><strong>Website:</strong> <a href="${church.website}" target="_blank" style="color:var(--root-green)">${church.website}</a></p>` : ''}
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-sm)"><strong>Address:</strong> ${church?.address || 'Not available'}</p>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-sm)"><strong>Phone:</strong> ${church?.phone || 'Not available'}</p>
+            ${church?.website ? `<p style="color:var(--text-secondary)"><strong>Website:</strong> <a href="${church.website}" target="_blank" style="color:var(--root-green)">${church.website}</a></p>` : ''}
         </div>
     </div>`;
+}
+
+function switchChurch(churchId) {
+    if (Auth.currentUser) {
+        setActiveChurch(Auth.currentUser.uid, churchId);
+        toast('Switched church! ⛪', 'success');
+        render();
+    }
+}
+
+function showManageChurchModal(churchId) {
+    const church = getChurchData(churchId);
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:400px">
+            <div class="modal-header">
+                <h3 class="modal-title">⚙️ ${church?.name || 'Church'}</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Manage your connection to this church.</p>
+                
+                <button class="btn btn-secondary btn-block" onclick="closeModal();switchChurch('${churchId}')" style="margin-bottom:var(--space-sm)">
+                    ✓ Set as Active Church
+                </button>
+                
+                <button class="btn btn-secondary btn-block" onclick="confirmRemoveChurch('${churchId}')" style="color:var(--error);border-color:var(--error)">
+                    🗑️ Remove Church
+                </button>
+            </div>
+        </div>
+    `);
+}
+
+function confirmRemoveChurch(churchId) {
+    const church = getChurchData(churchId);
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:400px">
+            <div class="modal-header">
+                <h3 class="modal-title" style="color:var(--error)">Remove Church?</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom:var(--space-lg)">Are you sure you want to remove <strong>${church?.name || 'this church'}</strong> from your account?</p>
+                <p style="font-size:0.85rem;color:var(--text-tertiary);margin-bottom:var(--space-lg)">You can always add it back later.</p>
+                
+                <div style="display:flex;gap:var(--space-md)">
+                    <button class="btn btn-secondary" onclick="closeModal()" style="flex:1">Cancel</button>
+                    <button class="btn btn-primary" onclick="removeChurchFromAccount('${churchId}')" style="flex:1;background:var(--error)">Remove</button>
+                </div>
+            </div>
+        </div>
+    `);
+}
+
+function removeChurchFromAccount(churchId) {
+    if (Auth.currentUser) {
+        removeUserChurch(Auth.currentUser.uid, churchId);
+        closeModal();
+        toast('Church removed', 'info');
+        render();
+    }
 }
 
 async function exportUserData() {
