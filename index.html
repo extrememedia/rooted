@@ -15,6 +15,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
     
     <style>
 /* ========== CSS RESET & VARIABLES ========== */
@@ -249,6 +250,7 @@ const firebaseConfig = {
 let firebaseInitialized = false;
 let auth = null;
 let db = null;
+let storage = null;
 
 function initFirebase() {
     try {
@@ -259,7 +261,9 @@ function initFirebase() {
         firebase.initializeApp(firebaseConfig);
         auth = firebase.auth();
         db = firebase.firestore();
+        storage = firebase.storage();
         firebaseInitialized = true;
+        console.log("Firebase initialized successfully");
         return true;
     } catch (e) {
         console.error("Firebase init error:", e);
@@ -553,16 +557,20 @@ const State = {
     notify() { this.listeners.forEach(fn => fn(this.current)); }
 };
 
-// ========== CHURCH DATABASE (Beta) ==========
+// ========== CHURCH DATABASE (Cloud-Based) ==========
+// Church admin accounts stored in Firestore
 const CHURCH_ADMIN_ACCOUNTS = {
     'admin': { password: '1234', churchId: 'faith-fellowship', churchName: 'Faith Fellowship Church', onboarded: true }
 };
 
-const CHURCHES_DB = {
+// Default church data (used as fallback/seed data)
+const DEFAULT_CHURCHES = {
     'faith-fellowship': {
         id: 'faith-fellowship',
         name: 'Faith Fellowship Church',
         address: '123 Main St, Hayward, CA 94541',
+        latitude: 37.6688,
+        longitude: -122.0808,
         phone: '(510) 555-0123',
         website: 'https://faithfellowship.example.com',
         socialMedia: {
@@ -570,18 +578,649 @@ const CHURCHES_DB = {
             instagram: 'https://instagram.com/faithfellowship',
             youtube: 'https://youtube.com/@faithfellowship'
         },
-        announcements: [
-            { id: 1, title: 'Wednesday Night Discipleship', date: '2026-01-29', content: 'Join us for our weekly study at 7pm!' },
-            { id: 2, title: 'Youth Group Winter Retreat', date: '2026-02-15', content: 'Sign up deadline is Feb 1st. See Pastor Mike for details.' }
-        ],
-        resources: [
-            { id: 1, title: 'Wednesday Discipleship Study - Week 4', type: 'pdf', date: '2026-01-22', url: '#study-week4' },
-            { id: 2, title: 'Sunday Sermon Notes - January 19', type: 'pdf', date: '2026-01-19', url: '#sermon-notes' }
-        ],
+        announcements: [],
+        resources: [],
+        checkInResources: [],
         enabledTools: ['seasons', 'spiritual-formation', 'bible-reading', 'prayer-journal', 'scripture-memory'],
         onboarded: true
     }
 };
+
+// Local cache for church data
+let churchCache = {};
+
+// ========== CHURCH DATABASE SERVICE ==========
+const ChurchDB = {
+    // Get church data from Firestore (with caching)
+    async getChurch(churchId) {
+        if (!churchId) return null;
+        
+        // Check cache first
+        if (churchCache[churchId]) {
+            return churchCache[churchId];
+        }
+        
+        if (!firebaseInitialized) {
+            // Local mode - use localStorage
+            const stored = JSON.parse(localStorage.getItem('rooted_church_data') || '{}');
+            const data = { ...DEFAULT_CHURCHES[churchId], ...stored[churchId] };
+            churchCache[churchId] = data;
+            return data;
+        }
+        
+        try {
+            const doc = await db.collection('churches').doc(churchId).get();
+            if (doc.exists) {
+                const data = doc.data();
+                churchCache[churchId] = data;
+                return data;
+            } else if (DEFAULT_CHURCHES[churchId]) {
+                // Seed default church to Firestore
+                await this.createChurch(churchId, DEFAULT_CHURCHES[churchId]);
+                return DEFAULT_CHURCHES[churchId];
+            }
+            return null;
+        } catch (e) {
+            console.error('Error getting church:', e);
+            return DEFAULT_CHURCHES[churchId] || null;
+        }
+    },
+    
+    // Create new church in Firestore
+    async createChurch(churchId, churchData) {
+        const data = {
+            id: churchId,
+            ...churchData,
+            createdAt: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString()
+        };
+        
+        if (!firebaseInitialized) {
+            const stored = JSON.parse(localStorage.getItem('rooted_church_data') || '{}');
+            stored[churchId] = data;
+            localStorage.setItem('rooted_church_data', JSON.stringify(stored));
+            churchCache[churchId] = data;
+            return churchId;
+        }
+        
+        try {
+            await db.collection('churches').doc(churchId).set(data);
+            churchCache[churchId] = data;
+            return churchId;
+        } catch (e) {
+            console.error('Error creating church:', e);
+            throw e;
+        }
+    },
+    
+    // Update church data in Firestore
+    async updateChurch(churchId, updates) {
+        if (!firebaseInitialized) {
+            const stored = JSON.parse(localStorage.getItem('rooted_church_data') || '{}');
+            stored[churchId] = { ...(stored[churchId] || {}), ...updates, updatedAt: new Date().toISOString() };
+            localStorage.setItem('rooted_church_data', JSON.stringify(stored));
+            churchCache[churchId] = { ...churchCache[churchId], ...updates };
+            return;
+        }
+        
+        try {
+            await db.collection('churches').doc(churchId).update({
+                ...updates,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            churchCache[churchId] = { ...churchCache[churchId], ...updates };
+        } catch (e) {
+            console.error('Error updating church:', e);
+            throw e;
+        }
+    },
+    
+    // Upload file to Firebase Storage
+    async uploadFile(churchId, file, folder = 'resources') {
+        if (!firebaseInitialized) {
+            // Local mode - return blob URL (temporary)
+            return {
+                url: URL.createObjectURL(file),
+                fileName: file.name,
+                isLocal: true
+            };
+        }
+        
+        try {
+            const fileName = `${Date.now()}_${file.name}`;
+            const path = `churches/${churchId}/${folder}/${fileName}`;
+            const ref = storage.ref(path);
+            
+            const snapshot = await ref.put(file);
+            const url = await snapshot.ref.getDownloadURL();
+            
+            return {
+                url,
+                fileName: file.name,
+                path,
+                isLocal: false
+            };
+        } catch (e) {
+            console.error('Error uploading file:', e);
+            throw e;
+        }
+    },
+    
+    // Delete file from Firebase Storage
+    async deleteFile(filePath) {
+        if (!firebaseInitialized || !filePath) return;
+        
+        try {
+            await storage.ref(filePath).delete();
+        } catch (e) {
+            console.error('Error deleting file:', e);
+        }
+    },
+    
+    // Add resource to church
+    async addResource(churchId, resource, isCheckIn = false) {
+        const church = await this.getChurch(churchId);
+        const fieldName = isCheckIn ? 'checkInResources' : 'resources';
+        const resources = church[fieldName] || [];
+        
+        resources.push({
+            id: Date.now(),
+            ...resource,
+            date: new Date().toISOString().split('T')[0]
+        });
+        
+        await this.updateChurch(churchId, { [fieldName]: resources });
+        return resources;
+    },
+    
+    // Delete resource from church
+    async deleteResource(churchId, resourceId, isCheckIn = false) {
+        const church = await this.getChurch(churchId);
+        const fieldName = isCheckIn ? 'checkInResources' : 'resources';
+        const resources = (church[fieldName] || []).filter(r => r.id !== resourceId);
+        
+        await this.updateChurch(churchId, { [fieldName]: resources });
+        return resources;
+    },
+    
+    // Add announcement
+    async addAnnouncement(churchId, announcement) {
+        const church = await this.getChurch(churchId);
+        const announcements = church.announcements || [];
+        
+        announcements.unshift({
+            id: Date.now(),
+            ...announcement,
+            date: new Date().toISOString().split('T')[0]
+        });
+        
+        await this.updateChurch(churchId, { announcements });
+        return announcements;
+    },
+    
+    // Delete announcement
+    async deleteAnnouncement(churchId, announcementId) {
+        const church = await this.getChurch(churchId);
+        const announcements = (church.announcements || []).filter(a => a.id !== announcementId);
+        
+        await this.updateChurch(churchId, { announcements });
+        return announcements;
+    },
+    
+    // Search churches
+    async searchChurches(query) {
+        if (!firebaseInitialized) {
+            const stored = JSON.parse(localStorage.getItem('rooted_church_data') || '{}');
+            const all = { ...DEFAULT_CHURCHES, ...stored };
+            const q = query.toLowerCase();
+            return Object.entries(all).filter(([id, church]) =>
+                church.name?.toLowerCase().includes(q) ||
+                church.address?.toLowerCase().includes(q)
+            ).map(([id, church]) => ({ id, ...church }));
+        }
+        
+        try {
+            // Simple search - in production would use Algolia or similar
+            const snapshot = await db.collection('churches').get();
+            const q = query.toLowerCase();
+            return snapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() }))
+                .filter(church =>
+                    church.name?.toLowerCase().includes(q) ||
+                    church.address?.toLowerCase().includes(q)
+                );
+        } catch (e) {
+            console.error('Error searching churches:', e);
+            return [];
+        }
+    },
+    
+    // Clear cache (useful when switching accounts)
+    clearCache() {
+        churchCache = {};
+    }
+};
+
+// ========== USER CHURCH SERVICE ==========
+const UserChurchDB = {
+    // Get user's connected churches
+    async getUserChurches(userId) {
+        if (!firebaseInitialized) {
+            const data = JSON.parse(localStorage.getItem('rooted_user_churches') || '{}');
+            return data[userId] || [];
+        }
+        
+        try {
+            const doc = await db.collection('users').doc(userId).get();
+            if (doc.exists) {
+                return doc.data().churches || [];
+            }
+            return [];
+        } catch (e) {
+            console.error('Error getting user churches:', e);
+            return [];
+        }
+    },
+    
+    // Add church to user
+    async addChurch(userId, churchId) {
+        if (!firebaseInitialized) {
+            const data = JSON.parse(localStorage.getItem('rooted_user_churches') || '{}');
+            const churches = data[userId] || [];
+            if (churches.includes(churchId) || churches.length >= 5) return false;
+            churches.push(churchId);
+            data[userId] = churches;
+            localStorage.setItem('rooted_user_churches', JSON.stringify(data));
+            return true;
+        }
+        
+        try {
+            const userRef = db.collection('users').doc(userId);
+            const doc = await userRef.get();
+            const churches = doc.exists ? (doc.data().churches || []) : [];
+            
+            if (churches.includes(churchId) || churches.length >= 5) return false;
+            
+            churches.push(churchId);
+            await userRef.update({ churches });
+            return true;
+        } catch (e) {
+            console.error('Error adding church:', e);
+            return false;
+        }
+    },
+    
+    // Remove church from user
+    async removeChurch(userId, churchId) {
+        if (!firebaseInitialized) {
+            const data = JSON.parse(localStorage.getItem('rooted_user_churches') || '{}');
+            data[userId] = (data[userId] || []).filter(id => id !== churchId);
+            localStorage.setItem('rooted_user_churches', JSON.stringify(data));
+            return;
+        }
+        
+        try {
+            const userRef = db.collection('users').doc(userId);
+            await userRef.update({
+                churches: firebase.firestore.FieldValue.arrayRemove(churchId)
+            });
+        } catch (e) {
+            console.error('Error removing church:', e);
+        }
+    },
+    
+    // Get/Set active church
+    async getActiveChurch(userId) {
+        if (!firebaseInitialized) {
+            return localStorage.getItem('rooted_active_church_' + userId) || null;
+        }
+        
+        try {
+            const doc = await db.collection('users').doc(userId).get();
+            return doc.exists ? doc.data().activeChurch : null;
+        } catch (e) {
+            return null;
+        }
+    },
+    
+    async setActiveChurch(userId, churchId) {
+        if (!firebaseInitialized) {
+            localStorage.setItem('rooted_active_church_' + userId, churchId);
+            return;
+        }
+        
+        try {
+            await db.collection('users').doc(userId).update({ activeChurch: churchId });
+        } catch (e) {
+            console.error('Error setting active church:', e);
+        }
+    },
+    
+    // Check-in functions
+    async checkIn(userId, churchId, churchName) {
+        const today = new Date().toISOString().split('T')[0];
+        const checkIn = {
+            churchId,
+            churchName,
+            date: today,
+            time: new Date().toISOString()
+        };
+        
+        if (!firebaseInitialized) {
+            const checkIns = JSON.parse(localStorage.getItem('rooted_checkins') || '{}');
+            if (!checkIns[userId]) checkIns[userId] = {};
+            checkIns[userId][churchId] = today;
+            localStorage.setItem('rooted_checkins', JSON.stringify(checkIns));
+            
+            const history = JSON.parse(localStorage.getItem('rooted_checkin_history') || '{}');
+            if (!history[userId]) history[userId] = [];
+            history[userId].push(checkIn);
+            localStorage.setItem('rooted_checkin_history', JSON.stringify(history));
+            return;
+        }
+        
+        try {
+            const userRef = db.collection('users').doc(userId);
+            await userRef.update({
+                [`checkIns.${churchId}`]: today,
+                checkInHistory: firebase.firestore.FieldValue.arrayUnion(checkIn)
+            });
+        } catch (e) {
+            console.error('Error checking in:', e);
+        }
+    },
+    
+    async isCheckedInToday(userId, churchId) {
+        const today = new Date().toISOString().split('T')[0];
+        
+        if (!firebaseInitialized) {
+            const checkIns = JSON.parse(localStorage.getItem('rooted_checkins') || '{}');
+            return checkIns[userId]?.[churchId] === today;
+        }
+        
+        try {
+            const doc = await db.collection('users').doc(userId).get();
+            return doc.exists && doc.data().checkIns?.[churchId] === today;
+        } catch (e) {
+            return false;
+        }
+    }
+};
+
+// ========== LEGACY WRAPPER FUNCTIONS ==========
+// These wrap the new async functions for compatibility with existing code
+let cachedUserChurches = [];
+let cachedActiveChurch = null;
+
+async function loadUserChurchData() {
+    if (!Auth.currentUser) return;
+    cachedUserChurches = await UserChurchDB.getUserChurches(Auth.currentUser.uid);
+    const activeId = await UserChurchDB.getActiveChurch(Auth.currentUser.uid);
+    cachedActiveChurch = activeId || cachedUserChurches[0] || null;
+}
+
+function getUserChurches(userId) {
+    return cachedUserChurches;
+}
+
+function getUserChurch(userId) {
+    return cachedActiveChurch;
+}
+
+async function addUserChurch(userId, churchId) {
+    const result = await UserChurchDB.addChurch(userId, churchId);
+    if (result) {
+        cachedUserChurches.push(churchId);
+        if (!cachedActiveChurch) cachedActiveChurch = churchId;
+    }
+    return result;
+}
+
+async function removeUserChurch(userId, churchId) {
+    await UserChurchDB.removeChurch(userId, churchId);
+    cachedUserChurches = cachedUserChurches.filter(id => id !== churchId);
+    if (cachedActiveChurch === churchId) {
+        cachedActiveChurch = cachedUserChurches[0] || null;
+    }
+}
+
+async function setActiveChurch(userId, churchId) {
+    await UserChurchDB.setActiveChurch(userId, churchId);
+    cachedActiveChurch = churchId;
+}
+
+function setUserChurch(userId, churchId) {
+    addUserChurch(userId, churchId);
+    setActiveChurch(userId, churchId);
+}
+
+function getChurchData(churchId) {
+    // Sync wrapper - returns cached data
+    return churchCache[churchId] || DEFAULT_CHURCHES[churchId] || null;
+}
+
+async function getChurchDataAsync(churchId) {
+    return await ChurchDB.getChurch(churchId);
+}
+
+async function updateChurchData(churchId, updates) {
+    await ChurchDB.updateChurch(churchId, updates);
+}
+
+async function createNewChurch(churchData) {
+    const churchId = churchData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    await ChurchDB.createChurch(churchId, {
+        ...churchData,
+        announcements: [],
+        resources: [],
+        checkInResources: [],
+        enabledTools: ['seasons', 'spiritual-formation', 'bible-reading', 'prayer-journal', 'scripture-memory'],
+        onboarded: true
+    });
+    return churchId;
+}
+
+function isChurchOnboarded(churchId) {
+    const church = getChurchData(churchId);
+    return church && church.onboarded === true;
+}
+
+async function isCheckedInToday(churchId) {
+    if (!Auth.currentUser) return false;
+    return await UserChurchDB.isCheckedInToday(Auth.currentUser.uid, churchId);
+}
+
+// ========== GEOFENCING SYSTEM ==========
+const GEOFENCE_RADIUS_FEET = 250;
+const FEET_PER_METER = 3.28084;
+
+let userLocation = null;
+let locationWatchId = null;
+let nearbyChurches = [];
+let checkedInTodayCache = {};
+
+function startLocationTracking() {
+    if (!navigator.geolocation) {
+        console.log('Geolocation not supported');
+        return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            userLocation = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy
+            };
+            checkNearbyChurches();
+        },
+        (error) => {
+            console.log('Location error:', error.message);
+        },
+        { enableHighAccuracy: true }
+    );
+    
+    locationWatchId = navigator.geolocation.watchPosition(
+        (position) => {
+            userLocation = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy
+            };
+            checkNearbyChurches();
+        },
+        (error) => {
+            console.log('Location watch error:', error.message);
+        },
+        { enableHighAccuracy: true, maximumAge: 30000, timeout: 27000 }
+    );
+}
+
+function stopLocationTracking() {
+    if (locationWatchId) {
+        navigator.geolocation.clearWatch(locationWatchId);
+        locationWatchId = null;
+    }
+}
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3;
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+    
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    
+    return R * c;
+}
+
+function isWithinGeofence(churchId) {
+    if (!userLocation) return false;
+    
+    const church = getChurchData(churchId);
+    if (!church || !church.latitude || !church.longitude) return false;
+    
+    const distanceMeters = calculateDistance(
+        userLocation.latitude, userLocation.longitude,
+        church.latitude, church.longitude
+    );
+    
+    return distanceMeters * FEET_PER_METER <= GEOFENCE_RADIUS_FEET;
+}
+
+function getDistanceToChurch(churchId) {
+    if (!userLocation) return null;
+    
+    const church = getChurchData(churchId);
+    if (!church || !church.latitude || !church.longitude) return null;
+    
+    const distanceMeters = calculateDistance(
+        userLocation.latitude, userLocation.longitude,
+        church.latitude, church.longitude
+    );
+    
+    return Math.round(distanceMeters * FEET_PER_METER);
+}
+
+async function checkNearbyChurches() {
+    if (!userLocation || !Auth.currentUser) return;
+    
+    const userChurches = getUserChurches(Auth.currentUser.uid);
+    const previousNearby = [...nearbyChurches];
+    nearbyChurches = [];
+    
+    for (const churchId of userChurches) {
+        const church = await getChurchDataAsync(churchId);
+        if (church?.latitude && church?.longitude && isWithinGeofence(churchId)) {
+            nearbyChurches.push(churchId);
+            
+            if (!previousNearby.includes(churchId)) {
+                const isChecked = await isCheckedInToday(churchId);
+                if (!isChecked) {
+                    showCheckInPopup(churchId);
+                }
+            }
+        }
+    }
+}
+
+function showCheckInPopup(churchId) {
+    const church = getChurchData(churchId);
+    if (!church) return;
+    
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:400px">
+            <div class="modal-header" style="background:linear-gradient(135deg,var(--root-green),var(--leaf-green));color:white;border-radius:var(--radius-lg) var(--radius-lg) 0 0;margin:-24px -24px 24px -24px;padding:24px">
+                <div style="text-align:center">
+                    <div style="font-size:3rem;margin-bottom:var(--space-sm)">⛪</div>
+                    <h3 style="margin:0;color:white">Welcome to ${church.name}!</h3>
+                </div>
+            </div>
+            <div class="modal-body" style="text-align:center">
+                <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">You're within ${GEOFENCE_RADIUS_FEET} feet of the church. Would you like to check in?</p>
+                
+                <div style="display:flex;gap:var(--space-md)">
+                    <button class="btn btn-secondary" onclick="closeModal()" style="flex:1">Not Now</button>
+                    <button class="btn btn-primary" onclick="checkInToChurch('${churchId}')" style="flex:1">✓ Check In</button>
+                </div>
+            </div>
+        </div>
+    `);
+}
+
+async function checkInToChurch(churchId) {
+    const church = getChurchData(churchId);
+    
+    await UserChurchDB.checkIn(Auth.currentUser.uid, churchId, church.name);
+    checkedInTodayCache[churchId] = true;
+    
+    closeModal();
+    toast('✓ Checked in to ' + church.name + '!', 'success');
+    
+    if (church.checkInResources?.length > 0) {
+        setTimeout(() => showCheckInResources(churchId), 500);
+    }
+    
+    render();
+}
+
+function showCheckInResources(churchId) {
+    const church = getChurchData(churchId);
+    if (!church?.checkInResources?.length) return;
+    
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
+            <div class="modal-header">
+                <h3 class="modal-title">📄 Available Resources</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Since you're at ${church.name}, here are some resources for you:</p>
+                
+                ${church.checkInResources.map(r => `
+                    <a href="${r.url}" target="_blank" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);text-decoration:none;color:inherit">
+                        <div style="width:40px;height:40px;background:linear-gradient(135deg,var(--root-green),var(--leaf-green));border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📄</div>
+                        <div style="flex:1;min-width:0">
+                            <strong style="display:block;font-size:0.95rem">${r.title}</strong>
+                            <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">${r.type.toUpperCase()}</p>
+                        </div>
+                        <span style="color:var(--root-green)">↓</span>
+                    </a>
+                `).join('')}
+                
+                <button class="btn btn-secondary btn-block" onclick="closeModal()" style="margin-top:var(--space-lg)">Close</button>
+            </div>
+        </div>
+    `);
+}
+
+function getCheckInHistory(userId) {
+    // For backwards compatibility - async version in UserChurchDB
+    return [];
+}
 
 // Church onboarding state
 let churchOnboarding = {
@@ -599,101 +1238,6 @@ let churchOnboarding = {
         }
     }
 };
-
-// Store user church selections (supports up to 5 churches)
-function getUserChurches(userId) {
-    const data = JSON.parse(localStorage.getItem('rooted_user_churches') || '{}');
-    return data[userId] || [];
-}
-
-function getUserChurch(userId) {
-    // Returns the active/primary church
-    const churches = getUserChurches(userId);
-    const activeIdx = parseInt(localStorage.getItem('rooted_active_church_' + userId) || '0');
-    return churches[activeIdx] || churches[0] || null;
-}
-
-function addUserChurch(userId, churchId) {
-    const data = JSON.parse(localStorage.getItem('rooted_user_churches') || '{}');
-    const churches = data[userId] || [];
-    
-    if (churches.includes(churchId)) {
-        return false; // Already added
-    }
-    
-    if (churches.length >= 5) {
-        return false; // Max 5 churches
-    }
-    
-    churches.push(churchId);
-    data[userId] = churches;
-    localStorage.setItem('rooted_user_churches', JSON.stringify(data));
-    return true;
-}
-
-function removeUserChurch(userId, churchId) {
-    const data = JSON.parse(localStorage.getItem('rooted_user_churches') || '{}');
-    const churches = data[userId] || [];
-    data[userId] = churches.filter(id => id !== churchId);
-    localStorage.setItem('rooted_user_churches', JSON.stringify(data));
-    
-    // Reset active church if removed
-    const activeIdx = parseInt(localStorage.getItem('rooted_active_church_' + userId) || '0');
-    if (activeIdx >= data[userId].length) {
-        localStorage.setItem('rooted_active_church_' + userId, '0');
-    }
-}
-
-function setActiveChurch(userId, churchId) {
-    const churches = getUserChurches(userId);
-    const idx = churches.indexOf(churchId);
-    if (idx !== -1) {
-        localStorage.setItem('rooted_active_church_' + userId, idx.toString());
-    }
-}
-
-function setUserChurch(userId, churchId) {
-    // Legacy support - adds church if not exists, sets as active
-    addUserChurch(userId, churchId);
-    setActiveChurch(userId, churchId);
-}
-
-// Store church data (for admin uploads)
-function getChurchData(churchId) {
-    const stored = JSON.parse(localStorage.getItem('rooted_church_data') || '{}');
-    return { ...CHURCHES_DB[churchId], ...stored[churchId] };
-}
-
-function updateChurchData(churchId, updates) {
-    const stored = JSON.parse(localStorage.getItem('rooted_church_data') || '{}');
-    stored[churchId] = { ...(stored[churchId] || {}), ...updates };
-    localStorage.setItem('rooted_church_data', JSON.stringify(stored));
-}
-
-function createNewChurch(churchData) {
-    const churchId = churchData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-    const stored = JSON.parse(localStorage.getItem('rooted_church_data') || '{}');
-    stored[churchId] = {
-        id: churchId,
-        ...churchData,
-        announcements: [],
-        resources: [],
-        enabledTools: ['seasons', 'spiritual-formation', 'bible-reading', 'prayer-journal', 'scripture-memory'],
-        onboarded: true,
-        createdAt: new Date().toISOString()
-    };
-    localStorage.setItem('rooted_church_data', JSON.stringify(stored));
-    
-    // Also add to local churches DB for searching
-    CHURCHES_DB[churchId] = stored[churchId];
-    
-    return churchId;
-}
-
-function isChurchOnboarded(churchId) {
-    const church = getChurchData(churchId);
-    return church && church.onboarded === true;
-}
 
 // ========== HELPERS ==========
 function toast(message, type = 'info') {
@@ -847,16 +1391,18 @@ function renderChurchLogin() {
     </div>`;
 }
 
-function handleChurchAdminLogin(e) {
+async function handleChurchAdminLogin(e) {
     e.preventDefault();
     const username = document.getElementById('churchUsername').value;
     const password = document.getElementById('churchPassword').value;
     
     const admin = CHURCH_ADMIN_ACCOUNTS[username];
     if (admin && admin.password === password) {
+        // Load church data from cloud
+        const church = await ChurchDB.getChurch(admin.churchId);
+        
         // Check if church needs onboarding
-        if (!admin.onboarded || !isChurchOnboarded(admin.churchId)) {
-            // Start onboarding flow
+        if (!admin.onboarded || !church?.onboarded) {
             churchOnboarding = {
                 step: 1,
                 adminUsername: username,
@@ -873,7 +1419,6 @@ function handleChurchAdminLogin(e) {
             return;
         }
         
-        const church = getChurchData(admin.churchId);
         State.set({ 
             screen: 'app', 
             accountType: 'church',
@@ -1311,8 +1856,10 @@ function renderForgotPassword() {
 async function handleGoogleSignIn() {
     try {
         await Auth.signInWithGoogle();
+        await loadUserChurchData();
         toast('Welcome to Rooted! 🌱', 'success');
         State.set({ screen: 'app', user: Auth.currentUser, activeNav: 'dashboard' });
+        startLocationTracking();
     } catch (e) {
         toast(e.message || 'Google sign-in failed', 'error');
     }
@@ -1328,8 +1875,10 @@ async function handleEmailSignIn(e) {
         const email = document.getElementById('loginEmail').value;
         const password = document.getElementById('loginPassword').value;
         await Auth.signInWithEmail(email, password);
+        await loadUserChurchData();
         toast('Welcome back! 🌱', 'success');
         State.set({ screen: 'app', user: Auth.currentUser, activeNav: 'dashboard' });
+        startLocationTracking();
     } catch (e) {
         toast(e.message || 'Sign in failed', 'error');
         btn.disabled = false;
@@ -1363,8 +1912,10 @@ async function handleEmailSignUp(e) {
             localStorage.setItem('rooted_users', JSON.stringify(users));
         }
         
+        await loadUserChurchData();
         toast('Welcome to Rooted! 🌱', 'success');
         State.set({ screen: 'app', user: Auth.currentUser, activeNav: 'dashboard' });
+        startLocationTracking();
     } catch (e) {
         toast(e.message || 'Sign up failed', 'error');
         btn.disabled = false;
@@ -1385,6 +1936,7 @@ async function handlePasswordReset(e) {
 }
 
 async function handleSignOut() {
+    stopLocationTracking();
     await Auth.signOut();
     toast('Signed out', 'info');
     State.set({ screen: 'welcome', user: null, accountType: 'user' });
@@ -1412,11 +1964,17 @@ function renderChurchAdminApp() {
                 <div class="nav-item ${activeNav === 'church-resources' ? 'active' : ''}" onclick="navigate('church-resources')">
                     <span class="nav-item-icon">📄</span> Resources & PDFs
                 </div>
+                <div class="nav-item ${activeNav === 'church-checkin-resources' ? 'active' : ''}" onclick="navigate('church-checkin-resources')">
+                    <span class="nav-item-icon">📍</span> Check-In Resources
+                </div>
                 <div class="nav-item ${activeNav === 'church-announcements' ? 'active' : ''}" onclick="navigate('church-announcements')">
                     <span class="nav-item-icon">📢</span> Announcements
                 </div>
                 <div class="nav-item ${activeNav === 'church-social' ? 'active' : ''}" onclick="navigate('church-social')">
                     <span class="nav-item-icon">🔗</span> Social Media
+                </div>
+                <div class="nav-item ${activeNav === 'church-location' ? 'active' : ''}" onclick="navigate('church-location')">
+                    <span class="nav-item-icon">🗺️</span> Location & Geofence
                 </div>
                 <div class="nav-item ${activeNav === 'church-tools' ? 'active' : ''}" onclick="navigate('church-tools')">
                     <span class="nav-item-icon">🧰</span> Enabled Tools
@@ -1453,8 +2011,10 @@ function getChurchPageTitle(nav) {
     const titles = { 
         'church-dashboard': 'Church Dashboard', 
         'church-resources': 'Resources & PDFs', 
+        'church-checkin-resources': 'Check-In Resources',
         'church-announcements': 'Announcements',
         'church-social': 'Social Media Links',
+        'church-location': 'Location & Geofence',
         'church-tools': 'Enabled Tools'
     };
     return titles[nav] || 'Dashboard';
@@ -1464,8 +2024,10 @@ function renderChurchPage(page) {
     switch(page) {
         case 'church-dashboard': return renderChurchDashboard();
         case 'church-resources': return renderChurchResources();
+        case 'church-checkin-resources': return renderChurchCheckInResources();
         case 'church-announcements': return renderChurchAnnouncements();
         case 'church-social': return renderChurchSocial();
+        case 'church-location': return renderChurchLocation();
         case 'church-tools': return renderChurchTools();
         default: return renderChurchDashboard();
     }
@@ -1803,6 +2365,200 @@ function handleToolsUpdate(e) {
     const enabledTools = Object.keys(TOOLS).filter(id => document.getElementById('tool-' + id)?.checked);
     updateChurchData(State.current.user.churchId, { enabledTools });
     toast('Tool settings updated! 🧰', 'success');
+}
+
+function renderChurchCheckInResources() {
+    const church = getChurchData(State.current.user.churchId);
+    const checkInResources = church.checkInResources || [];
+    
+    return `
+    <div class="fade-up">
+        <div class="card" style="margin-bottom:var(--space-lg);background:linear-gradient(135deg,var(--success),#16a34a);color:white">
+            <div style="display:flex;align-items:center;gap:var(--space-md)">
+                <div style="font-size:2.5rem">📍</div>
+                <div>
+                    <h3 style="margin:0;color:white">Check-In Resources</h3>
+                    <p style="margin:0;opacity:0.9">These resources are only visible to members when they check in at your church location (within ${GEOFENCE_RADIUS_FEET} feet).</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="margin-bottom:var(--space-md)">📄 Add Check-In Resource</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Upload resources that members can access when they're physically at church (bulletins, connection cards, visitor packets, etc.)</p>
+            
+            <form onsubmit="handleCheckInResourceUpload(event)">
+                <div class="input-group">
+                    <label class="input-label">Resource Title</label>
+                    <input type="text" class="input-field" id="checkinResourceTitle" placeholder="e.g. This Week's Bulletin" required>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Resource Type</label>
+                    <select class="input-field" id="checkinResourceType">
+                        <option value="pdf">PDF Document</option>
+                        <option value="bulletin">Bulletin</option>
+                        <option value="card">Connection Card</option>
+                        <option value="packet">Welcome Packet</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Upload File (PDF)</label>
+                    <input type="file" class="input-field" id="checkinResourceFile" accept=".pdf" style="padding:var(--space-md)">
+                    <p style="font-size:0.8rem;color:var(--text-tertiary);margin-top:var(--space-xs)">Max 10MB. PDF files only.</p>
+                </div>
+                <button type="submit" class="btn btn-primary">Add Check-In Resource</button>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h3 style="margin-bottom:var(--space-lg)">Current Check-In Resources</h3>
+            ${checkInResources.length ? checkInResources.map(r => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);border-left:4px solid var(--success)">
+                    <div style="display:flex;align-items:center;gap:var(--space-md)">
+                        <div style="width:40px;height:40px;background:linear-gradient(135deg,var(--success),#16a34a);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.2rem">📄</div>
+                        <div>
+                            <strong>${r.title}</strong>
+                            <p style="font-size:0.85rem;color:var(--text-tertiary)">${r.type.toUpperCase()} • Added ${r.date}</p>
+                        </div>
+                    </div>
+                    <button class="btn btn-ghost" style="color:var(--error)" onclick="deleteCheckInResource(${r.id})">🗑️</button>
+                </div>
+            `).join('') : '<p style="color:var(--text-tertiary)">No check-in resources added yet. Add resources that members can access when they arrive at church.</p>'}
+        </div>
+    </div>`;
+}
+
+function handleCheckInResourceUpload(e) {
+    e.preventDefault();
+    const title = document.getElementById('checkinResourceTitle').value;
+    const type = document.getElementById('checkinResourceType').value;
+    const file = document.getElementById('checkinResourceFile').files[0];
+    
+    const church = getChurchData(State.current.user.churchId);
+    const checkInResources = church.checkInResources || [];
+    
+    checkInResources.push({
+        id: Date.now(),
+        title,
+        type,
+        date: new Date().toISOString().split('T')[0],
+        url: file ? URL.createObjectURL(file) : '#',
+        fileName: file?.name || 'resource.pdf'
+    });
+    
+    updateChurchData(State.current.user.churchId, { checkInResources });
+    toast('Check-in resource added! 📍', 'success');
+    render();
+}
+
+function deleteCheckInResource(id) {
+    const church = getChurchData(State.current.user.churchId);
+    const checkInResources = (church.checkInResources || []).filter(r => r.id !== id);
+    updateChurchData(State.current.user.churchId, { checkInResources });
+    toast('Check-in resource deleted', 'info');
+    render();
+}
+
+function renderChurchLocation() {
+    const church = getChurchData(State.current.user.churchId);
+    
+    return `
+    <div class="fade-up">
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="margin-bottom:var(--space-md)">🗺️ Church Location & Geofencing</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Set your church's exact location for geofencing. Members within ${GEOFENCE_RADIUS_FEET} feet will be able to check in and access on-site resources.</p>
+            
+            <form onsubmit="handleLocationUpdate(event)">
+                <div class="input-group">
+                    <label class="input-label">Church Address</label>
+                    <input type="text" class="input-field" id="locationAddress" value="${church.address || ''}" placeholder="123 Main St, City, State ZIP">
+                </div>
+                
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">
+                    <div class="input-group">
+                        <label class="input-label">Latitude</label>
+                        <input type="number" step="any" class="input-field" id="locationLat" value="${church.latitude || ''}" placeholder="37.6688">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Longitude</label>
+                        <input type="number" step="any" class="input-field" id="locationLng" value="${church.longitude || ''}" placeholder="-122.0808">
+                    </div>
+                </div>
+                
+                <p style="font-size:0.85rem;color:var(--text-tertiary);margin-bottom:var(--space-lg)">
+                    💡 <strong>Tip:</strong> Find your coordinates on <a href="https://www.google.com/maps" target="_blank" style="color:var(--root-green)">Google Maps</a>. Right-click on your church location and select "What's here?" to see the coordinates.
+                </p>
+                
+                <button type="submit" class="btn btn-primary">Save Location</button>
+                <button type="button" class="btn btn-secondary" onclick="getCurrentLocation()" style="margin-left:var(--space-sm)">📍 Use My Location</button>
+            </form>
+        </div>
+        
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="margin-bottom:var(--space-md)">⚙️ Geofence Settings</h3>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md)">
+                <div>
+                    <strong>Check-in Radius</strong>
+                    <p style="font-size:0.85rem;color:var(--text-tertiary);margin:0">${GEOFENCE_RADIUS_FEET} feet from church location</p>
+                </div>
+                <span style="background:var(--success);color:white;padding:6px 12px;border-radius:20px;font-size:0.85rem">Active</span>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3 style="margin-bottom:var(--space-md)">📊 Current Status</h3>
+            ${church.latitude && church.longitude ? `
+                <div style="padding:var(--space-md);background:linear-gradient(135deg,var(--success),#16a34a);border-radius:var(--radius-md);color:white;margin-bottom:var(--space-md)">
+                    <strong>✓ Location Configured</strong>
+                    <p style="margin:var(--space-xs) 0 0 0;opacity:0.9;font-size:0.9rem">Lat: ${church.latitude}, Lng: ${church.longitude}</p>
+                </div>
+                <p style="color:var(--text-secondary);font-size:0.9rem">Members can now check in when they're within ${GEOFENCE_RADIUS_FEET} feet of your church.</p>
+            ` : `
+                <div style="padding:var(--space-md);background:var(--warning);border-radius:var(--radius-md);color:white">
+                    <strong>⚠️ Location Not Set</strong>
+                    <p style="margin:var(--space-xs) 0 0 0;opacity:0.9;font-size:0.9rem">Add your church coordinates above to enable check-ins.</p>
+                </div>
+            `}
+        </div>
+    </div>`;
+}
+
+function handleLocationUpdate(e) {
+    e.preventDefault();
+    const address = document.getElementById('locationAddress').value;
+    const latitude = parseFloat(document.getElementById('locationLat').value);
+    const longitude = parseFloat(document.getElementById('locationLng').value);
+    
+    if (isNaN(latitude) || isNaN(longitude)) {
+        toast('Please enter valid coordinates', 'error');
+        return;
+    }
+    
+    updateChurchData(State.current.user.churchId, { address, latitude, longitude });
+    toast('Church location updated! 🗺️', 'success');
+    render();
+}
+
+function getCurrentLocation() {
+    if (!navigator.geolocation) {
+        toast('Geolocation not supported by your browser', 'error');
+        return;
+    }
+    
+    toast('Getting your location...', 'info');
+    
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            document.getElementById('locationLat').value = position.coords.latitude.toFixed(6);
+            document.getElementById('locationLng').value = position.coords.longitude.toFixed(6);
+            toast('Location found! Review and save.', 'success');
+        },
+        (error) => {
+            toast('Could not get location: ' + error.message, 'error');
+        },
+        { enableHighAccuracy: true }
+    );
 }
 
 // ========== MAIN APP ==========
@@ -2165,6 +2921,9 @@ function renderMyChurch() {
     
     const church = getChurchData(activeChurchId);
     const social = church?.socialMedia || {};
+    const isNearby = isWithinGeofence(activeChurchId);
+    const isCheckedIn = isCheckedInToday(activeChurchId);
+    const distanceFeet = getDistanceToChurch(activeChurchId);
     
     return `
     <div class="fade-up">
@@ -2179,15 +2938,63 @@ function renderMyChurch() {
                 ${userChurches.map(cId => {
                     const c = getChurchData(cId);
                     const isActive = cId === activeChurchId;
+                    const cNearby = isWithinGeofence(cId);
                     return `
                     <div style="display:flex;align-items:center;gap:var(--space-sm);padding:var(--space-sm) var(--space-md);background:${isActive ? 'linear-gradient(135deg,var(--root-green),var(--leaf-green))' : 'var(--hover-bg)'};border-radius:var(--radius-md);cursor:pointer;${isActive ? 'color:white' : ''}" onclick="switchChurch('${cId}')">
                         <span>⛪</span>
                         <span style="font-size:0.9rem;font-weight:${isActive ? '600' : '400'}">${c?.name || 'Unknown'}</span>
+                        ${cNearby ? '<span style="font-size:0.7rem;background:${isActive ? "rgba(255,255,255,0.3)" : "var(--success)"};color:${isActive ? "white" : "white"};padding:2px 6px;border-radius:10px">📍 Nearby</span>' : ''}
                         ${isActive ? '<span style="font-size:0.8rem">✓</span>' : ''}
                     </div>`;
                 }).join('')}
             </div>
             <p style="font-size:0.8rem;color:var(--text-tertiary);margin-top:var(--space-sm)">${userChurches.length}/5 churches connected</p>
+        </div>
+        ` : ''}
+        
+        <!-- Check-in Status Banner -->
+        ${isNearby ? `
+        <div class="card" style="margin-bottom:var(--space-lg);background:linear-gradient(135deg,${isCheckedIn ? 'var(--success)' : 'var(--warning)'},${isCheckedIn ? '#16a34a' : '#ea580c'});color:white">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="display:flex;align-items:center;gap:var(--space-md)">
+                    <div style="font-size:2rem">${isCheckedIn ? '✓' : '📍'}</div>
+                    <div>
+                        <strong style="display:block">${isCheckedIn ? 'Checked In!' : 'You\'re at ' + (church?.name || 'church')}</strong>
+                        <span style="font-size:0.85rem;opacity:0.9">${isCheckedIn ? 'Welcome! Access your on-site resources below.' : 'Tap to check in and access exclusive resources'}</span>
+                    </div>
+                </div>
+                ${!isCheckedIn ? `<button class="btn" onclick="checkInToChurch('${activeChurchId}')" style="background:white;color:var(--warning)">Check In</button>` : ''}
+            </div>
+        </div>
+        ` : distanceFeet ? `
+        <div class="card" style="margin-bottom:var(--space-lg);background:var(--hover-bg)">
+            <div style="display:flex;align-items:center;gap:var(--space-md)">
+                <div style="font-size:1.5rem">📍</div>
+                <div>
+                    <strong style="display:block">Distance to ${church?.name || 'church'}</strong>
+                    <span style="font-size:0.85rem;color:var(--text-tertiary)">${distanceFeet.toLocaleString()} feet away • Check in available within ${GEOFENCE_RADIUS_FEET} feet</span>
+                </div>
+            </div>
+        </div>
+        ` : ''}
+        
+        <!-- On-Site Resources (only visible when checked in) -->
+        ${isCheckedIn && church?.checkInResources?.length ? `
+        <div class="card" style="margin-bottom:var(--space-lg);border:2px solid var(--success)">
+            <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-md)">
+                <span style="background:var(--success);color:white;padding:4px 10px;border-radius:20px;font-size:0.8rem">📍 On-Site Only</span>
+                <h3 style="margin:0">Resources Available Now</h3>
+            </div>
+            ${church.checkInResources.map(r => `
+                <a href="${r.url}" target="_blank" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);text-decoration:none;color:inherit">
+                    <div style="width:40px;height:40px;background:linear-gradient(135deg,var(--success),#16a34a);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📄</div>
+                    <div style="flex:1;min-width:0">
+                        <strong style="display:block;font-size:0.95rem">${r.title}</strong>
+                        <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">${r.type.toUpperCase()}</p>
+                    </div>
+                    <span style="color:var(--success)">↓</span>
+                </a>
+            `).join('')}
         </div>
         ` : ''}
         
