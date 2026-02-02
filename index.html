@@ -794,6 +794,23 @@ const ChurchDB = {
         }
     },
     
+    // Get all churches (for user selection)
+    async getAllChurches() {
+        if (!firebaseInitialized) {
+            const stored = JSON.parse(localStorage.getItem('rooted_church_data') || '{}');
+            const all = { ...DEFAULT_CHURCHES, ...stored };
+            return Object.entries(all).map(([id, church]) => ({ id, ...church }));
+        }
+        
+        try {
+            const snapshot = await db.collection('churches').get();
+            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (e) {
+            console.error('Error getting all churches:', e);
+            return [];
+        }
+    },
+    
     // Clear cache (useful when switching accounts)
     clearCache() {
         churchCache = {};
@@ -834,14 +851,40 @@ const UserChurchDB = {
         }
         
         try {
+            // First check if church has room for more members
+            const churchDoc = await db.collection('churches').doc(churchId).get();
+            if (churchDoc.exists) {
+                const churchData = churchDoc.data();
+                const maxMembers = churchData.maxMembers || 5; // Default to free tier
+                const currentMembers = churchData.memberCount || 0;
+                
+                // Check member limit (-1 means unlimited)
+                if (maxMembers !== -1 && currentMembers >= maxMembers) {
+                    return { error: 'limit', message: `This church has reached its member limit (${maxMembers}). Please contact the church admin.` };
+                }
+            }
+            
             const userRef = db.collection('users').doc(userId);
             const doc = await userRef.get();
             const churches = doc.exists ? (doc.data().churches || []) : [];
             
-            if (churches.includes(churchId) || churches.length >= 5) return false;
+            if (churches.includes(churchId)) return { error: 'exists', message: 'You are already a member of this church.' };
+            if (churches.length >= 5) return { error: 'max', message: 'You can only join up to 5 churches.' };
             
             churches.push(churchId);
             await userRef.update({ churches });
+            
+            // Increment church member count
+            await db.collection('churches').doc(churchId).update({
+                memberCount: firebase.firestore.FieldValue.increment(1)
+            });
+            
+            // Add user to church's members list
+            await db.collection('churches').doc(churchId).collection('members').doc(userId).set({
+                joinedAt: new Date().toISOString(),
+                userId: userId
+            });
+            
             return true;
         } catch (e) {
             console.error('Error adding church:', e);
@@ -863,6 +906,14 @@ const UserChurchDB = {
             await userRef.update({
                 churches: firebase.firestore.FieldValue.arrayRemove(churchId)
             });
+            
+            // Decrement church member count
+            await db.collection('churches').doc(churchId).update({
+                memberCount: firebase.firestore.FieldValue.increment(-1)
+            });
+            
+            // Remove user from church's members list
+            await db.collection('churches').doc(churchId).collection('members').doc(userId).delete();
         } catch (e) {
             console.error('Error removing church:', e);
         }
@@ -1304,6 +1355,15 @@ function render() {
         case 'forgot-password':
             app.innerHTML = renderForgotPassword();
             break;
+        case 'backend-admin':
+            app.innerHTML = renderBackendAdmin();
+            break;
+        case 'super-admin':
+            app.innerHTML = renderSuperAdminDashboard();
+            break;
+        case 'church-register':
+            app.innerHTML = renderChurchRegistration();
+            break;
         case 'app':
             app.innerHTML = accountType === 'church' ? renderChurchAdminApp() : renderApp();
             break;
@@ -1349,6 +1409,13 @@ function renderWelcome() {
                         Church Admin Login →
                     </button>
                 </div>
+                
+                <!-- Footer for backend admin -->
+                <div style="margin-top:var(--space-2xl);padding-top:var(--space-lg);border-top:1px solid var(--border-color);text-align:center">
+                    <button class="btn btn-ghost" onclick="State.set({screen:'backend-admin'})" style="font-size:0.75rem;color:var(--text-tertiary)">
+                        🔧 Church Administration
+                    </button>
+                </div>
             </div>
         </div>
     </div>`;
@@ -1384,11 +1451,686 @@ function renderChurchLogin() {
                 </form>
                 
                 <div class="auth-footer" style="margin-top:var(--space-xl)">
-                    <p style="font-size:0.85rem;color:var(--text-tertiary)">Church accounts are available for premium subscribers. Contact us to set up your church.</p>
+                    <p style="font-size:0.85rem;color:var(--text-tertiary);margin-bottom:var(--space-md)">Don't have a church account yet?</p>
+                    <button class="btn btn-ghost" onclick="State.set({screen:'church-register'})" style="font-size:0.9rem">
+                        Register Your Church →
+                    </button>
                 </div>
             </div>
         </div>
     </div>`;
+}
+
+// ========== BACKEND ADMIN PORTAL ==========
+// Super admin credentials (you can change this)
+const SUPER_ADMIN = {
+    username: 'mike',
+    password: 'rooted2026'
+};
+
+// Registration codes for churches
+let registrationCodes = {
+    '1234': { tier: 'free', maxMembers: 5, description: 'Free - Up to 5 members', price: 0, active: true }
+};
+
+// Load registration codes from Firestore
+async function loadRegistrationCodes() {
+    if (!firebaseInitialized) return;
+    try {
+        const snapshot = await db.collection('registration_codes').get();
+        snapshot.docs.forEach(doc => {
+            registrationCodes[doc.id] = doc.data();
+        });
+    } catch (e) {
+        console.log('Could not load registration codes:', e);
+    }
+}
+
+function renderBackendAdmin() {
+    return `
+    <div class="auth-container fade-up">
+        <div class="auth-left">
+            <div class="auth-brand">
+                <div class="auth-logo" style="background:linear-gradient(135deg,#1e3d30,#2d5a47)">🔧</div>
+                <h1 class="auth-brand-name">Rooted</h1>
+                <p class="auth-tagline">Church Administration</p>
+            </div>
+        </div>
+        <div class="auth-right">
+            <div class="auth-form-container">
+                <button class="btn btn-ghost" onclick="State.set({screen:'welcome'})" style="margin-bottom:var(--space-lg)">← Back to Welcome</button>
+                
+                <h2 class="auth-form-title">Church Administration</h2>
+                <p class="auth-form-subtitle">Manage churches and registration</p>
+                
+                <div style="display:flex;flex-direction:column;gap:var(--space-md);margin-top:var(--space-xl)">
+                    <!-- Super Admin Login -->
+                    <div style="padding:var(--space-lg);background:var(--hover-bg);border-radius:var(--radius-lg)">
+                        <h3 style="font-size:1rem;margin-bottom:var(--space-md);display:flex;align-items:center;gap:var(--space-sm)">
+                            <span>👑</span> Super Admin
+                        </h3>
+                        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:var(--space-md)">Access the backend dashboard to manage all churches and registration codes.</p>
+                        <button class="btn btn-primary btn-block" onclick="showSuperAdminLogin()">
+                            Super Admin Login
+                        </button>
+                    </div>
+                    
+                    <!-- Church Registration -->
+                    <div style="padding:var(--space-lg);background:var(--hover-bg);border-radius:var(--radius-lg)">
+                        <h3 style="font-size:1rem;margin-bottom:var(--space-md);display:flex;align-items:center;gap:var(--space-sm)">
+                            <span>⛪</span> Register Your Church
+                        </h3>
+                        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:var(--space-md)">Have a registration code? Set up your church account here.</p>
+                        <button class="btn btn-secondary btn-block" onclick="State.set({screen:'church-register'})">
+                            Register New Church
+                        </button>
+                    </div>
+                    
+                    <!-- Church Login -->
+                    <div style="padding:var(--space-lg);background:var(--hover-bg);border-radius:var(--radius-lg)">
+                        <h3 style="font-size:1rem;margin-bottom:var(--space-md);display:flex;align-items:center;gap:var(--space-sm)">
+                            <span>🔑</span> Existing Church
+                        </h3>
+                        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:var(--space-md)">Already have an account? Sign in to manage your church.</p>
+                        <button class="btn btn-ghost btn-block" onclick="State.set({screen:'church-login'})">
+                            Church Admin Login
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
+function showSuperAdminLogin() {
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:400px">
+            <div class="modal-header">
+                <h3 class="modal-title">👑 Super Admin Login</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <form onsubmit="handleSuperAdminLogin(event)">
+                    <div class="input-group">
+                        <label class="input-label">Username</label>
+                        <input type="text" class="input-field" id="superAdminUsername" placeholder="Username" required>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Password</label>
+                        <input type="password" class="input-field" id="superAdminPassword" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+                </form>
+            </div>
+        </div>
+    `);
+}
+
+async function handleSuperAdminLogin(e) {
+    e.preventDefault();
+    const username = document.getElementById('superAdminUsername').value;
+    const password = document.getElementById('superAdminPassword').value;
+    
+    // Check local super admin
+    if (username === SUPER_ADMIN.username && password === SUPER_ADMIN.password) {
+        closeModal();
+        await loadRegistrationCodes();
+        State.set({ screen: 'super-admin', accountType: 'super-admin' });
+        toast('Welcome, Super Admin! 👑', 'success');
+        return;
+    }
+    
+    // Check Firestore for additional super admins
+    if (firebaseInitialized) {
+        try {
+            const adminDoc = await db.collection('super_admins').doc(username).get();
+            if (adminDoc.exists && adminDoc.data().password === password) {
+                closeModal();
+                await loadRegistrationCodes();
+                State.set({ screen: 'super-admin', accountType: 'super-admin' });
+                toast('Welcome, Super Admin! 👑', 'success');
+                return;
+            }
+        } catch (e) {
+            console.log('Super admin check failed:', e);
+        }
+    }
+    
+    toast('Invalid super admin credentials', 'error');
+}
+
+function renderSuperAdminDashboard() {
+    return `
+    <div class="app-layout">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">👑</div>
+                <div>
+                    <h1 class="sidebar-title">Super Admin</h1>
+                    <p class="sidebar-subtitle">Backend Dashboard</p>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" onclick="renderSuperAdminPage('dashboard')">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">Dashboard</span>
+                </button>
+                <button class="nav-item" onclick="renderSuperAdminPage('churches')">
+                    <span class="nav-icon">⛪</span>
+                    <span class="nav-label">Churches</span>
+                </button>
+                <button class="nav-item" onclick="renderSuperAdminPage('codes')">
+                    <span class="nav-icon">🔑</span>
+                    <span class="nav-label">Registration Codes</span>
+                </button>
+                <button class="nav-item" onclick="renderSuperAdminPage('tiers')">
+                    <span class="nav-icon">💰</span>
+                    <span class="nav-label">Pricing Tiers</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="nav-item" onclick="State.set({screen:'welcome',accountType:null})">
+                    <span class="nav-icon">🚪</span>
+                    <span class="nav-label">Sign Out</span>
+                </button>
+            </div>
+        </div>
+        <main class="main-content" id="superAdminContent">
+            ${renderSuperAdminDashboardContent()}
+        </main>
+    </div>`;
+}
+
+async function renderSuperAdminPage(page) {
+    const content = document.getElementById('superAdminContent');
+    if (!content) return;
+    
+    // Update nav active state
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    event.target.closest('.nav-item')?.classList.add('active');
+    
+    switch(page) {
+        case 'dashboard':
+            content.innerHTML = renderSuperAdminDashboardContent();
+            break;
+        case 'churches':
+            content.innerHTML = await renderSuperAdminChurches();
+            break;
+        case 'codes':
+            content.innerHTML = renderSuperAdminCodes();
+            break;
+        case 'tiers':
+            content.innerHTML = renderSuperAdminTiers();
+            break;
+    }
+}
+
+function renderSuperAdminDashboardContent() {
+    return `
+        <div class="content-header">
+            <h1 class="page-title">Super Admin Dashboard</h1>
+            <p class="page-subtitle">Manage churches and subscriptions</p>
+        </div>
+        <div class="content-body">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--space-lg)">
+                <div class="card" style="text-align:center;padding:var(--space-xl)">
+                    <div style="font-size:2.5rem;margin-bottom:var(--space-sm)">⛪</div>
+                    <div style="font-size:2rem;font-weight:700;color:var(--root-green)" id="totalChurches">-</div>
+                    <div style="color:var(--text-secondary)">Total Churches</div>
+                </div>
+                <div class="card" style="text-align:center;padding:var(--space-xl)">
+                    <div style="font-size:2.5rem;margin-bottom:var(--space-sm)">🔑</div>
+                    <div style="font-size:2rem;font-weight:700;color:var(--root-green)">${Object.keys(registrationCodes).length}</div>
+                    <div style="color:var(--text-secondary)">Active Codes</div>
+                </div>
+                <div class="card" style="text-align:center;padding:var(--space-xl)">
+                    <div style="font-size:2.5rem;margin-bottom:var(--space-sm)">👥</div>
+                    <div style="font-size:2rem;font-weight:700;color:var(--root-green)" id="totalUsers">-</div>
+                    <div style="color:var(--text-secondary)">Total Users</div>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-top:var(--space-xl)">
+                <h3 style="margin-bottom:var(--space-lg)">Quick Actions</h3>
+                <div style="display:flex;flex-wrap:wrap;gap:var(--space-md)">
+                    <button class="btn btn-primary" onclick="showCreateCodeModal()">+ Create Registration Code</button>
+                    <button class="btn btn-secondary" onclick="renderSuperAdminPage('churches')">View All Churches</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Load stats
+    setTimeout(loadSuperAdminStats, 100);
+}
+
+async function loadSuperAdminStats() {
+    if (!firebaseInitialized) return;
+    
+    try {
+        // Count churches
+        const churchesSnapshot = await db.collection('churches').get();
+        document.getElementById('totalChurches').textContent = churchesSnapshot.size;
+        
+        // Count users
+        const usersSnapshot = await db.collection('users').get();
+        document.getElementById('totalUsers').textContent = usersSnapshot.size;
+    } catch (e) {
+        console.log('Could not load stats:', e);
+    }
+}
+
+async function renderSuperAdminChurches() {
+    let churchesHtml = '<p style="color:var(--text-secondary)">Loading churches...</p>';
+    
+    const tierColors = { free: '#22c55e', starter: '#06b6d4', small: '#3b82f6', medium: '#8b5cf6', large: '#f59e0b', unlimited: '#ef4444' };
+    const tierNames = { free: 'Free', starter: 'Starter', small: 'Small', medium: 'Medium', large: 'Large', unlimited: 'Unlimited' };
+    
+    if (firebaseInitialized) {
+        try {
+            const snapshot = await db.collection('churches').get();
+            if (snapshot.empty) {
+                churchesHtml = '<p style="color:var(--text-secondary)">No churches registered yet.</p>';
+            } else {
+                churchesHtml = snapshot.docs.map(doc => {
+                    const church = doc.data();
+                    const tier = church.tier || 'free';
+                    const memberCount = church.memberCount || 0;
+                    const maxMembers = church.maxMembers || 5;
+                    const usagePercent = maxMembers === -1 ? 0 : Math.min((memberCount / maxMembers) * 100, 100);
+                    
+                    return `
+                        <div class="card" style="margin-bottom:var(--space-md)">
+                            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:var(--space-md)">
+                                <div style="flex:1;min-width:200px">
+                                    <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-xs)">
+                                        <h4 style="margin:0">${church.name || doc.id}</h4>
+                                        <span style="padding:2px 8px;background:${tierColors[tier]};color:white;border-radius:12px;font-size:0.7rem;font-weight:600">
+                                            ${tierNames[tier]}
+                                        </span>
+                                    </div>
+                                    <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">${church.address || 'No address'}</p>
+                                    <p style="font-size:0.75rem;color:var(--text-tertiary);margin:var(--space-xs) 0 0 0">ID: ${doc.id}</p>
+                                </div>
+                                <div style="min-width:150px">
+                                    <p style="font-size:0.85rem;color:var(--text-secondary);margin:0 0 var(--space-xs) 0">
+                                        👥 ${memberCount}${maxMembers !== -1 ? ` / ${maxMembers}` : ''} members
+                                    </p>
+                                    ${maxMembers !== -1 ? `
+                                        <div style="height:6px;background:var(--hover-bg);border-radius:3px;overflow:hidden">
+                                            <div style="height:100%;width:${usagePercent}%;background:${memberCount >= maxMembers ? 'var(--error)' : tierColors[tier]};transition:width 0.3s"></div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                                <div style="display:flex;gap:var(--space-sm)">
+                                    <button class="btn btn-ghost" onclick="viewChurchDetails('${doc.id}')">View</button>
+                                    <button class="btn btn-ghost" style="color:var(--error)" onclick="deleteChurch('${doc.id}')">Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        } catch (e) {
+            churchesHtml = '<p style="color:var(--error)">Error loading churches: ' + e.message + '</p>';
+        }
+    }
+    
+    return `
+        <div class="content-header">
+            <h1 class="page-title">Manage Churches</h1>
+            <p class="page-subtitle">View and manage all registered churches</p>
+        </div>
+        <div class="content-body">
+            ${churchesHtml}
+        </div>
+    `;
+}
+
+function renderSuperAdminCodes() {
+    const codesHtml = Object.entries(registrationCodes).map(([code, data]) => `
+        <div class="card" style="margin-bottom:var(--space-md)">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                    <h4 style="margin:0;font-family:monospace;font-size:1.2rem">${code}</h4>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin:var(--space-xs) 0 0 0">${data.description || data.tier}</p>
+                </div>
+                <div style="display:flex;align-items:center;gap:var(--space-md)">
+                    <span style="padding:4px 12px;background:${data.active ? 'var(--success)' : 'var(--error)'};color:white;border-radius:20px;font-size:0.75rem">
+                        ${data.active ? 'Active' : 'Inactive'}
+                    </span>
+                    <button class="btn btn-ghost" style="color:var(--error)" onclick="deleteCode('${code}')">Delete</button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    return `
+        <div class="content-header">
+            <h1 class="page-title">Registration Codes</h1>
+            <p class="page-subtitle">Manage codes that allow churches to register</p>
+        </div>
+        <div class="content-body">
+            <button class="btn btn-primary" onclick="showCreateCodeModal()" style="margin-bottom:var(--space-lg)">+ Create New Code</button>
+            ${codesHtml || '<p style="color:var(--text-secondary)">No codes created yet.</p>'}
+        </div>
+    `;
+}
+
+function renderSuperAdminTiers() {
+    const tiers = [
+        { name: 'Free', members: 'Up to 5', price: 'Free', color: '#22c55e' },
+        { name: 'Starter', members: 'Up to 50', price: '$19/mo', color: '#06b6d4' },
+        { name: 'Small', members: 'Up to 200', price: '$49/mo', color: '#3b82f6' },
+        { name: 'Medium', members: 'Up to 500', price: '$99/mo', color: '#8b5cf6' },
+        { name: 'Large', members: 'Up to 2,000', price: '$199/mo', color: '#f59e0b' },
+        { name: 'Unlimited', members: 'Unlimited', price: '$399/mo', color: '#ef4444' }
+    ];
+    
+    return `
+        <div class="content-header">
+            <h1 class="page-title">Pricing Tiers</h1>
+            <p class="page-subtitle">Configure subscription tiers for churches</p>
+        </div>
+        <div class="content-body">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--space-lg)">
+                ${tiers.map(tier => `
+                    <div class="card" style="text-align:center;padding:var(--space-xl);border-top:4px solid ${tier.color}">
+                        <h3 style="margin:0 0 var(--space-sm) 0">${tier.name}</h3>
+                        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:var(--space-md)">${tier.members}</p>
+                        <div style="font-size:1.5rem;font-weight:700;color:${tier.color}">${tier.price}</div>
+                    </div>
+                `).join('')}
+            </div>
+            <p style="color:var(--text-tertiary);font-size:0.85rem;margin-top:var(--space-xl)">
+                Note: Pricing tiers will be configurable in a future update. Contact support to customize.
+            </p>
+        </div>
+    `;
+}
+
+function showCreateCodeModal() {
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:450px">
+            <div class="modal-header">
+                <h3 class="modal-title">Create Registration Code</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <form onsubmit="createRegistrationCode(event)">
+                    <div class="input-group">
+                        <label class="input-label">Code</label>
+                        <input type="text" class="input-field" id="newCodeValue" placeholder="e.g., CHURCH2026" required>
+                        <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:4px">Churches will use this code to register</p>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Tier</label>
+                        <select class="input-field" id="newCodeTier">
+                            <option value="free">Free (Up to 5 members) - Free</option>
+                            <option value="starter">Starter (Up to 50 members) - $19/mo</option>
+                            <option value="small">Small (Up to 200 members) - $49/mo</option>
+                            <option value="medium">Medium (Up to 500 members) - $99/mo</option>
+                            <option value="large">Large (Up to 2,000 members) - $199/mo</option>
+                            <option value="unlimited">Unlimited - $399/mo</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Description (optional)</label>
+                        <input type="text" class="input-field" id="newCodeDescription" placeholder="e.g., Special offer for Faith Fellowship">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Create Code</button>
+                </form>
+            </div>
+        </div>
+    `);
+}
+
+async function createRegistrationCode(e) {
+    e.preventDefault();
+    const code = document.getElementById('newCodeValue').value.toUpperCase();
+    const tier = document.getElementById('newCodeTier').value;
+    const description = document.getElementById('newCodeDescription').value;
+    
+    const tierInfo = {
+        'free': { maxMembers: 5, description: description || 'Free - Up to 5 members', price: 0 },
+        'starter': { maxMembers: 50, description: description || 'Starter - Up to 50 members', price: 19 },
+        'small': { maxMembers: 200, description: description || 'Small - Up to 200 members', price: 49 },
+        'medium': { maxMembers: 500, description: description || 'Medium - Up to 500 members', price: 99 },
+        'large': { maxMembers: 2000, description: description || 'Large - Up to 2,000 members', price: 199 },
+        'unlimited': { maxMembers: -1, description: description || 'Unlimited members', price: 399 }
+    };
+    
+    const codeData = {
+        tier,
+        ...tierInfo[tier],
+        active: true,
+        createdAt: new Date().toISOString()
+    };
+    
+    // Save locally
+    registrationCodes[code] = codeData;
+    
+    // Save to Firestore
+    if (firebaseInitialized) {
+        try {
+            await db.collection('registration_codes').doc(code).set(codeData);
+        } catch (e) {
+            console.log('Could not save code to Firestore:', e);
+        }
+    }
+    
+    closeModal();
+    toast('Registration code created: ' + code, 'success');
+    renderSuperAdminPage('codes');
+}
+
+async function deleteCode(code) {
+    if (!confirm('Are you sure you want to delete this code?')) return;
+    
+    delete registrationCodes[code];
+    
+    if (firebaseInitialized) {
+        try {
+            await db.collection('registration_codes').doc(code).delete();
+        } catch (e) {
+            console.log('Could not delete code from Firestore:', e);
+        }
+    }
+    
+    toast('Code deleted', 'success');
+    renderSuperAdminPage('codes');
+}
+
+async function deleteChurch(churchId) {
+    if (!confirm('Are you sure you want to delete this church? This cannot be undone.')) return;
+    
+    if (firebaseInitialized) {
+        try {
+            await db.collection('churches').doc(churchId).delete();
+            await db.collection('church_admins').doc(churchId).delete();
+            toast('Church deleted', 'success');
+            renderSuperAdminPage('churches');
+        } catch (e) {
+            toast('Error deleting church: ' + e.message, 'error');
+        }
+    }
+}
+
+// ========== CHURCH REGISTRATION ==========
+function renderChurchRegistration() {
+    return `
+    <div class="auth-container fade-up">
+        <div class="auth-left">
+            <div class="auth-brand">
+                <div class="auth-logo" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">⛪</div>
+                <h1 class="auth-brand-name">Rooted</h1>
+                <p class="auth-tagline">Church Registration</p>
+            </div>
+        </div>
+        <div class="auth-right">
+            <div class="auth-form-container">
+                <button class="btn btn-ghost" onclick="State.set({screen:'backend-admin'})" style="margin-bottom:var(--space-lg)">← Back</button>
+                
+                <h2 class="auth-form-title">Register Your Church</h2>
+                <p class="auth-form-subtitle">Create your church admin account</p>
+                
+                <form onsubmit="handleChurchRegistration(event)">
+                    <div class="input-group">
+                        <label class="input-label">Registration Code</label>
+                        <input type="text" class="input-field" id="regCode" placeholder="Enter your code (e.g., 1234)" required>
+                        <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:4px">Contact us to get a registration code</p>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label class="input-label">Church Name</label>
+                        <input type="text" class="input-field" id="regChurchName" placeholder="e.g., Faith Fellowship Church" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label class="input-label">Admin Username</label>
+                        <input type="text" class="input-field" id="regUsername" placeholder="Choose a username" required>
+                        <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:4px">This will be used to log in</p>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label class="input-label">Password</label>
+                        <input type="password" class="input-field" id="regPassword" placeholder="Choose a password" required minlength="4">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label class="input-label">Confirm Password</label>
+                        <input type="password" class="input-field" id="regPasswordConfirm" placeholder="Confirm your password" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-lg btn-block" id="regSubmitBtn">Register Church</button>
+                </form>
+                
+                <div class="auth-footer" style="margin-top:var(--space-xl)">
+                    <p style="font-size:0.85rem;color:var(--text-tertiary)">
+                        Already have an account? 
+                        <button class="btn btn-ghost" onclick="State.set({screen:'church-login'})" style="padding:0;font-size:0.85rem">Sign in here</button>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
+async function handleChurchRegistration(e) {
+    e.preventDefault();
+    
+    const code = document.getElementById('regCode').value.toUpperCase();
+    const churchName = document.getElementById('regChurchName').value;
+    const username = document.getElementById('regUsername').value.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const password = document.getElementById('regPassword').value;
+    const passwordConfirm = document.getElementById('regPasswordConfirm').value;
+    
+    const btn = document.getElementById('regSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Registering...';
+    
+    // Validate passwords match
+    if (password !== passwordConfirm) {
+        toast('Passwords do not match', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Register Church';
+        return;
+    }
+    
+    // Load registration codes from Firestore
+    await loadRegistrationCodes();
+    
+    // Validate code
+    const codeData = registrationCodes[code];
+    if (!codeData || !codeData.active) {
+        toast('Invalid or expired registration code', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Register Church';
+        return;
+    }
+    
+    // Check if username already exists
+    if (firebaseInitialized) {
+        try {
+            const existingAdmin = await db.collection('church_admins').doc(username).get();
+            if (existingAdmin.exists) {
+                toast('This username is already taken', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Register Church';
+                return;
+            }
+        } catch (e) {
+            console.log('Error checking username:', e);
+        }
+    }
+    
+    // Generate church ID from name
+    const churchId = churchName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    
+    // Create church in Firestore
+    const churchData = {
+        id: churchId,
+        name: churchName,
+        address: '',
+        phone: '',
+        website: '',
+        tier: codeData.tier,
+        maxMembers: codeData.maxMembers,
+        announcements: [],
+        resources: [],
+        checkInResources: [],
+        enabledTools: ['seasons', 'spiritual-formation', 'bible-reading', 'prayer-journal', 'scripture-memory'],
+        onboarded: false,
+        createdAt: new Date().toISOString(),
+        registrationCode: code
+    };
+    
+    const adminData = {
+        username: username,
+        password: password,
+        churchId: churchId,
+        churchName: churchName,
+        onboarded: false,
+        tier: codeData.tier,
+        createdAt: new Date().toISOString()
+    };
+    
+    if (firebaseInitialized) {
+        try {
+            // Save church
+            await db.collection('churches').doc(churchId).set(churchData);
+            
+            // Save admin
+            await db.collection('church_admins').doc(username).set(adminData);
+            
+            toast('Church registered successfully! 🎉', 'success');
+            
+            // Start onboarding
+            churchOnboarding = {
+                step: 1,
+                adminUsername: username,
+                churchId: churchId,
+                data: {
+                    name: churchName,
+                    address: '',
+                    phone: '',
+                    website: '',
+                    socialMedia: { facebook: '', instagram: '', youtube: '', twitter: '' }
+                }
+            };
+            
+            State.set({ screen: 'church-onboarding' });
+            
+        } catch (e) {
+            toast('Error registering church: ' + e.message, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Register Church';
+        }
+    } else {
+        toast('Firebase not connected. Please try again.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Register Church';
+    }
 }
 
 async function handleChurchAdminLogin(e) {
@@ -1396,8 +2138,32 @@ async function handleChurchAdminLogin(e) {
     const username = document.getElementById('churchUsername').value;
     const password = document.getElementById('churchPassword').value;
     
-    const admin = CHURCH_ADMIN_ACCOUNTS[username];
-    if (admin && admin.password === password) {
+    let admin = null;
+    
+    // Try to get admin from Firestore first
+    if (firebaseInitialized) {
+        try {
+            const adminDoc = await db.collection('church_admins').doc(username).get();
+            if (adminDoc.exists) {
+                const adminData = adminDoc.data();
+                if (adminData.password === password) {
+                    admin = adminData;
+                }
+            }
+        } catch (e) {
+            console.log('Firestore admin lookup failed, trying local:', e);
+        }
+    }
+    
+    // Fallback to hardcoded admins (for testing)
+    if (!admin) {
+        const localAdmin = CHURCH_ADMIN_ACCOUNTS[username];
+        if (localAdmin && localAdmin.password === password) {
+            admin = localAdmin;
+        }
+    }
+    
+    if (admin) {
         // Load church data from cloud
         const church = await ChurchDB.getChurch(admin.churchId);
         
@@ -1961,6 +2727,9 @@ function renderChurchAdminApp() {
                 <div class="nav-item ${activeNav === 'church-dashboard' ? 'active' : ''}" onclick="navigate('church-dashboard')">
                     <span class="nav-item-icon">📊</span> Dashboard
                 </div>
+                <div class="nav-item ${activeNav === 'church-members' ? 'active' : ''}" onclick="navigate('church-members')">
+                    <span class="nav-item-icon">👥</span> Members
+                </div>
                 <div class="nav-item ${activeNav === 'church-resources' ? 'active' : ''}" onclick="navigate('church-resources')">
                     <span class="nav-item-icon">📄</span> Resources & PDFs
                 </div>
@@ -2015,7 +2784,8 @@ function getChurchPageTitle(nav) {
         'church-announcements': 'Announcements',
         'church-social': 'Social Media Links',
         'church-location': 'Location & Geofence',
-        'church-tools': 'Enabled Tools'
+        'church-tools': 'Enabled Tools',
+        'church-members': 'Members'
     };
     return titles[nav] || 'Dashboard';
 }
@@ -2029,12 +2799,22 @@ function renderChurchPage(page) {
         case 'church-social': return renderChurchSocial();
         case 'church-location': return renderChurchLocation();
         case 'church-tools': return renderChurchTools();
+        case 'church-members': return renderChurchMembers();
         default: return renderChurchDashboard();
     }
 }
 
 function renderChurchDashboard() {
     const church = getChurchData(State.current.user.churchId);
+    const memberCount = church.memberCount || 0;
+    const maxMembers = church.maxMembers || 5;
+    const tier = church.tier || 'free';
+    const tierNames = { free: 'Free', starter: 'Starter', small: 'Small', medium: 'Medium', large: 'Large', unlimited: 'Unlimited' };
+    const tierColors = { free: '#22c55e', starter: '#06b6d4', small: '#3b82f6', medium: '#8b5cf6', large: '#f59e0b', unlimited: '#ef4444' };
+    const usagePercent = maxMembers === -1 ? 0 : Math.min((memberCount / maxMembers) * 100, 100);
+    const isNearLimit = maxMembers !== -1 && memberCount >= maxMembers * 0.8;
+    const isAtLimit = maxMembers !== -1 && memberCount >= maxMembers;
+    
     return `
     <div class="fade-up">
         <div class="welcome-banner" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">
@@ -2042,7 +2822,46 @@ function renderChurchDashboard() {
             <p class="welcome-subtitle">Manage your church's digital discipleship content</p>
         </div>
         
+        <!-- Membership Status Card -->
+        <div class="card" style="margin:var(--space-xl) 0;border-left:4px solid ${tierColors[tier] || '#22c55e'}">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--space-md)">
+                <div>
+                    <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-xs)">
+                        <span style="font-size:1.5rem">👥</span>
+                        <h3 style="margin:0">Membership</h3>
+                        <span style="padding:4px 12px;background:${tierColors[tier] || '#22c55e'};color:white;border-radius:20px;font-size:0.75rem;font-weight:600">
+                            ${tierNames[tier] || 'Free'} Plan
+                        </span>
+                    </div>
+                    <p style="color:var(--text-secondary);font-size:0.9rem;margin:0">
+                        ${maxMembers === -1 ? `${memberCount} members (Unlimited)` : `${memberCount} of ${maxMembers} members`}
+                    </p>
+                </div>
+                ${isAtLimit ? `
+                    <button class="btn btn-primary" onclick="showUpgradeModal()">⬆️ Upgrade Plan</button>
+                ` : ''}
+            </div>
+            
+            ${maxMembers !== -1 ? `
+                <div style="margin-top:var(--space-md)">
+                    <div style="height:8px;background:var(--hover-bg);border-radius:4px;overflow:hidden">
+                        <div style="height:100%;width:${usagePercent}%;background:${isAtLimit ? 'var(--error)' : isNearLimit ? 'var(--warning)' : 'var(--root-green)'};transition:width 0.3s"></div>
+                    </div>
+                    ${isNearLimit && !isAtLimit ? `
+                        <p style="color:var(--warning);font-size:0.8rem;margin-top:var(--space-sm)">⚠️ Approaching member limit. Consider upgrading your plan.</p>
+                    ` : ''}
+                    ${isAtLimit ? `
+                        <p style="color:var(--error);font-size:0.8rem;margin-top:var(--space-sm)">🚫 Member limit reached. New members cannot join until you upgrade.</p>
+                    ` : ''}
+                </div>
+            ` : ''}
+        </div>
+        
         <div class="stat-grid" style="margin:var(--space-xl) 0">
+            <div class="stat-card">
+                <div class="stat-label">Members</div>
+                <div class="stat-value">${memberCount}</div>
+            </div>
             <div class="stat-card">
                 <div class="stat-label">Resources</div>
                 <div class="stat-value">${church.resources?.length || 0}</div>
@@ -2063,6 +2882,7 @@ function renderChurchDashboard() {
                 <button class="btn btn-primary" onclick="navigate('church-resources')">📄 Upload New Resource</button>
                 <button class="btn btn-secondary" onclick="navigate('church-announcements')">📢 Post Announcement</button>
                 <button class="btn btn-secondary" onclick="navigate('church-social')">🔗 Update Social Links</button>
+                <button class="btn btn-ghost" onclick="navigate('church-members')">👥 View Members</button>
             </div>
         </div>
         
@@ -2077,6 +2897,52 @@ function renderChurchDashboard() {
             <p style="color:var(--text-secondary)"><strong>Website:</strong> ${church.website ? `<a href="${church.website}" target="_blank" style="color:var(--root-green)">${church.website}</a>` : 'Not set'}</p>
         </div>
     </div>`;
+}
+
+function showUpgradeModal() {
+    const tiers = [
+        { id: 'starter', name: 'Starter', members: 'Up to 50', price: '$19/mo', color: '#06b6d4' },
+        { id: 'small', name: 'Small', members: 'Up to 200', price: '$49/mo', color: '#3b82f6' },
+        { id: 'medium', name: 'Medium', members: 'Up to 500', price: '$99/mo', color: '#8b5cf6' },
+        { id: 'large', name: 'Large', members: 'Up to 2,000', price: '$199/mo', color: '#f59e0b' },
+        { id: 'unlimited', name: 'Unlimited', members: 'Unlimited', price: '$399/mo', color: '#ef4444' }
+    ];
+    
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:600px">
+            <div class="modal-header">
+                <h3 class="modal-title">⬆️ Upgrade Your Plan</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Choose a plan that fits your church's needs:</p>
+                <div style="display:grid;gap:var(--space-md)">
+                    ${tiers.map(tier => `
+                        <div style="padding:var(--space-lg);border:2px solid var(--border-color);border-radius:var(--radius-lg);display:flex;justify-content:space-between;align-items:center">
+                            <div>
+                                <h4 style="margin:0;color:${tier.color}">${tier.name}</h4>
+                                <p style="font-size:0.85rem;color:var(--text-secondary);margin:var(--space-xs) 0 0 0">${tier.members}</p>
+                            </div>
+                            <div style="text-align:right">
+                                <div style="font-size:1.25rem;font-weight:700;color:${tier.color}">${tier.price}</div>
+                                <button class="btn btn-ghost" onclick="requestUpgrade('${tier.id}')" style="font-size:0.85rem;margin-top:var(--space-xs)">Select →</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <p style="color:var(--text-tertiary);font-size:0.8rem;margin-top:var(--space-lg);text-align:center">
+                    Contact support to complete your upgrade. Payment integration coming soon.
+                </p>
+            </div>
+        </div>
+    `);
+}
+
+function requestUpgrade(tierId) {
+    const tierNames = { starter: 'Starter', small: 'Small', medium: 'Medium', large: 'Large', unlimited: 'Unlimited' };
+    closeModal();
+    toast(`Upgrade request for ${tierNames[tierId]} plan submitted! We'll contact you shortly. 📧`, 'success');
+    // In the future, this would integrate with Stripe
 }
 
 function showEditChurchInfoModal() {
@@ -2365,6 +3231,119 @@ function handleToolsUpdate(e) {
     const enabledTools = Object.keys(TOOLS).filter(id => document.getElementById('tool-' + id)?.checked);
     updateChurchData(State.current.user.churchId, { enabledTools });
     toast('Tool settings updated! 🧰', 'success');
+}
+
+function renderChurchMembers() {
+    const church = getChurchData(State.current.user.churchId);
+    const memberCount = church.memberCount || 0;
+    const maxMembers = church.maxMembers || 5;
+    const tier = church.tier || 'free';
+    const tierNames = { free: 'Free', starter: 'Starter', small: 'Small', medium: 'Medium', large: 'Large', unlimited: 'Unlimited' };
+    const tierColors = { free: '#22c55e', starter: '#06b6d4', small: '#3b82f6', medium: '#8b5cf6', large: '#f59e0b', unlimited: '#ef4444' };
+    
+    return `
+    <div class="fade-up">
+        <div class="card" style="margin-bottom:var(--space-lg);border-left:4px solid ${tierColors[tier] || '#22c55e'}">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--space-md)">
+                <div>
+                    <h3 style="margin:0;display:flex;align-items:center;gap:var(--space-sm)">
+                        <span>👥</span> Member Overview
+                        <span style="padding:4px 12px;background:${tierColors[tier] || '#22c55e'};color:white;border-radius:20px;font-size:0.75rem;font-weight:600">
+                            ${tierNames[tier] || 'Free'} Plan
+                        </span>
+                    </h3>
+                    <p style="color:var(--text-secondary);margin:var(--space-sm) 0 0 0">
+                        ${maxMembers === -1 ? `${memberCount} members (Unlimited capacity)` : `${memberCount} of ${maxMembers} member slots used`}
+                    </p>
+                </div>
+                <button class="btn btn-primary" onclick="showUpgradeModal()">⬆️ Upgrade Plan</button>
+            </div>
+            
+            ${maxMembers !== -1 ? `
+                <div style="margin-top:var(--space-md)">
+                    <div style="height:8px;background:var(--hover-bg);border-radius:4px;overflow:hidden">
+                        <div style="height:100%;width:${Math.min((memberCount / maxMembers) * 100, 100)}%;background:${memberCount >= maxMembers ? 'var(--error)' : memberCount >= maxMembers * 0.8 ? 'var(--warning)' : 'var(--root-green)'};transition:width 0.3s"></div>
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+        
+        <div class="card">
+            <h3 style="margin-bottom:var(--space-md)">📋 Member List</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">View members who have connected to your church.</p>
+            
+            <div id="membersList" style="display:grid;gap:var(--space-md)">
+                <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-xl)">Loading members...</p>
+            </div>
+        </div>
+    </div>`;
+    
+    // Load members after render
+    setTimeout(() => loadChurchMembers(State.current.user.churchId), 100);
+}
+
+async function loadChurchMembers(churchId) {
+    const container = document.getElementById('membersList');
+    if (!container) return;
+    
+    if (!firebaseInitialized) {
+        container.innerHTML = '<p style="color:var(--text-tertiary);text-align:center">Firebase not connected. Cannot load members.</p>';
+        return;
+    }
+    
+    try {
+        const snapshot = await db.collection('churches').doc(churchId).collection('members').orderBy('joinedAt', 'desc').get();
+        
+        if (snapshot.empty) {
+            container.innerHTML = '<p style="color:var(--text-tertiary);text-align:center;padding:var(--space-xl)">No members have joined yet. Share your church\'s access code to invite members!</p>';
+            return;
+        }
+        
+        // Get user details for each member
+        const memberPromises = snapshot.docs.map(async (doc) => {
+            const memberData = doc.data();
+            try {
+                const userDoc = await db.collection('users').doc(doc.id).get();
+                const userData = userDoc.exists ? userDoc.data() : {};
+                return {
+                    id: doc.id,
+                    ...memberData,
+                    name: userData.name || userData.displayName || 'Unknown User',
+                    email: userData.email || 'No email'
+                };
+            } catch (e) {
+                return {
+                    id: doc.id,
+                    ...memberData,
+                    name: 'Unknown User',
+                    email: 'No email'
+                };
+            }
+        });
+        
+        const members = await Promise.all(memberPromises);
+        
+        container.innerHTML = members.map(member => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md)">
+                <div style="display:flex;align-items:center;gap:var(--space-md)">
+                    <div style="width:40px;height:40px;border-radius:50%;background:var(--root-green);display:flex;align-items:center;justify-content:center;color:white;font-weight:600">
+                        ${member.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <strong>${member.name}</strong>
+                        <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">${member.email}</p>
+                    </div>
+                </div>
+                <div style="text-align:right">
+                    <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">Joined ${new Date(member.joinedAt).toLocaleDateString()}</p>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (e) {
+        console.error('Error loading members:', e);
+        container.innerHTML = '<p style="color:var(--error);text-align:center">Error loading members. Please try again.</p>';
+    }
 }
 
 function renderChurchCheckInResources() {
