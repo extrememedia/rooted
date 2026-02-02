@@ -774,20 +774,34 @@ const ChurchDB = {
             const q = query.toLowerCase();
             return Object.entries(all).filter(([id, church]) =>
                 church.name?.toLowerCase().includes(q) ||
-                church.address?.toLowerCase().includes(q)
+                church.address?.toLowerCase().includes(q) ||
+                church.phone?.includes(q) ||
+                id.toLowerCase().includes(q)
             ).map(([id, church]) => ({ id, ...church }));
         }
         
         try {
-            // Simple search - in production would use Algolia or similar
+            // Get all churches and filter client-side
+            // In production would use Algolia or Firebase Extensions for full-text search
             const snapshot = await db.collection('churches').get();
             const q = query.toLowerCase();
             return snapshot.docs
                 .map(doc => ({ id: doc.id, ...doc.data() }))
-                .filter(church =>
-                    church.name?.toLowerCase().includes(q) ||
-                    church.address?.toLowerCase().includes(q)
-                );
+                .filter(church => {
+                    // Only include onboarded churches
+                    if (church.onboarded === false) return false;
+                    
+                    // Search in multiple fields
+                    const searchFields = [
+                        church.name,
+                        church.address,
+                        church.phone,
+                        church.id,
+                        church.website
+                    ].filter(Boolean).map(f => f.toLowerCase());
+                    
+                    return searchFields.some(field => field.includes(q));
+                });
         } catch (e) {
             console.error('Error searching churches:', e);
             return [];
@@ -1424,36 +1438,66 @@ function renderWelcome() {
 function renderChurchLogin() {
     return `
     <div class="auth-container fade-up">
-        <div class="auth-left">
+        <div class="auth-left" style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4c1d95 100%)">
             <div class="auth-brand">
-                <div class="auth-logo">⛪</div>
-                <h1 class="auth-brand-name">Rooted</h1>
-                <p class="auth-tagline">Church Admin Portal</p>
+                <!-- Church visual -->
+                <div style="margin-bottom:var(--space-xl);text-align:center">
+                    <div style="position:relative;display:inline-block">
+                        <div style="font-size:6rem;filter:drop-shadow(0 10px 30px rgba(0,0,0,0.4))">⛪</div>
+                        <div style="position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);width:100px;height:20px;background:radial-gradient(ellipse,rgba(255,255,255,0.2),transparent);border-radius:50%"></div>
+                    </div>
+                </div>
+                <h1 class="auth-brand-name" style="font-size:2.5rem;margin-bottom:var(--space-sm)">Rooted</h1>
+                <p class="auth-tagline" style="font-size:1.1rem;opacity:0.9">Church Admin Portal</p>
+                
+                <div style="margin-top:var(--space-2xl);display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">
+                    <div style="padding:var(--space-md);background:rgba(255,255,255,0.1);border-radius:var(--radius-md);text-align:center;backdrop-filter:blur(10px)">
+                        <div style="font-size:1.5rem;margin-bottom:var(--space-xs)">📊</div>
+                        <p style="color:rgba(255,255,255,0.9);font-size:0.8rem;margin:0">Dashboard</p>
+                    </div>
+                    <div style="padding:var(--space-md);background:rgba(255,255,255,0.1);border-radius:var(--radius-md);text-align:center;backdrop-filter:blur(10px)">
+                        <div style="font-size:1.5rem;margin-bottom:var(--space-xs)">👥</div>
+                        <p style="color:rgba(255,255,255,0.9);font-size:0.8rem;margin:0">Members</p>
+                    </div>
+                    <div style="padding:var(--space-md);background:rgba(255,255,255,0.1);border-radius:var(--radius-md);text-align:center;backdrop-filter:blur(10px)">
+                        <div style="font-size:1.5rem;margin-bottom:var(--space-xs)">📄</div>
+                        <p style="color:rgba(255,255,255,0.9);font-size:0.8rem;margin:0">Resources</p>
+                    </div>
+                    <div style="padding:var(--space-md);background:rgba(255,255,255,0.1);border-radius:var(--radius-md);text-align:center;backdrop-filter:blur(10px)">
+                        <div style="font-size:1.5rem;margin-bottom:var(--space-xs)">📢</div>
+                        <p style="color:rgba(255,255,255,0.9);font-size:0.8rem;margin:0">Announce</p>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="auth-right">
-            <div class="auth-form-container">
-                <button class="btn btn-ghost" onclick="State.set({screen:'welcome'})" style="margin-bottom:var(--space-lg)">← Back</button>
+            <div class="auth-form-container" style="max-width:400px">
+                <button class="btn btn-ghost" onclick="State.set({screen:'welcome'})" style="margin-bottom:var(--space-lg)">← Back to Home</button>
                 
-                <h2 class="auth-form-title">Church Admin Login</h2>
-                <p class="auth-form-subtitle">Manage your church's discipleship content</p>
+                <div style="text-align:center;margin-bottom:var(--space-xl)">
+                    <div style="width:80px;height:80px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-md);font-size:2.5rem;box-shadow:0 10px 30px rgba(124,58,237,0.3)">🔐</div>
+                    <h2 class="auth-form-title" style="margin-bottom:var(--space-xs)">Welcome Back</h2>
+                    <p class="auth-form-subtitle">Sign in to manage your church</p>
+                </div>
                 
                 <form onsubmit="handleChurchAdminLogin(event)">
                     <div class="input-group">
-                        <label class="input-label">Admin Username</label>
-                        <input type="text" class="input-field" id="churchUsername" placeholder="admin" required>
+                        <label class="input-label">👤 Admin Username</label>
+                        <input type="text" class="input-field" id="churchUsername" placeholder="Enter your username" required style="font-size:1rem">
                     </div>
                     <div class="input-group">
-                        <label class="input-label">Password</label>
-                        <input type="password" class="input-field" id="churchPassword" placeholder="••••••••" required>
+                        <label class="input-label">🔒 Password</label>
+                        <input type="password" class="input-field" id="churchPassword" placeholder="••••••••" required style="font-size:1rem">
                     </div>
-                    <button type="submit" class="btn btn-primary btn-lg btn-block" id="churchLoginBtn">Sign In as Admin</button>
+                    <button type="submit" class="btn btn-primary btn-lg btn-block" id="churchLoginBtn" style="margin-top:var(--space-lg);background:linear-gradient(135deg,#7c3aed,#a78bfa);border:none;font-size:1rem">
+                        🚀 Sign In to Dashboard
+                    </button>
                 </form>
                 
-                <div class="auth-footer" style="margin-top:var(--space-xl)">
-                    <p style="font-size:0.85rem;color:var(--text-tertiary);margin-bottom:var(--space-md)">Don't have a church account yet?</p>
-                    <button class="btn btn-ghost" onclick="State.set({screen:'church-register'})" style="font-size:0.9rem">
-                        Register Your Church →
+                <div style="margin-top:var(--space-xl);padding:var(--space-lg);background:var(--hover-bg);border-radius:var(--radius-lg);text-align:center">
+                    <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:var(--space-md)">New to Rooted?</p>
+                    <button class="btn btn-secondary btn-block" onclick="State.set({screen:'church-register'})" style="font-size:0.95rem">
+                        ⛪ Register Your Church
                     </button>
                 </div>
             </div>
@@ -1489,51 +1533,90 @@ async function loadRegistrationCodes() {
 function renderBackendAdmin() {
     return `
     <div class="auth-container fade-up">
-        <div class="auth-left">
+        <div class="auth-left" style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#334155 100%)">
             <div class="auth-brand">
-                <div class="auth-logo" style="background:linear-gradient(135deg,#1e3d30,#2d5a47)">🔧</div>
-                <h1 class="auth-brand-name">Rooted</h1>
-                <p class="auth-tagline">Church Administration</p>
+                <!-- Admin visual -->
+                <div style="margin-bottom:var(--space-xl);text-align:center">
+                    <div style="position:relative;display:inline-block">
+                        <div style="font-size:5rem;filter:drop-shadow(0 10px 30px rgba(0,0,0,0.4))">⚙️</div>
+                        <div style="position:absolute;top:-10px;right:-10px;width:30px;height:30px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;box-shadow:0 4px 15px rgba(245,158,11,0.4)">👑</div>
+                    </div>
+                </div>
+                <h1 class="auth-brand-name" style="font-size:2.5rem;margin-bottom:var(--space-sm)">Rooted</h1>
+                <p class="auth-tagline" style="font-size:1.1rem;opacity:0.9">Administration Center</p>
+                
+                <div style="margin-top:var(--space-2xl);padding:var(--space-lg);background:rgba(255,255,255,0.05);border-radius:var(--radius-lg);border:1px solid rgba(255,255,255,0.1)">
+                    <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-md)">
+                        <div style="width:40px;height:40px;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem">🏛️</div>
+                        <div>
+                            <p style="color:white;font-weight:600;margin:0">Church Management</p>
+                            <p style="color:rgba(255,255,255,0.6);font-size:0.8rem;margin:0">Register & manage churches</p>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-md)">
+                        <div style="width:40px;height:40px;background:linear-gradient(135deg,#3b82f6,#2563eb);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem">🔑</div>
+                        <div>
+                            <p style="color:white;font-weight:600;margin:0">Access Codes</p>
+                            <p style="color:rgba(255,255,255,0.6);font-size:0.8rem;margin:0">Generate registration codes</p>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:var(--space-md)">
+                        <div style="width:40px;height:40px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem">💰</div>
+                        <div>
+                            <p style="color:white;font-weight:600;margin:0">Subscriptions</p>
+                            <p style="color:rgba(255,255,255,0.6);font-size:0.8rem;margin:0">Manage pricing tiers</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="auth-right">
-            <div class="auth-form-container">
-                <button class="btn btn-ghost" onclick="State.set({screen:'welcome'})" style="margin-bottom:var(--space-lg)">← Back to Welcome</button>
+            <div class="auth-form-container" style="max-width:450px">
+                <button class="btn btn-ghost" onclick="State.set({screen:'welcome'})" style="margin-bottom:var(--space-lg)">← Back to Home</button>
                 
-                <h2 class="auth-form-title">Church Administration</h2>
-                <p class="auth-form-subtitle">Manage churches and registration</p>
+                <div style="text-align:center;margin-bottom:var(--space-xl)">
+                    <h2 class="auth-form-title" style="margin-bottom:var(--space-xs)">Administration Portal</h2>
+                    <p class="auth-form-subtitle">Choose your access level</p>
+                </div>
                 
-                <div style="display:flex;flex-direction:column;gap:var(--space-md);margin-top:var(--space-xl)">
+                <div style="display:flex;flex-direction:column;gap:var(--space-lg)">
                     <!-- Super Admin Login -->
-                    <div style="padding:var(--space-lg);background:var(--hover-bg);border-radius:var(--radius-lg)">
-                        <h3 style="font-size:1rem;margin-bottom:var(--space-md);display:flex;align-items:center;gap:var(--space-sm)">
-                            <span>👑</span> Super Admin
-                        </h3>
-                        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:var(--space-md)">Access the backend dashboard to manage all churches and registration codes.</p>
-                        <button class="btn btn-primary btn-block" onclick="showSuperAdminLogin()">
-                            Super Admin Login
+                    <div style="padding:var(--space-xl);background:linear-gradient(135deg,rgba(245,158,11,0.1),rgba(217,119,6,0.05));border-radius:var(--radius-xl);border:2px solid rgba(245,158,11,0.2);position:relative;overflow:hidden">
+                        <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(245,158,11,0.2),transparent);border-radius:50%"></div>
+                        <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-md)">
+                            <div style="width:50px;height:50px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 4px 15px rgba(245,158,11,0.3)">👑</div>
+                            <div>
+                                <h3 style="margin:0;font-size:1.1rem">Super Admin</h3>
+                                <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">Full platform control</p>
+                            </div>
+                        </div>
+                        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:var(--space-md)">Manage all churches, registration codes, and subscriptions.</p>
+                        <button class="btn btn-block" onclick="showSuperAdminLogin()" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;border:none;font-weight:600">
+                            🔐 Super Admin Login
                         </button>
                     </div>
                     
                     <!-- Church Registration -->
-                    <div style="padding:var(--space-lg);background:var(--hover-bg);border-radius:var(--radius-lg)">
-                        <h3 style="font-size:1rem;margin-bottom:var(--space-md);display:flex;align-items:center;gap:var(--space-sm)">
-                            <span>⛪</span> Register Your Church
-                        </h3>
-                        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:var(--space-md)">Have a registration code? Set up your church account here.</p>
-                        <button class="btn btn-secondary btn-block" onclick="State.set({screen:'church-register'})">
-                            Register New Church
+                    <div style="padding:var(--space-xl);background:linear-gradient(135deg,rgba(124,58,237,0.1),rgba(139,92,246,0.05));border-radius:var(--radius-xl);border:2px solid rgba(124,58,237,0.2);position:relative;overflow:hidden">
+                        <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(124,58,237,0.2),transparent);border-radius:50%"></div>
+                        <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-md)">
+                            <div style="width:50px;height:50px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 4px 15px rgba(124,58,237,0.3)">⛪</div>
+                            <div>
+                                <h3 style="margin:0;font-size:1.1rem">Register Church</h3>
+                                <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">New church setup</p>
+                            </div>
+                        </div>
+                        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:var(--space-md)">Have a registration code? Create your church account now.</p>
+                        <button class="btn btn-block" onclick="State.set({screen:'church-register'})" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);color:white;border:none;font-weight:600">
+                            ✨ Register New Church
                         </button>
                     </div>
                     
                     <!-- Church Login -->
-                    <div style="padding:var(--space-lg);background:var(--hover-bg);border-radius:var(--radius-lg)">
-                        <h3 style="font-size:1rem;margin-bottom:var(--space-md);display:flex;align-items:center;gap:var(--space-sm)">
-                            <span>🔑</span> Existing Church
-                        </h3>
-                        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:var(--space-md)">Already have an account? Sign in to manage your church.</p>
-                        <button class="btn btn-ghost btn-block" onclick="State.set({screen:'church-login'})">
-                            Church Admin Login
+                    <div style="padding:var(--space-lg);background:var(--hover-bg);border-radius:var(--radius-xl);text-align:center">
+                        <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:var(--space-md)">Already have a church account?</p>
+                        <button class="btn btn-ghost btn-block" onclick="State.set({screen:'church-login'})" style="font-size:0.95rem">
+                            🔑 Church Admin Login →
                         </button>
                     </div>
                 </div>
@@ -1960,55 +2043,89 @@ async function deleteChurch(churchId) {
 function renderChurchRegistration() {
     return `
     <div class="auth-container fade-up">
-        <div class="auth-left">
+        <div class="auth-left" style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4c1d95 100%)">
             <div class="auth-brand">
-                <div class="auth-logo" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">⛪</div>
-                <h1 class="auth-brand-name">Rooted</h1>
-                <p class="auth-tagline">Church Registration</p>
+                <!-- Church illustration -->
+                <div style="margin-bottom:var(--space-xl);text-align:center">
+                    <div style="font-size:5rem;margin-bottom:var(--space-md);filter:drop-shadow(0 10px 20px rgba(0,0,0,0.3))">🏛️</div>
+                    <div style="display:flex;justify-content:center;gap:var(--space-sm);margin-bottom:var(--space-lg)">
+                        <span style="font-size:2rem">👥</span>
+                        <span style="font-size:2rem">📖</span>
+                        <span style="font-size:2rem">🙏</span>
+                    </div>
+                </div>
+                <h1 class="auth-brand-name" style="font-size:2.5rem;margin-bottom:var(--space-sm)">Rooted</h1>
+                <p class="auth-tagline" style="font-size:1.1rem;opacity:0.9">Church Administration Platform</p>
+                
+                <div style="margin-top:var(--space-2xl);padding:var(--space-lg);background:rgba(255,255,255,0.1);border-radius:var(--radius-lg);backdrop-filter:blur(10px)">
+                    <h3 style="color:white;font-size:1rem;margin-bottom:var(--space-md)">✨ What you'll get:</h3>
+                    <ul style="color:rgba(255,255,255,0.9);font-size:0.9rem;list-style:none;padding:0;margin:0">
+                        <li style="margin-bottom:var(--space-sm);display:flex;align-items:center;gap:var(--space-sm)">
+                            <span style="color:#22c55e">✓</span> Digital discipleship tools
+                        </li>
+                        <li style="margin-bottom:var(--space-sm);display:flex;align-items:center;gap:var(--space-sm)">
+                            <span style="color:#22c55e">✓</span> Member engagement tracking
+                        </li>
+                        <li style="margin-bottom:var(--space-sm);display:flex;align-items:center;gap:var(--space-sm)">
+                            <span style="color:#22c55e">✓</span> Resource & PDF management
+                        </li>
+                        <li style="display:flex;align-items:center;gap:var(--space-sm)">
+                            <span style="color:#22c55e">✓</span> Location-based check-ins
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
         <div class="auth-right">
-            <div class="auth-form-container">
+            <div class="auth-form-container" style="max-width:420px">
                 <button class="btn btn-ghost" onclick="State.set({screen:'backend-admin'})" style="margin-bottom:var(--space-lg)">← Back</button>
                 
-                <h2 class="auth-form-title">Register Your Church</h2>
-                <p class="auth-form-subtitle">Create your church admin account</p>
+                <div style="text-align:center;margin-bottom:var(--space-xl)">
+                    <div style="width:70px;height:70px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-md);font-size:2rem;box-shadow:0 10px 30px rgba(124,58,237,0.3)">⛪</div>
+                    <h2 class="auth-form-title" style="margin-bottom:var(--space-xs)">Register Your Church</h2>
+                    <p class="auth-form-subtitle">Start your digital ministry journey</p>
+                </div>
                 
                 <form onsubmit="handleChurchRegistration(event)">
                     <div class="input-group">
-                        <label class="input-label">Registration Code</label>
-                        <input type="text" class="input-field" id="regCode" placeholder="Enter your code (e.g., 1234)" required>
-                        <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:4px">Contact us to get a registration code</p>
+                        <label class="input-label">🔑 Registration Code</label>
+                        <input type="text" class="input-field" id="regCode" placeholder="Enter your access code" required style="font-family:monospace;font-size:1.1rem;letter-spacing:2px;text-transform:uppercase">
+                        <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:4px">Don't have a code? <a href="#" style="color:var(--root-green)">Request one here</a></p>
                     </div>
                     
+                    <div style="height:1px;background:var(--border-color);margin:var(--space-lg) 0"></div>
+                    
                     <div class="input-group">
-                        <label class="input-label">Church Name</label>
+                        <label class="input-label">🏛️ Church Name</label>
                         <input type="text" class="input-field" id="regChurchName" placeholder="e.g., Faith Fellowship Church" required>
                     </div>
                     
                     <div class="input-group">
-                        <label class="input-label">Admin Username</label>
+                        <label class="input-label">👤 Admin Username</label>
                         <input type="text" class="input-field" id="regUsername" placeholder="Choose a username" required>
-                        <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:4px">This will be used to log in</p>
+                        <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:4px">Letters and numbers only</p>
                     </div>
                     
-                    <div class="input-group">
-                        <label class="input-label">Password</label>
-                        <input type="password" class="input-field" id="regPassword" placeholder="Choose a password" required minlength="4">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">
+                        <div class="input-group">
+                            <label class="input-label">🔒 Password</label>
+                            <input type="password" class="input-field" id="regPassword" placeholder="••••••••" required minlength="4">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">🔒 Confirm</label>
+                            <input type="password" class="input-field" id="regPasswordConfirm" placeholder="••••••••" required>
+                        </div>
                     </div>
                     
-                    <div class="input-group">
-                        <label class="input-label">Confirm Password</label>
-                        <input type="password" class="input-field" id="regPasswordConfirm" placeholder="Confirm your password" required>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary btn-lg btn-block" id="regSubmitBtn">Register Church</button>
+                    <button type="submit" class="btn btn-primary btn-lg btn-block" id="regSubmitBtn" style="margin-top:var(--space-lg);background:linear-gradient(135deg,#7c3aed,#a78bfa);border:none;font-size:1rem">
+                        🚀 Create Church Account
+                    </button>
                 </form>
                 
-                <div class="auth-footer" style="margin-top:var(--space-xl)">
+                <div class="auth-footer" style="margin-top:var(--space-xl);text-align:center">
                     <p style="font-size:0.85rem;color:var(--text-tertiary)">
                         Already have an account? 
-                        <button class="btn btn-ghost" onclick="State.set({screen:'church-login'})" style="padding:0;font-size:0.85rem">Sign in here</button>
+                        <a href="#" onclick="State.set({screen:'church-login'});return false;" style="color:var(--root-green);font-weight:600">Sign in here →</a>
                     </p>
                 </div>
             </div>
@@ -2205,13 +2322,35 @@ function renderChurchOnboarding() {
     const data = churchOnboarding.data;
     const totalSteps = 4;
     
+    const stepIcons = ['🏛️', '🌐', '📱', '✅'];
+    const stepTitles = ['Church Info', 'Website', 'Social Media', 'Complete'];
+    
     return `
     <div class="auth-container fade-up">
-        <div class="auth-left">
+        <div class="auth-left" style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4c1d95 100%)">
             <div class="auth-brand">
-                <div class="auth-logo" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">⛪</div>
-                <h1 class="auth-brand-name">Rooted</h1>
-                <p class="auth-tagline">Church Setup</p>
+                <!-- Setup visual -->
+                <div style="margin-bottom:var(--space-xl);text-align:center">
+                    <div style="font-size:4rem;margin-bottom:var(--space-md);filter:drop-shadow(0 10px 20px rgba(0,0,0,0.3))">${stepIcons[step-1]}</div>
+                </div>
+                <h1 class="auth-brand-name" style="font-size:2rem;margin-bottom:var(--space-sm)">Church Setup</h1>
+                <p class="auth-tagline" style="font-size:1rem;opacity:0.9">${stepTitles[step-1]}</p>
+                
+                <!-- Step indicators -->
+                <div style="margin-top:var(--space-2xl)">
+                    <div style="display:flex;justify-content:center;gap:var(--space-md)">
+                        ${[1,2,3,4].map(s => `
+                            <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-xs)">
+                                <div style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;
+                                    ${s < step ? 'background:#22c55e;' : s === step ? 'background:linear-gradient(135deg,#7c3aed,#a78bfa);' : 'background:rgba(255,255,255,0.1);'}
+                                    ${s <= step ? 'box-shadow:0 4px 15px rgba(0,0,0,0.2);' : ''}">
+                                    ${s < step ? '✓' : stepIcons[s-1]}
+                                </div>
+                                <span style="font-size:0.7rem;color:${s <= step ? 'white' : 'rgba(255,255,255,0.4)'}">${stepTitles[s-1]}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
             </div>
         </div>
         <div class="auth-right">
@@ -2220,7 +2359,7 @@ function renderChurchOnboarding() {
                 <div style="margin-bottom:var(--space-xl)">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm)">
                         <span style="font-size:0.85rem;color:var(--text-tertiary)">Step ${step} of ${totalSteps}</span>
-                        <span style="font-size:0.85rem;color:var(--text-tertiary)">${Math.round((step/totalSteps)*100)}% Complete</span>
+                        <span style="font-size:0.85rem;font-weight:600;color:var(--root-green)">${Math.round((step/totalSteps)*100)}% Complete</span>
                     </div>
                     <div style="height:8px;background:var(--hover-bg);border-radius:4px;overflow:hidden">
                         <div style="height:100%;width:${(step/totalSteps)*100}%;background:linear-gradient(90deg,#7c3aed,#a78bfa);border-radius:4px;transition:width 0.3s"></div>
@@ -2238,28 +2377,31 @@ function renderOnboardingStep(step, data) {
         case 1:
             return `
                 <div class="fade-up">
-                    <h2 class="auth-form-title">Let's set up your church</h2>
-                    <p class="auth-form-subtitle">First, tell us about your church</p>
+                    <div style="text-align:center;margin-bottom:var(--space-xl)">
+                        <div style="width:60px;height:60px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-md);font-size:1.8rem;box-shadow:0 10px 30px rgba(124,58,237,0.3)">🏛️</div>
+                        <h2 class="auth-form-title" style="margin-bottom:var(--space-xs)">Church Information</h2>
+                        <p class="auth-form-subtitle">Let's start with the basics</p>
+                    </div>
                     
                     <form onsubmit="onboardingNext(event)">
                         <div class="input-group">
-                            <label class="input-label">Church Name *</label>
-                            <input type="text" class="input-field" id="ob_name" placeholder="e.g. Faith Fellowship Church" value="${data.name}" required>
+                            <label class="input-label">🏛️ Church Name *</label>
+                            <input type="text" class="input-field" id="ob_name" placeholder="e.g. Faith Fellowship Church" value="${data.name}" required style="font-size:1rem">
                         </div>
                         <div class="input-group">
-                            <label class="input-label">Address *</label>
+                            <label class="input-label">📍 Address *</label>
                             <input type="text" class="input-field" id="ob_address" placeholder="123 Main St, City, State ZIP" value="${data.address}" required>
                         </div>
                         <div class="input-group">
-                            <label class="input-label">Phone Number</label>
+                            <label class="input-label">📞 Phone Number</label>
                             <input type="tel" class="input-field" id="ob_phone" placeholder="(555) 123-4567" value="${data.phone}">
                         </div>
                         
                         <div style="display:flex;gap:var(--space-md);margin-top:var(--space-xl)">
-                            <button type="button" class="btn btn-ghost" onclick="State.set({screen:'church-login'})" style="flex:1">
-                                ← Back
+                            <button type="button" class="btn btn-ghost" onclick="State.set({screen:'backend-admin'})" style="flex:1">
+                                ← Cancel
                             </button>
-                            <button type="submit" class="btn btn-primary" style="flex:2">
+                            <button type="submit" class="btn btn-primary" style="flex:2;background:linear-gradient(135deg,#7c3aed,#a78bfa);border:none">
                                 Continue →
                             </button>
                         </div>
@@ -2269,20 +2411,23 @@ function renderOnboardingStep(step, data) {
         case 2:
             return `
                 <div class="fade-up">
-                    <h2 class="auth-form-title">Church Website</h2>
-                    <p class="auth-form-subtitle">We'll try to find your social media links automatically</p>
+                    <div style="text-align:center;margin-bottom:var(--space-xl)">
+                        <div style="width:60px;height:60px;background:linear-gradient(135deg,#3b82f6,#60a5fa);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-md);font-size:1.8rem;box-shadow:0 10px 30px rgba(59,130,246,0.3)">🌐</div>
+                        <h2 class="auth-form-title" style="margin-bottom:var(--space-xs)">Church Website</h2>
+                        <p class="auth-form-subtitle">Help members find you online</p>
+                    </div>
                     
                     <form onsubmit="onboardingNext(event)">
                         <div class="input-group">
-                            <label class="input-label">Website URL</label>
-                            <input type="url" class="input-field" id="ob_website" placeholder="https://yourchurch.com" value="${data.website}">
-                            <p style="font-size:0.8rem;color:var(--text-tertiary);margin-top:var(--space-xs)">Enter your website and we'll look for social media links</p>
+                            <label class="input-label">🌐 Website URL</label>
+                            <input type="text" class="input-field" id="ob_website" placeholder="yourchurch.com or https://yourchurch.com" value="${data.website}" style="font-size:1rem">
+                            <p style="font-size:0.8rem;color:var(--text-tertiary);margin-top:var(--space-xs)">We'll automatically add https:// if needed</p>
                         </div>
                         
-                        <div id="websiteLookupStatus" style="margin:var(--space-lg) 0;padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);display:none">
-                            <div style="display:flex;align-items:center;gap:var(--space-sm)">
-                                <div class="loading-spinner" style="width:20px;height:20px;border-width:2px"></div>
-                                <span style="color:var(--text-secondary)">Looking up social media...</span>
+                        <div style="padding:var(--space-lg);background:var(--hover-bg);border-radius:var(--radius-lg);margin:var(--space-lg) 0">
+                            <div style="display:flex;align-items:center;gap:var(--space-sm);color:var(--text-secondary)">
+                                <span style="font-size:1.2rem">💡</span>
+                                <span style="font-size:0.9rem">Tip: Your website helps us suggest social media profiles in the next step!</span>
                             </div>
                         </div>
                         
@@ -2291,9 +2436,9 @@ function renderOnboardingStep(step, data) {
                                 ← Back
                             </button>
                             <button type="button" class="btn btn-secondary" onclick="onboardingSkip()" style="flex:1">
-                                Skip
+                                Skip for now
                             </button>
-                            <button type="submit" class="btn btn-primary" style="flex:1">
+                            <button type="submit" class="btn btn-primary" style="flex:1;background:linear-gradient(135deg,#3b82f6,#60a5fa);border:none">
                                 Continue →
                             </button>
                         </div>
@@ -2303,25 +2448,37 @@ function renderOnboardingStep(step, data) {
         case 3:
             return `
                 <div class="fade-up">
-                    <h2 class="auth-form-title">Social Media Links</h2>
-                    <p class="auth-form-subtitle">Help your congregation stay connected</p>
+                    <div style="text-align:center;margin-bottom:var(--space-xl)">
+                        <div style="width:60px;height:60px;background:linear-gradient(135deg,#ec4899,#f472b6);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-md);font-size:1.8rem;box-shadow:0 10px 30px rgba(236,72,153,0.3)">📱</div>
+                        <h2 class="auth-form-title" style="margin-bottom:var(--space-xs)">Social Media</h2>
+                        <p class="auth-form-subtitle">Help your congregation stay connected</p>
+                    </div>
                     
                     <form onsubmit="onboardingNext(event)">
-                        <div class="input-group">
-                            <label class="input-label">📘 Facebook Page</label>
-                            <input type="url" class="input-field" id="ob_facebook" placeholder="https://facebook.com/yourchurch" value="${data.socialMedia.facebook}">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">
+                            <div class="input-group">
+                                <label class="input-label">📘 Facebook</label>
+                                <input type="text" class="input-field" id="ob_facebook" placeholder="facebook.com/..." value="${data.socialMedia.facebook}">
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label">📸 Instagram</label>
+                                <input type="text" class="input-field" id="ob_instagram" placeholder="instagram.com/..." value="${data.socialMedia.instagram}">
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label">🎥 YouTube</label>
+                                <input type="text" class="input-field" id="ob_youtube" placeholder="youtube.com/@..." value="${data.socialMedia.youtube}">
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label">🐦 Twitter/X</label>
+                                <input type="text" class="input-field" id="ob_twitter" placeholder="twitter.com/..." value="${data.socialMedia.twitter || ''}">
+                            </div>
                         </div>
-                        <div class="input-group">
-                            <label class="input-label">📸 Instagram</label>
-                            <input type="url" class="input-field" id="ob_instagram" placeholder="https://instagram.com/yourchurch" value="${data.socialMedia.instagram}">
-                        </div>
-                        <div class="input-group">
-                            <label class="input-label">🎥 YouTube Channel</label>
-                            <input type="url" class="input-field" id="ob_youtube" placeholder="https://youtube.com/@yourchurch" value="${data.socialMedia.youtube}">
-                        </div>
-                        <div class="input-group">
-                            <label class="input-label">🐦 Twitter/X</label>
-                            <input type="url" class="input-field" id="ob_twitter" placeholder="https://twitter.com/yourchurch" value="${data.socialMedia.twitter || ''}">
+                        
+                        <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-lg);margin:var(--space-lg) 0">
+                            <div style="display:flex;align-items:center;gap:var(--space-sm);color:var(--text-secondary)">
+                                <span style="font-size:1.2rem">💡</span>
+                                <span style="font-size:0.85rem">You can add more links later from your dashboard</span>
+                            </div>
                         </div>
                         
                         <div style="display:flex;gap:var(--space-md);margin-top:var(--space-xl)">
@@ -2329,9 +2486,9 @@ function renderOnboardingStep(step, data) {
                                 ← Back
                             </button>
                             <button type="button" class="btn btn-secondary" onclick="onboardingSkip()" style="flex:1">
-                                Skip
+                                Skip for now
                             </button>
-                            <button type="submit" class="btn btn-primary" style="flex:1">
+                            <button type="submit" class="btn btn-primary" style="flex:1;background:linear-gradient(135deg,#ec4899,#f472b6);border:none">
                                 Continue →
                             </button>
                         </div>
@@ -2341,39 +2498,37 @@ function renderOnboardingStep(step, data) {
         case 4:
             return `
                 <div class="fade-up">
-                    <h2 class="auth-form-title">Review & Confirm</h2>
-                    <p class="auth-form-subtitle">Make sure everything looks correct</p>
+                    <div style="text-align:center;margin-bottom:var(--space-xl)">
+                        <div style="width:70px;height:70px;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-md);font-size:2rem;box-shadow:0 10px 30px rgba(34,197,94,0.3)">✅</div>
+                        <h2 class="auth-form-title" style="margin-bottom:var(--space-xs)">All Set!</h2>
+                        <p class="auth-form-subtitle">Review your church profile</p>
+                    </div>
                     
-                    <div style="background:var(--hover-bg);border-radius:var(--radius-lg);padding:var(--space-lg);margin-bottom:var(--space-lg)">
+                    <div style="background:linear-gradient(135deg,rgba(124,58,237,0.1),rgba(139,92,246,0.05));border:2px solid rgba(124,58,237,0.2);border-radius:var(--radius-xl);padding:var(--space-xl);margin-bottom:var(--space-lg)">
                         <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-lg);padding-bottom:var(--space-lg);border-bottom:1px solid var(--border-color)">
-                            <div style="width:60px;height:60px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:2rem">⛪</div>
+                            <div style="width:70px;height:70px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;font-size:2.5rem;box-shadow:0 8px 25px rgba(124,58,237,0.3)">⛪</div>
+                            <div style="flex:1">
+                                <h3 style="margin:0;font-size:1.3rem">${data.name || 'Your Church'}</h3>
+                                <p style="color:var(--text-secondary);font-size:0.9rem;margin:var(--space-xs) 0 0 0">📍 ${data.address || 'Address not set'}</p>
+                            </div>
+                            <button type="button" class="btn btn-ghost" onclick="onboardingEdit(1)" style="font-size:0.85rem">✏️ Edit</button>
+                        </div>
+                        
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-lg)">
                             <div>
-                                <h3 style="margin:0">${data.name || 'Your Church'}</h3>
-                                <p style="color:var(--text-tertiary);font-size:0.9rem;margin:0">${data.address || 'Address not set'}</p>
+                                <strong style="font-size:0.85rem;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.5px">Contact</strong>
+                                <p style="color:var(--text-secondary);font-size:0.95rem;margin:var(--space-sm) 0 0 0">📞 ${data.phone || 'Not provided'}</p>
+                                <p style="color:var(--text-secondary);font-size:0.95rem;margin:var(--space-xs) 0 0 0">🌐 ${data.website || 'Not provided'}</p>
                             </div>
-                            <button type="button" class="btn btn-ghost" onclick="onboardingEdit(1)" style="margin-left:auto;font-size:0.85rem">Edit</button>
-                        </div>
-                        
-                        <div style="margin-bottom:var(--space-md)">
-                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm)">
-                                <strong style="font-size:0.9rem">Contact Info</strong>
-                                <button type="button" class="btn btn-ghost" onclick="onboardingEdit(1)" style="font-size:0.8rem;padding:4px 8px">Edit</button>
-                            </div>
-                            <p style="color:var(--text-secondary);font-size:0.9rem;margin:0">📞 ${data.phone || 'Not provided'}</p>
-                            <p style="color:var(--text-secondary);font-size:0.9rem;margin:var(--space-xs) 0 0 0">🌐 ${data.website || 'Not provided'}</p>
-                        </div>
-                        
-                        <div>
-                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm)">
-                                <strong style="font-size:0.9rem">Social Media</strong>
-                                <button type="button" class="btn btn-ghost" onclick="onboardingEdit(3)" style="font-size:0.8rem;padding:4px 8px">Edit</button>
-                            </div>
-                            <div style="display:flex;flex-wrap:wrap;gap:var(--space-sm)">
-                                ${data.socialMedia.facebook ? '<span style="background:var(--bg-secondary);padding:4px 10px;border-radius:20px;font-size:0.8rem">📘 Facebook</span>' : ''}
-                                ${data.socialMedia.instagram ? '<span style="background:var(--bg-secondary);padding:4px 10px;border-radius:20px;font-size:0.8rem">📸 Instagram</span>' : ''}
-                                ${data.socialMedia.youtube ? '<span style="background:var(--bg-secondary);padding:4px 10px;border-radius:20px;font-size:0.8rem">🎥 YouTube</span>' : ''}
-                                ${data.socialMedia.twitter ? '<span style="background:var(--bg-secondary);padding:4px 10px;border-radius:20px;font-size:0.8rem">🐦 Twitter</span>' : ''}
-                                ${!data.socialMedia.facebook && !data.socialMedia.instagram && !data.socialMedia.youtube && !data.socialMedia.twitter ? '<span style="color:var(--text-tertiary);font-size:0.85rem">None added yet</span>' : ''}
+                            <div>
+                                <strong style="font-size:0.85rem;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.5px">Social Media</strong>
+                                <div style="display:flex;flex-wrap:wrap;gap:var(--space-xs);margin-top:var(--space-sm)">
+                                    ${data.socialMedia.facebook ? '<span style="background:rgba(66,103,178,0.2);color:#4267B2;padding:4px 10px;border-radius:20px;font-size:0.8rem">📘 Facebook</span>' : ''}
+                                    ${data.socialMedia.instagram ? '<span style="background:rgba(225,48,108,0.2);color:#E1306C;padding:4px 10px;border-radius:20px;font-size:0.8rem">📸 Instagram</span>' : ''}
+                                    ${data.socialMedia.youtube ? '<span style="background:rgba(255,0,0,0.2);color:#FF0000;padding:4px 10px;border-radius:20px;font-size:0.8rem">🎥 YouTube</span>' : ''}
+                                    ${data.socialMedia.twitter ? '<span style="background:rgba(29,161,242,0.2);color:#1DA1F2;padding:4px 10px;border-radius:20px;font-size:0.8rem">🐦 Twitter</span>' : ''}
+                                    ${!data.socialMedia.facebook && !data.socialMedia.instagram && !data.socialMedia.youtube && !data.socialMedia.twitter ? '<span style="color:var(--text-tertiary);font-size:0.85rem">None added</span>' : ''}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2382,8 +2537,8 @@ function renderOnboardingStep(step, data) {
                         <button type="button" class="btn btn-ghost" onclick="onboardingBack()" style="flex:1">
                             ← Back
                         </button>
-                        <button type="button" class="btn btn-primary" onclick="completeOnboarding()" style="flex:2">
-                            🎉 Complete Setup
+                        <button type="button" class="btn btn-primary" onclick="completeOnboarding()" style="flex:2;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;font-size:1rem">
+                            🎉 Launch My Church!
                         </button>
                     </div>
                 </div>`;
@@ -2391,6 +2546,16 @@ function renderOnboardingStep(step, data) {
         default:
             return '<p>Unknown step</p>';
     }
+}
+
+// Helper function to normalize URLs
+function normalizeUrl(url) {
+    if (!url) return '';
+    url = url.trim();
+    if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+    }
+    return url;
 }
 
 function onboardingNext(e) {
@@ -2403,15 +2568,17 @@ function onboardingNext(e) {
         churchOnboarding.data.address = document.getElementById('ob_address')?.value || '';
         churchOnboarding.data.phone = document.getElementById('ob_phone')?.value || '';
     } else if (step === 2) {
-        churchOnboarding.data.website = document.getElementById('ob_website')?.value || '';
-        // Simulate website lookup for social media (in real app, would scrape or use API)
+        // Normalize website URL
+        const websiteInput = document.getElementById('ob_website')?.value || '';
+        churchOnboarding.data.website = normalizeUrl(websiteInput);
+        // Simulate website lookup for social media
         simulateWebsiteLookup();
     } else if (step === 3) {
         churchOnboarding.data.socialMedia = {
-            facebook: document.getElementById('ob_facebook')?.value || '',
-            instagram: document.getElementById('ob_instagram')?.value || '',
-            youtube: document.getElementById('ob_youtube')?.value || '',
-            twitter: document.getElementById('ob_twitter')?.value || ''
+            facebook: normalizeUrl(document.getElementById('ob_facebook')?.value),
+            instagram: normalizeUrl(document.getElementById('ob_instagram')?.value),
+            youtube: normalizeUrl(document.getElementById('ob_youtube')?.value),
+            twitter: normalizeUrl(document.getElementById('ob_twitter')?.value)
         };
     }
     
@@ -3870,65 +4037,334 @@ function renderSettings() {
 
 function showChurchSearch() {
     showModal(`
-        <div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
-            <div class="modal-header">
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:600px;max-height:90vh;display:flex;flex-direction:column">
+            <div class="modal-header" style="flex-shrink:0">
                 <h3 class="modal-title">⛪ Find Your Church</h3>
                 <button class="modal-close" onclick="closeModal()">✕</button>
             </div>
-            <div class="modal-body">
-                <div class="input-group">
-                    <label class="input-label">Search by Address or Church Name</label>
-                    <input type="text" class="input-field" id="churchSearchInput" placeholder="e.g. Hayward, CA or Faith Fellowship" onkeyup="searchChurches()">
+            <div class="modal-body" style="flex:1;overflow-y:auto">
+                <!-- Search Tabs -->
+                <div style="display:flex;gap:var(--space-sm);margin-bottom:var(--space-lg);border-bottom:1px solid var(--border-color);padding-bottom:var(--space-md)">
+                    <button class="btn btn-primary" id="searchTabName" onclick="switchSearchTab('name')" style="flex:1;font-size:0.85rem">
+                        🔤 By Name
+                    </button>
+                    <button class="btn btn-ghost" id="searchTabLocation" onclick="switchSearchTab('location')" style="flex:1;font-size:0.85rem">
+                        📍 By Location
+                    </button>
+                    <button class="btn btn-ghost" id="searchTabBrowse" onclick="switchSearchTab('browse')" style="flex:1;font-size:0.85rem">
+                        📋 Browse All
+                    </button>
                 </div>
-                <div id="churchSearchResults" style="margin-top:var(--space-lg);max-height:300px;overflow-y:auto"></div>
+                
+                <!-- Search by Name -->
+                <div id="searchPanelName">
+                    <div class="input-group">
+                        <label class="input-label">🔍 Church Name</label>
+                        <input type="text" class="input-field" id="churchSearchName" placeholder="e.g. Faith Fellowship, Grace Community" oninput="searchChurchesByName()" style="font-size:1rem">
+                    </div>
+                </div>
+                
+                <!-- Search by Location -->
+                <div id="searchPanelLocation" style="display:none">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">
+                        <div class="input-group">
+                            <label class="input-label">📮 ZIP Code</label>
+                            <input type="text" class="input-field" id="churchSearchZip" placeholder="e.g. 94541" maxlength="5" oninput="searchChurchesByLocation()">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">🏙️ City</label>
+                            <input type="text" class="input-field" id="churchSearchCity" placeholder="e.g. Hayward" oninput="searchChurchesByLocation()">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">🗺️ State</label>
+                        <select class="input-field" id="churchSearchState" onchange="searchChurchesByLocation()">
+                            <option value="">All States</option>
+                            <option value="CA">California</option>
+                            <option value="TX">Texas</option>
+                            <option value="FL">Florida</option>
+                            <option value="NY">New York</option>
+                            <option value="IL">Illinois</option>
+                            <option value="PA">Pennsylvania</option>
+                            <option value="OH">Ohio</option>
+                            <option value="GA">Georgia</option>
+                            <option value="NC">North Carolina</option>
+                            <option value="MI">Michigan</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-secondary btn-block" onclick="useMyLocation()" style="margin-top:var(--space-md)">
+                        📍 Use My Current Location
+                    </button>
+                </div>
+                
+                <!-- Browse All -->
+                <div id="searchPanelBrowse" style="display:none">
+                    <p style="color:var(--text-secondary);text-align:center;margin-bottom:var(--space-md)">Loading all churches...</p>
+                </div>
+                
+                <!-- Results -->
+                <div id="churchSearchResults" style="margin-top:var(--space-lg)">
+                    <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-xl)">
+                        <span style="font-size:2rem;display:block;margin-bottom:var(--space-md)">🔍</span>
+                        Start typing to search for churches...
+                    </p>
+                </div>
+                
+                <!-- Help Text -->
+                <div style="margin-top:var(--space-lg);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md)">
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">
+                        <strong>Can't find your church?</strong> Your church may not be on Rooted yet. 
+                        Ask your church leadership to <a href="#" onclick="State.set({screen:'backend-admin'});closeModal();return false;" style="color:var(--root-green)">register here</a>.
+                    </p>
+                </div>
             </div>
         </div>
     `);
 }
 
-function searchChurches() {
-    const query = document.getElementById('churchSearchInput').value.toLowerCase();
+function switchSearchTab(tab) {
+    // Update tab buttons
+    document.getElementById('searchTabName').className = tab === 'name' ? 'btn btn-primary' : 'btn btn-ghost';
+    document.getElementById('searchTabLocation').className = tab === 'location' ? 'btn btn-primary' : 'btn btn-ghost';
+    document.getElementById('searchTabBrowse').className = tab === 'browse' ? 'btn btn-primary' : 'btn btn-ghost';
+    
+    // Show/hide panels
+    document.getElementById('searchPanelName').style.display = tab === 'name' ? 'block' : 'none';
+    document.getElementById('searchPanelLocation').style.display = tab === 'location' ? 'block' : 'none';
+    document.getElementById('searchPanelBrowse').style.display = tab === 'browse' ? 'block' : 'none';
+    
+    // Clear results
+    const results = document.getElementById('churchSearchResults');
+    
+    if (tab === 'browse') {
+        loadAllChurches();
+    } else {
+        results.innerHTML = `
+            <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-xl)">
+                <span style="font-size:2rem;display:block;margin-bottom:var(--space-md)">🔍</span>
+                ${tab === 'name' ? 'Start typing to search for churches...' : 'Enter location details to find nearby churches...'}
+            </p>
+        `;
+    }
+}
+
+async function searchChurchesByName() {
+    const query = document.getElementById('churchSearchName')?.value?.toLowerCase() || '';
     const results = document.getElementById('churchSearchResults');
     
     if (query.length < 2) {
-        results.innerHTML = '<p style="color:var(--text-tertiary);text-align:center">Enter at least 2 characters to search...</p>';
+        results.innerHTML = `
+            <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-xl)">
+                <span style="font-size:2rem;display:block;margin-bottom:var(--space-md)">🔍</span>
+                Enter at least 2 characters to search...
+            </p>
+        `;
         return;
     }
     
-    // Search in our church database
-    const matches = Object.entries(CHURCHES_DB).filter(([id, church]) => 
-        church.name.toLowerCase().includes(query) || 
-        church.address.toLowerCase().includes(query)
-    );
+    results.innerHTML = `
+        <div style="text-align:center;padding:var(--space-lg)">
+            <div class="loading-spinner" style="margin:0 auto var(--space-md)"></div>
+            <p style="color:var(--text-secondary)">Searching churches...</p>
+        </div>
+    `;
     
-    if (matches.length === 0) {
+    try {
+        // Search using ChurchDB
+        const churches = await ChurchDB.searchChurches(query);
+        displayChurchResults(churches);
+    } catch (e) {
+        console.error('Search error:', e);
+        results.innerHTML = '<p style="color:var(--error);text-align:center">Error searching churches. Please try again.</p>';
+    }
+}
+
+async function searchChurchesByLocation() {
+    const zip = document.getElementById('churchSearchZip')?.value || '';
+    const city = document.getElementById('churchSearchCity')?.value?.toLowerCase() || '';
+    const state = document.getElementById('churchSearchState')?.value || '';
+    const results = document.getElementById('churchSearchResults');
+    
+    if (!zip && !city && !state) {
         results.innerHTML = `
-            <div style="text-align:center;padding:var(--space-lg)">
-                <p style="color:var(--text-tertiary);margin-bottom:var(--space-md)">No churches found.</p>
-                <p style="font-size:0.85rem;color:var(--text-tertiary)">Your church may not be on Rooted yet. Contact us to get your church added!</p>
+            <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-xl)">
+                <span style="font-size:2rem;display:block;margin-bottom:var(--space-md)">📍</span>
+                Enter a ZIP code, city, or state to search...
+            </p>
+        `;
+        return;
+    }
+    
+    results.innerHTML = `
+        <div style="text-align:center;padding:var(--space-lg)">
+            <div class="loading-spinner" style="margin:0 auto var(--space-md)"></div>
+            <p style="color:var(--text-secondary)">Finding churches near you...</p>
+        </div>
+    `;
+    
+    try {
+        // Get all churches and filter by location
+        const allChurches = await ChurchDB.getAllChurches();
+        const filtered = allChurches.filter(church => {
+            const addr = (church.address || '').toLowerCase();
+            if (zip && addr.includes(zip)) return true;
+            if (city && addr.includes(city)) return true;
+            if (state && addr.includes(state.toLowerCase())) return true;
+            if (state && addr.includes(', ' + state)) return true;
+            return false;
+        });
+        displayChurchResults(filtered);
+    } catch (e) {
+        console.error('Search error:', e);
+        results.innerHTML = '<p style="color:var(--error);text-align:center">Error searching churches. Please try again.</p>';
+    }
+}
+
+async function loadAllChurches() {
+    const results = document.getElementById('churchSearchResults');
+    
+    results.innerHTML = `
+        <div style="text-align:center;padding:var(--space-lg)">
+            <div class="loading-spinner" style="margin:0 auto var(--space-md)"></div>
+            <p style="color:var(--text-secondary)">Loading all churches...</p>
+        </div>
+    `;
+    
+    try {
+        const churches = await ChurchDB.getAllChurches();
+        displayChurchResults(churches);
+    } catch (e) {
+        console.error('Load error:', e);
+        results.innerHTML = '<p style="color:var(--error);text-align:center">Error loading churches. Please try again.</p>';
+    }
+}
+
+function useMyLocation() {
+    const results = document.getElementById('churchSearchResults');
+    
+    if (!navigator.geolocation) {
+        toast('Geolocation is not supported by your browser', 'error');
+        return;
+    }
+    
+    results.innerHTML = `
+        <div style="text-align:center;padding:var(--space-lg)">
+            <div class="loading-spinner" style="margin:0 auto var(--space-md)"></div>
+            <p style="color:var(--text-secondary)">Getting your location...</p>
+        </div>
+    `;
+    
+    navigator.geolocation.getCurrentPosition(
+        async (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            // Get all churches and calculate distance
+            const allChurches = await ChurchDB.getAllChurches();
+            const withDistance = allChurches.map(church => {
+                if (church.latitude && church.longitude) {
+                    const dist = calculateDistance(lat, lng, church.latitude, church.longitude);
+                    return { ...church, distance: dist };
+                }
+                return { ...church, distance: 999999 };
+            }).sort((a, b) => a.distance - b.distance);
+            
+            displayChurchResults(withDistance, true);
+        },
+        (error) => {
+            toast('Could not get your location: ' + error.message, 'error');
+            results.innerHTML = '<p style="color:var(--error);text-align:center">Could not get your location. Please enter it manually.</p>';
+        },
+        { enableHighAccuracy: true }
+    );
+}
+
+function calculateDistance(lat1, lng1, lat2, lng2) {
+    // Haversine formula
+    const R = 3959; // Earth's radius in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+function displayChurchResults(churches, showDistance = false) {
+    const results = document.getElementById('churchSearchResults');
+    
+    if (!churches || churches.length === 0) {
+        results.innerHTML = `
+            <div style="text-align:center;padding:var(--space-xl)">
+                <span style="font-size:3rem;display:block;margin-bottom:var(--space-md)">😕</span>
+                <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">No churches found.</p>
+                <p style="font-size:0.85rem;color:var(--text-tertiary)">Try a different search or ask your church to register on Rooted!</p>
             </div>`;
         return;
     }
     
-    results.innerHTML = matches.map(([id, church]) => `
-        <div style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);cursor:pointer" onclick="selectChurch('${id}')">
-            <div style="width:50px;height:50px;background:linear-gradient(135deg,var(--root-green),var(--leaf-green));border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0">⛪</div>
-            <div style="flex:1;min-width:0">
-                <strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${church.name}</strong>
-                <p style="font-size:0.85rem;color:var(--text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${church.address}</p>
+    results.innerHTML = `
+        <p style="font-size:0.85rem;color:var(--text-tertiary);margin-bottom:var(--space-md)">${churches.length} church${churches.length !== 1 ? 'es' : ''} found</p>
+        ${churches.map(church => `
+            <div style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-lg);background:var(--hover-bg);border-radius:var(--radius-lg);margin-bottom:var(--space-md);cursor:pointer;border:2px solid transparent;transition:all 0.2s" 
+                 onclick="selectChurch('${church.id}')"
+                 onmouseover="this.style.borderColor='var(--root-green)'"
+                 onmouseout="this.style.borderColor='transparent'">
+                <div style="width:60px;height:60px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;font-size:1.8rem;flex-shrink:0;box-shadow:0 4px 15px rgba(124,58,237,0.2)">⛪</div>
+                <div style="flex:1;min-width:0">
+                    <strong style="display:block;font-size:1.05rem;margin-bottom:var(--space-xs)">${church.name || 'Unnamed Church'}</strong>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin:0;display:flex;align-items:center;gap:var(--space-xs)">
+                        <span>📍</span> ${church.address || 'Address not available'}
+                    </p>
+                    ${church.phone ? `<p style="font-size:0.8rem;color:var(--text-tertiary);margin:var(--space-xs) 0 0 0;display:flex;align-items:center;gap:var(--space-xs)"><span>📞</span> ${church.phone}</p>` : ''}
+                    ${showDistance && church.distance < 999999 ? `<p style="font-size:0.8rem;color:var(--root-green);margin:var(--space-xs) 0 0 0;font-weight:600">📏 ${church.distance.toFixed(1)} miles away</p>` : ''}
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-xs)">
+                    <span style="color:var(--root-green);font-size:1.5rem">→</span>
+                    <span style="font-size:0.7rem;color:var(--text-tertiary)">Join</span>
+                </div>
             </div>
-            <span style="color:var(--root-green)">→</span>
-        </div>
-    `).join('');
+        `).join('')}
+    `;
 }
 
-function selectChurch(churchId) {
-    if (Auth.currentUser) {
-        setUserChurch(Auth.currentUser.uid, churchId);
-        closeModal();
-        toast('Church connected! ⛪', 'success');
-        render();
+async function selectChurch(churchId) {
+    if (!Auth.currentUser) {
+        toast('Please sign in first', 'error');
+        return;
     }
+    
+    // Show loading
+    toast('Connecting to church...', 'info');
+    
+    try {
+        const result = await UserChurchDB.addChurch(Auth.currentUser.uid, churchId);
+        
+        if (result === true) {
+            // Set as active church
+            await UserChurchDB.setActiveChurch(Auth.currentUser.uid, churchId);
+            
+            // Reload user data
+            await loadUserChurchData();
+            
+            closeModal();
+            toast('Successfully connected to church! ⛪', 'success');
+            render();
+        } else if (result && result.error) {
+            toast(result.message, 'error');
+        } else {
+            toast('Could not connect to church. Please try again.', 'error');
+        }
+    } catch (e) {
+        console.error('Error selecting church:', e);
+        toast('Error connecting to church: ' + e.message, 'error');
+    }
+}
+
+// Legacy function for backward compatibility
+function searchChurches() {
+    searchChurchesByName();
 }
 
 function renderMyChurch() {
