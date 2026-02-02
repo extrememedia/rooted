@@ -2076,6 +2076,7 @@ async function handleChurchRegistration(e) {
         website: '',
         tier: codeData.tier,
         maxMembers: codeData.maxMembers,
+        memberCount: 0,
         announcements: [],
         resources: [],
         checkInResources: [],
@@ -2105,11 +2106,13 @@ async function handleChurchRegistration(e) {
             
             toast('Church registered successfully! 🎉', 'success');
             
-            // Start onboarding
+            // Start onboarding with tier info
             churchOnboarding = {
                 step: 1,
                 adminUsername: username,
                 churchId: churchId,
+                tier: codeData.tier,
+                maxMembers: codeData.maxMembers,
                 data: {
                     name: churchName,
                     address: '',
@@ -2449,7 +2452,7 @@ function simulateWebsiteLookup() {
     }
 }
 
-function completeOnboarding() {
+async function completeOnboarding() {
     const data = churchOnboarding.data;
     
     if (!data.name) {
@@ -2459,40 +2462,89 @@ function completeOnboarding() {
         return;
     }
     
-    // Create or update the church
+    // Show loading state
+    toast('Setting up your church...', 'info');
+    
+    // Get church ID
     let churchId = churchOnboarding.churchId;
     
-    if (churchId && CHURCHES_DB[churchId]) {
-        // Update existing church
-        updateChurchData(churchId, {
-            name: data.name,
-            address: data.address,
-            phone: data.phone,
-            website: data.website,
-            socialMedia: data.socialMedia,
-            onboarded: true
+    if (!churchId) {
+        // Generate from name if not set
+        churchId = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    }
+    
+    try {
+        // Check if church exists in Firestore
+        let churchExists = false;
+        if (firebaseInitialized) {
+            const existingChurch = await db.collection('churches').doc(churchId).get();
+            churchExists = existingChurch.exists;
+        }
+        
+        if (churchExists) {
+            // Update existing church
+            await ChurchDB.updateChurch(churchId, {
+                name: data.name,
+                address: data.address,
+                phone: data.phone,
+                website: data.website,
+                socialMedia: data.socialMedia,
+                onboarded: true
+            });
+        } else {
+            // Create new church
+            await ChurchDB.createChurch(churchId, {
+                id: churchId,
+                name: data.name,
+                address: data.address,
+                phone: data.phone,
+                website: data.website,
+                socialMedia: data.socialMedia,
+                announcements: [],
+                resources: [],
+                checkInResources: [],
+                enabledTools: ['seasons', 'spiritual-formation', 'bible-reading', 'prayer-journal', 'scripture-memory'],
+                onboarded: true,
+                memberCount: 0,
+                maxMembers: churchOnboarding.maxMembers || 5,
+                tier: churchOnboarding.tier || 'free'
+            });
+        }
+        
+        // Update admin account to mark as onboarded in Firestore
+        if (churchOnboarding.adminUsername && firebaseInitialized) {
+            await db.collection('church_admins').doc(churchOnboarding.adminUsername).update({
+                onboarded: true,
+                churchId: churchId
+            });
+        }
+        
+        // Also update local admin accounts
+        if (churchOnboarding.adminUsername && CHURCH_ADMIN_ACCOUNTS[churchOnboarding.adminUsername]) {
+            CHURCH_ADMIN_ACCOUNTS[churchOnboarding.adminUsername].onboarded = true;
+            CHURCH_ADMIN_ACCOUNTS[churchOnboarding.adminUsername].churchId = churchId;
+        }
+        
+        // Clear church cache to reload fresh data
+        ChurchDB.clearCache();
+        
+        // Get fresh church data
+        const church = await ChurchDB.getChurch(churchId);
+        
+        // Go to church admin dashboard
+        State.set({ 
+            screen: 'app', 
+            accountType: 'church',
+            user: { name: church.name, email: 'admin@' + churchId, churchId: churchId },
+            activeNav: 'church-dashboard'
         });
-    } else {
-        // Create new church
-        churchId = createNewChurch(data);
+        
+        toast('🎉 Church setup complete! Welcome to Rooted!', 'success');
+        
+    } catch (error) {
+        console.error('Onboarding error:', error);
+        toast('Error completing setup: ' + error.message, 'error');
     }
-    
-    // Update admin account to mark as onboarded
-    if (churchOnboarding.adminUsername) {
-        CHURCH_ADMIN_ACCOUNTS[churchOnboarding.adminUsername].onboarded = true;
-        CHURCH_ADMIN_ACCOUNTS[churchOnboarding.adminUsername].churchId = churchId;
-    }
-    
-    // Go to church admin dashboard
-    const church = getChurchData(churchId);
-    State.set({ 
-        screen: 'app', 
-        accountType: 'church',
-        user: { name: church.name, email: 'admin@' + churchId, churchId: churchId },
-        activeNav: 'church-dashboard'
-    });
-    
-    toast('🎉 Church setup complete! Welcome to Rooted!', 'success');
 }
 
 function renderLogin() {
