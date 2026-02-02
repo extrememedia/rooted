@@ -592,11 +592,11 @@ let churchCache = {};
 // ========== CHURCH DATABASE SERVICE ==========
 const ChurchDB = {
     // Get church data from Firestore (with caching)
-    async getChurch(churchId) {
+    async getChurch(churchId, forceRefresh = false) {
         if (!churchId) return null;
         
-        // Check cache first
-        if (churchCache[churchId]) {
+        // Check cache first (unless force refresh)
+        if (!forceRefresh && churchCache[churchId]) {
             return churchCache[churchId];
         }
         
@@ -624,6 +624,11 @@ const ChurchDB = {
             console.error('Error getting church:', e);
             return DEFAULT_CHURCHES[churchId] || null;
         }
+    },
+    
+    // Get church data fresh from Firebase (bypasses cache)
+    async getChurchFresh(churchId) {
+        return this.getChurch(churchId, true);
     },
     
     // Create new church in Firestore
@@ -1329,6 +1334,11 @@ function toggleTheme() {
 function navigate(nav) {
     State.set({ activeNav: nav });
     toggleSidebar(false);
+    
+    // Save nav for page refresh (especially for church admin)
+    if (State.current.accountType === 'church') {
+        localStorage.setItem('rooted_nav', nav);
+    }
 }
 
 function showModal(content) {
@@ -2305,6 +2315,13 @@ async function handleChurchAdminLogin(e) {
             return;
         }
         
+        // Save church admin session to localStorage
+        localStorage.setItem('rooted_church_admin_session', JSON.stringify({
+            username: username,
+            churchId: admin.churchId,
+            churchName: church.name
+        }));
+        
         State.set({ 
             screen: 'app', 
             accountType: 'church',
@@ -2922,6 +2939,14 @@ async function handlePasswordReset(e) {
 
 async function handleSignOut() {
     stopLocationTracking();
+    
+    // Clear church admin session
+    localStorage.removeItem('rooted_church_admin_session');
+    
+    // Clear user cache
+    cachedUserChurches = [];
+    cachedActiveChurch = null;
+    
     await Auth.signOut();
     toast('Signed out', 'info');
     State.set({ screen: 'welcome', user: null, accountType: 'user' });
@@ -4345,12 +4370,20 @@ async function selectChurch(churchId) {
             // Set as active church
             await UserChurchDB.setActiveChurch(Auth.currentUser.uid, churchId);
             
+            // Clear cache to force fresh data load
+            delete churchCache[churchId];
+            
+            // Load fresh church data from Firebase
+            await ChurchDB.getChurchFresh(churchId);
+            
             // Reload user data
             await loadUserChurchData();
             
             closeModal();
             toast('Successfully connected to church! ⛪', 'success');
-            render();
+            
+            // Navigate to My Church page
+            navigate('my-church');
         } else if (result && result.error) {
             toast(result.message, 'error');
         } else {
@@ -4386,14 +4419,63 @@ function renderMyChurch() {
         </div>`;
     }
     
+    // Show loading state, then load fresh data
+    setTimeout(() => loadMyChurchData(activeChurchId), 0);
+    
+    // Return loading state initially
     const church = getChurchData(activeChurchId);
+    if (!church) {
+        return `
+        <div class="fade-up">
+            <div class="card" style="text-align:center;padding:var(--space-2xl)">
+                <div class="loading-spinner" style="margin:0 auto var(--space-lg)"></div>
+                <p style="color:var(--text-secondary)">Loading church data...</p>
+            </div>
+        </div>`;
+    }
+    
+    return renderMyChurchContent(church, userChurches, activeChurchId);
+}
+
+// Load fresh church data from Firebase and re-render
+async function loadMyChurchData(churchId) {
+    if (!churchId) return;
+    
+    try {
+        // Force fresh data from Firebase
+        const freshChurch = await ChurchDB.getChurchFresh(churchId);
+        
+        // Update cache
+        if (freshChurch) {
+            churchCache[churchId] = freshChurch;
+            
+            // Re-render if still on my-church page
+            if (State.current.activeNav === 'my-church') {
+                const contentArea = document.querySelector('.main-content');
+                if (contentArea) {
+                    const userChurches = getUserChurches(Auth.currentUser.uid);
+                    contentArea.innerHTML = renderMyChurchContent(freshChurch, userChurches, churchId);
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error loading church data:', e);
+    }
+}
+
+function renderMyChurchContent(church, userChurches, activeChurchId) {
     const social = church?.socialMedia || {};
     const isNearby = isWithinGeofence(activeChurchId);
-    const isCheckedIn = isCheckedInToday(activeChurchId);
+    const isCheckedIn = checkedInTodayCache[activeChurchId] || false;
     const distanceFeet = getDistanceToChurch(activeChurchId);
     
     return `
     <div class="fade-up">
+        <!-- Refresh Button -->
+        <div style="display:flex;justify-content:flex-end;margin-bottom:var(--space-md)">
+            <button class="btn btn-ghost" onclick="refreshMyChurch()" style="font-size:0.85rem">🔄 Refresh</button>
+        </div>
+        
         <!-- Church Switcher -->
         ${userChurches.length > 1 || userChurches.length < 5 ? `
         <div class="card" style="margin-bottom:var(--space-lg)">
@@ -4470,7 +4552,7 @@ function renderMyChurch() {
             <div style="display:flex;justify-content:space-between;align-items:start">
                 <div>
                     <h2 class="welcome-title">⛪ ${church?.name || 'Church'}</h2>
-                    <p class="welcome-subtitle">${church?.address || ''}</p>
+                    <p class="welcome-subtitle">${church?.address || 'Address not available'}</p>
                 </div>
                 <button class="btn btn-ghost" onclick="showManageChurchModal('${activeChurchId}')" style="color:white;font-size:0.85rem;opacity:0.8">⚙️</button>
             </div>
@@ -4530,9 +4612,27 @@ function renderMyChurch() {
 function switchChurch(churchId) {
     if (Auth.currentUser) {
         setActiveChurch(Auth.currentUser.uid, churchId);
+        // Clear cache for this church to get fresh data
+        delete churchCache[churchId];
         toast('Switched church! ⛪', 'success');
         render();
     }
+}
+
+// Refresh church data from Firebase
+async function refreshMyChurch() {
+    const activeChurchId = Auth.currentUser ? getUserChurch(Auth.currentUser.uid) : null;
+    if (!activeChurchId) return;
+    
+    toast('Refreshing...', 'info');
+    
+    // Clear cache
+    delete churchCache[activeChurchId];
+    
+    // Load fresh data
+    await loadMyChurchData(activeChurchId);
+    
+    toast('Church data refreshed! ✓', 'success');
 }
 
 function showManageChurchModal(churchId) {
@@ -4924,6 +5024,34 @@ async function init() {
     initFirebase();
     State.subscribe(render);
     const savedNav = localStorage.getItem('rooted_nav');
+    
+    // Check for saved church admin session first
+    const churchAdminSession = localStorage.getItem('rooted_church_admin_session');
+    if (churchAdminSession) {
+        try {
+            const session = JSON.parse(churchAdminSession);
+            // Load church data to verify session is still valid
+            const church = await ChurchDB.getChurch(session.churchId);
+            if (church) {
+                State.set({ 
+                    screen: 'app', 
+                    accountType: 'church',
+                    user: { name: church.name, email: 'admin@' + session.churchId, churchId: session.churchId },
+                    activeNav: savedNav || 'church-dashboard'
+                });
+                localStorage.removeItem('rooted_nav');
+                return;
+            } else {
+                // Invalid session, clear it
+                localStorage.removeItem('rooted_church_admin_session');
+            }
+        } catch (e) {
+            console.log('Error restoring church admin session:', e);
+            localStorage.removeItem('rooted_church_admin_session');
+        }
+    }
+    
+    // Check for regular user session
     const user = await Auth.init();
     if (user) {
         const activeNav = savedNav || 'dashboard';
