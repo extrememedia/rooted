@@ -1543,38 +1543,37 @@ async function loadRegistrationCodes() {
 function renderBackendAdmin() {
     return `
     <div class="auth-container fade-up">
-        <div class="auth-left" style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#334155 100%)">
+        <div class="auth-left" style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4c1d95 100%)">
             <div class="auth-brand">
-                <!-- Admin visual -->
+                <!-- Church visual -->
                 <div style="margin-bottom:var(--space-xl);text-align:center">
                     <div style="position:relative;display:inline-block">
-                        <div style="font-size:5rem;filter:drop-shadow(0 10px 30px rgba(0,0,0,0.4))">⚙️</div>
-                        <div style="position:absolute;top:-10px;right:-10px;width:30px;height:30px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;box-shadow:0 4px 15px rgba(245,158,11,0.4)">👑</div>
+                        <div style="font-size:5rem;filter:drop-shadow(0 10px 30px rgba(0,0,0,0.4))">⛪</div>
                     </div>
                 </div>
                 <h1 class="auth-brand-name" style="font-size:2.5rem;margin-bottom:var(--space-sm)">Rooted</h1>
-                <p class="auth-tagline" style="font-size:1.1rem;opacity:0.9">Administration Center</p>
+                <p class="auth-tagline" style="font-size:1.1rem;opacity:0.9">Church Administration</p>
                 
                 <div style="margin-top:var(--space-2xl);padding:var(--space-lg);background:rgba(255,255,255,0.05);border-radius:var(--radius-lg);border:1px solid rgba(255,255,255,0.1)">
                     <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-md)">
-                        <div style="width:40px;height:40px;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem">🏛️</div>
+                        <div style="width:40px;height:40px;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem">📊</div>
                         <div>
-                            <p style="color:white;font-weight:600;margin:0">Church Management</p>
-                            <p style="color:rgba(255,255,255,0.6);font-size:0.8rem;margin:0">Register & manage churches</p>
+                            <p style="color:white;font-weight:600;margin:0">Dashboard</p>
+                            <p style="color:rgba(255,255,255,0.6);font-size:0.8rem;margin:0">Manage your church</p>
                         </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-md)">
-                        <div style="width:40px;height:40px;background:linear-gradient(135deg,#3b82f6,#2563eb);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem">🔑</div>
+                        <div style="width:40px;height:40px;background:linear-gradient(135deg,#3b82f6,#2563eb);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem">📄</div>
                         <div>
-                            <p style="color:white;font-weight:600;margin:0">Access Codes</p>
-                            <p style="color:rgba(255,255,255,0.6);font-size:0.8rem;margin:0">Generate registration codes</p>
+                            <p style="color:white;font-weight:600;margin:0">Resources</p>
+                            <p style="color:rgba(255,255,255,0.6);font-size:0.8rem;margin:0">Upload PDFs & materials</p>
                         </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:var(--space-md)">
-                        <div style="width:40px;height:40px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem">💰</div>
+                        <div style="width:40px;height:40px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem">📢</div>
                         <div>
-                            <p style="color:white;font-weight:600;margin:0">Subscriptions</p>
-                            <p style="color:rgba(255,255,255,0.6);font-size:0.8rem;margin:0">Manage pricing tiers</p>
+                            <p style="color:white;font-weight:600;margin:0">Announcements</p>
+                            <p style="color:rgba(255,255,255,0.6);font-size:0.8rem;margin:0">Post updates to members</p>
                         </div>
                     </div>
                 </div>
@@ -1585,48 +1584,39 @@ function renderBackendAdmin() {
                 <button class="btn btn-ghost" onclick="State.set({screen:'welcome'})" style="margin-bottom:var(--space-lg)">← Back to Home</button>
                 
                 <div style="text-align:center;margin-bottom:var(--space-xl)">
-                    <h2 class="auth-form-title" style="margin-bottom:var(--space-xs)">Administration Portal</h2>
-                    <p class="auth-form-subtitle">Choose your access level</p>
+                    <h2 class="auth-form-title" style="margin-bottom:var(--space-xs)">Church Administration</h2>
+                    <p class="auth-form-subtitle">Manage your church on Rooted</p>
                 </div>
                 
                 <div style="display:flex;flex-direction:column;gap:var(--space-lg)">
-                    <!-- Super Admin Login -->
-                    <div style="padding:var(--space-xl);background:linear-gradient(135deg,rgba(245,158,11,0.1),rgba(217,119,6,0.05));border-radius:var(--radius-xl);border:2px solid rgba(245,158,11,0.2);position:relative;overflow:hidden">
-                        <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(245,158,11,0.2),transparent);border-radius:50%"></div>
+                    <!-- Church Login -->
+                    <div style="padding:var(--space-xl);background:linear-gradient(135deg,rgba(124,58,237,0.1),rgba(139,92,246,0.05));border-radius:var(--radius-xl);border:2px solid rgba(124,58,237,0.2);position:relative;overflow:hidden">
+                        <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(124,58,237,0.2),transparent);border-radius:50%"></div>
                         <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-md)">
-                            <div style="width:50px;height:50px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 4px 15px rgba(245,158,11,0.3)">👑</div>
+                            <div style="width:50px;height:50px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 4px 15px rgba(124,58,237,0.3)">🔐</div>
                             <div>
-                                <h3 style="margin:0;font-size:1.1rem">Super Admin</h3>
-                                <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">Full platform control</p>
+                                <h3 style="margin:0;font-size:1.1rem">Church Admin Login</h3>
+                                <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">Access your dashboard</p>
                             </div>
                         </div>
-                        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:var(--space-md)">Manage all churches, registration codes, and subscriptions.</p>
-                        <button class="btn btn-block" onclick="showSuperAdminLogin()" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;border:none;font-weight:600">
-                            🔐 Super Admin Login
+                        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:var(--space-md)">Sign in to manage your church's resources, announcements, and members.</p>
+                        <button class="btn btn-block" onclick="State.set({screen:'church-login'})" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);color:white;border:none;font-weight:600">
+                            🔑 Sign In
                         </button>
                     </div>
                     
                     <!-- Church Registration -->
-                    <div style="padding:var(--space-xl);background:linear-gradient(135deg,rgba(124,58,237,0.1),rgba(139,92,246,0.05));border-radius:var(--radius-xl);border:2px solid rgba(124,58,237,0.2);position:relative;overflow:hidden">
-                        <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(124,58,237,0.2),transparent);border-radius:50%"></div>
+                    <div style="padding:var(--space-xl);background:var(--hover-bg);border-radius:var(--radius-xl);position:relative;overflow:hidden">
                         <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-md)">
-                            <div style="width:50px;height:50px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 4px 15px rgba(124,58,237,0.3)">⛪</div>
+                            <div style="width:50px;height:50px;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 4px 15px rgba(34,197,94,0.3)">⛪</div>
                             <div>
-                                <h3 style="margin:0;font-size:1.1rem">Register Church</h3>
-                                <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">New church setup</p>
+                                <h3 style="margin:0;font-size:1.1rem">New Church?</h3>
+                                <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">Register your church</p>
                             </div>
                         </div>
-                        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:var(--space-md)">Have a registration code? Create your church account now.</p>
-                        <button class="btn btn-block" onclick="State.set({screen:'church-register'})" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);color:white;border:none;font-weight:600">
+                        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:var(--space-md)">Have a registration code? Set up your church account.</p>
+                        <button class="btn btn-secondary btn-block" onclick="State.set({screen:'church-register'})">
                             ✨ Register New Church
-                        </button>
-                    </div>
-                    
-                    <!-- Church Login -->
-                    <div style="padding:var(--space-lg);background:var(--hover-bg);border-radius:var(--radius-xl);text-align:center">
-                        <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:var(--space-md)">Already have a church account?</p>
-                        <button class="btn btn-ghost btn-block" onclick="State.set({screen:'church-login'})" style="font-size:0.95rem">
-                            🔑 Church Admin Login →
                         </button>
                     </div>
                 </div>
@@ -2415,7 +2405,7 @@ function renderOnboardingStep(step, data) {
                         </div>
                         
                         <div style="display:flex;gap:var(--space-md);margin-top:var(--space-xl)">
-                            <button type="button" class="btn btn-ghost" onclick="State.set({screen:'backend-admin'})" style="flex:1">
+                            <button type="button" class="btn btn-ghost" onclick="cancelOnboarding()" style="flex:1">
                                 ← Cancel
                             </button>
                             <button type="submit" class="btn btn-primary" style="flex:2;background:linear-gradient(135deg,#7c3aed,#a78bfa);border:none">
@@ -2611,6 +2601,13 @@ function onboardingBack() {
 function onboardingSkip() {
     churchOnboarding.step = Math.min(churchOnboarding.step + 1, 4);
     render();
+}
+
+function cancelOnboarding() {
+    // Clear the session and go back to church admin portal
+    localStorage.removeItem('rooted_church_admin_session');
+    churchOnboarding = { step: 1, data: { name: '', address: '', phone: '', website: '', socialMedia: {} } };
+    State.set({ screen: 'backend-admin' });
 }
 
 function onboardingEdit(step) {
@@ -3293,39 +3290,72 @@ function renderChurchResources() {
     </div>`;
 }
 
-function handleResourceUpload(e) {
+async function handleResourceUpload(e) {
     e.preventDefault();
     const title = document.getElementById('resourceTitle').value;
     const type = document.getElementById('resourceType').value;
     const file = document.getElementById('resourceFile').files[0];
+    const btn = e.target.querySelector('button[type="submit"]');
     
     if (!file) {
         toast('Please select a file to upload', 'error');
         return;
     }
     
-    // In a real app, this would upload to cloud storage
-    // For demo, we'll store metadata locally
-    const church = getChurchData(State.current.user.churchId);
-    const resources = church.resources || [];
-    resources.push({
-        id: Date.now(),
-        title,
-        type,
-        date: new Date().toISOString().split('T')[0],
-        url: URL.createObjectURL(file),
-        fileName: file.name
-    });
+    // Show loading state
+    btn.disabled = true;
+    btn.textContent = 'Uploading...';
+    toast('Uploading file...', 'info');
     
-    updateChurchData(State.current.user.churchId, { resources });
-    toast('Resource uploaded successfully! 📄', 'success');
-    render();
+    try {
+        const churchId = State.current.user.churchId;
+        
+        // Upload file to Firebase Storage
+        const uploadResult = await ChurchDB.uploadFile(churchId, file, 'resources');
+        
+        // Add resource to church data
+        await ChurchDB.addResource(churchId, {
+            title,
+            type,
+            url: uploadResult.url,
+            fileName: uploadResult.fileName,
+            path: uploadResult.path || null
+        }, false);
+        
+        // Clear cache to force fresh data
+        delete churchCache[churchId];
+        
+        toast('Resource uploaded successfully! 📄', 'success');
+        
+        // Clear form
+        document.getElementById('resourceTitle').value = '';
+        document.getElementById('resourceFile').value = '';
+        
+        render();
+    } catch (error) {
+        console.error('Upload error:', error);
+        toast('Error uploading file: ' + error.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Upload Resource';
+    }
 }
 
-function deleteResource(id) {
-    const church = getChurchData(State.current.user.churchId);
-    const resources = (church.resources || []).filter(r => r.id !== id);
-    updateChurchData(State.current.user.churchId, { resources });
+async function deleteResource(id) {
+    const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
+    const resource = (church.resources || []).find(r => r.id === id);
+    
+    // Delete file from storage if it has a path
+    if (resource && resource.path) {
+        await ChurchDB.deleteFile(resource.path);
+    }
+    
+    // Remove from church data
+    await ChurchDB.deleteResource(State.current.user.churchId, id, false);
+    
+    // Clear cache
+    delete churchCache[State.current.user.churchId];
+    
     toast('Resource deleted', 'info');
     render();
 }
@@ -3652,33 +3682,72 @@ function renderChurchCheckInResources() {
     </div>`;
 }
 
-function handleCheckInResourceUpload(e) {
+async function handleCheckInResourceUpload(e) {
     e.preventDefault();
     const title = document.getElementById('checkinResourceTitle').value;
     const type = document.getElementById('checkinResourceType').value;
     const file = document.getElementById('checkinResourceFile').files[0];
+    const btn = e.target.querySelector('button[type="submit"]');
     
-    const church = getChurchData(State.current.user.churchId);
-    const checkInResources = church.checkInResources || [];
+    if (!file) {
+        toast('Please select a file to upload', 'error');
+        return;
+    }
     
-    checkInResources.push({
-        id: Date.now(),
-        title,
-        type,
-        date: new Date().toISOString().split('T')[0],
-        url: file ? URL.createObjectURL(file) : '#',
-        fileName: file?.name || 'resource.pdf'
-    });
+    // Show loading state
+    btn.disabled = true;
+    btn.textContent = 'Uploading...';
+    toast('Uploading file...', 'info');
     
-    updateChurchData(State.current.user.churchId, { checkInResources });
-    toast('Check-in resource added! 📍', 'success');
-    render();
+    try {
+        const churchId = State.current.user.churchId;
+        
+        // Upload file to Firebase Storage
+        const uploadResult = await ChurchDB.uploadFile(churchId, file, 'checkin-resources');
+        
+        // Add resource to church data
+        await ChurchDB.addResource(churchId, {
+            title,
+            type,
+            url: uploadResult.url,
+            fileName: uploadResult.fileName,
+            path: uploadResult.path || null
+        }, true); // true = isCheckIn
+        
+        // Clear cache
+        delete churchCache[churchId];
+        
+        toast('Check-in resource added! 📍', 'success');
+        
+        // Clear form
+        document.getElementById('checkinResourceTitle').value = '';
+        document.getElementById('checkinResourceFile').value = '';
+        
+        render();
+    } catch (error) {
+        console.error('Upload error:', error);
+        toast('Error uploading file: ' + error.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Add Check-In Resource';
+    }
 }
 
-function deleteCheckInResource(id) {
-    const church = getChurchData(State.current.user.churchId);
-    const checkInResources = (church.checkInResources || []).filter(r => r.id !== id);
-    updateChurchData(State.current.user.churchId, { checkInResources });
+async function deleteCheckInResource(id) {
+    const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
+    const resource = (church.checkInResources || []).find(r => r.id === id);
+    
+    // Delete file from storage if it has a path
+    if (resource && resource.path) {
+        await ChurchDB.deleteFile(resource.path);
+    }
+    
+    // Remove from church data
+    await ChurchDB.deleteResource(State.current.user.churchId, id, true); // true = isCheckIn
+    
+    // Clear cache
+    delete churchCache[State.current.user.churchId];
+    
     toast('Check-in resource deleted', 'info');
     render();
 }
@@ -4586,7 +4655,7 @@ function renderMyChurchContent(church, userChurches, activeChurchId) {
         
         <!-- Resources / Discipleship Materials -->
         <div class="card" style="margin-bottom:var(--space-lg)">
-            <h3 style="margin-bottom:var(--space-lg)">📄 Discipleship Resources</h3>
+            <h3 style="margin-bottom:var(--space-lg)">📄 Resources</h3>
             ${church?.resources?.length ? church.resources.map(r => `
                 <a href="${r.url}" target="_blank" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);text-decoration:none;color:inherit">
                     <div style="width:50px;height:50px;background:linear-gradient(135deg,#ef4444,#f97316);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0">📄</div>
@@ -5025,6 +5094,13 @@ async function init() {
     State.subscribe(render);
     const savedNav = localStorage.getItem('rooted_nav');
     
+    // Check URL hash for superadmin access
+    if (window.location.hash === '#superadmin' || window.location.hash === '#/superadmin') {
+        showSuperAdminLogin();
+        State.set({ screen: 'welcome' });
+        return;
+    }
+    
     // Check for saved church admin session first
     const churchAdminSession = localStorage.getItem('rooted_church_admin_session');
     if (churchAdminSession) {
@@ -5036,7 +5112,7 @@ async function init() {
                 State.set({ 
                     screen: 'app', 
                     accountType: 'church',
-                    user: { name: church.name, email: 'admin@' + session.churchId, churchId: session.churchId },
+                    user: { name: church.name, email: 'admin@' + session.churchId, churchId: session.churchId, adminUsername: session.username },
                     activeNav: savedNav || 'church-dashboard'
                 });
                 localStorage.removeItem('rooted_nav');
@@ -5061,6 +5137,13 @@ async function init() {
         State.set({ screen: 'welcome' });
     }
 }
+
+// Listen for hash changes (for superadmin access)
+window.addEventListener('hashchange', () => {
+    if (window.location.hash === '#superadmin' || window.location.hash === '#/superadmin') {
+        showSuperAdminLogin();
+    }
+});
 
 init();
 </script>
