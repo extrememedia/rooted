@@ -234,15 +234,12 @@ input, textarea, select { font-family: inherit; }
 .videos-page {
     min-height: 100vh;
     background: linear-gradient(180deg, #141414 0%, #0a0a0a 100%);
-    margin-left: -24px;
-    margin-right: 0;
-    margin-top: -24px;
-    margin-bottom: -24px;
+    margin: -24px;
     padding: 0;
     color: white;
     overflow-x: hidden;
-    width: 100vw;
-    max-width: 100vw;
+    width: calc(100% + 48px);
+    max-width: none;
     box-sizing: border-box;
 }
 
@@ -277,13 +274,13 @@ input, textarea, select { font-family: inherit; }
     color: #999;
 }
 
-/* Hero Section */
+/* Hero Section - Full Width Edge to Edge */
 .videos-hero {
     position: relative;
     width: 100%;
-    height: 70vh;
-    min-height: 400px;
-    max-height: 600px;
+    height: 75vh;
+    min-height: 450px;
+    max-height: 700px;
     overflow: hidden;
 }
 .videos-hero-bg {
@@ -468,26 +465,28 @@ input, textarea, select { font-family: inherit; }
 .social-link-btn.twitter { background: #000000; color: white; }
 .social-link-btn.website { background: var(--root-green); color: white; }
 
-/* Video Content */
+/* Video Content - Desktop Optimized */
 .videos-content {
-    padding: 20px 40px 60px;
+    padding: 40px 60px 80px;
+    max-width: 1600px;
+    margin: 0 auto;
 }
 .video-row {
-    margin-bottom: 32px;
+    margin-bottom: 40px;
     overflow: visible;
 }
 .video-row-title {
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     font-weight: 600;
-    margin: 0 0 12px;
+    margin: 0 0 16px;
     color: white;
     padding-left: 0;
 }
 .video-row-scroll {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     overflow-x: auto;
-    padding-bottom: 8px;
+    padding-bottom: 12px;
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
@@ -497,27 +496,36 @@ input, textarea, select { font-family: inherit; }
     display: none;
 }
 
-/* Netflix Thumbnail-Only Cards */
+/* Netflix Thumbnail-Only Cards - Larger on Desktop */
 .video-thumb {
     flex-shrink: 0;
-    width: 280px;
+    width: 320px;
     aspect-ratio: 16/9;
     scroll-snap-align: start;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 6px;
     overflow: hidden;
     position: relative;
     background: #000;
     transition: transform 0.2s;
 }
 .video-thumb:hover {
-    transform: scale(1.05);
+    transform: scale(1.08);
     z-index: 10;
 }
 .video-thumb img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+/* Videos Footer - Full Width */
+.videos-footer {
+    width: 100%;
+    height: 120px;
+    background-size: cover;
+    background-position: center;
+    margin-top: 40px;
 }
 
 /* ========== MOBILE RESPONSIVE - VIDEOS PAGE ========== */
@@ -2087,6 +2095,14 @@ function showCheckInPopup(churchId) {
 async function checkInToChurch(churchId) {
     const church = getChurchData(churchId);
     
+    // Check if already checked in today
+    const alreadyCheckedIn = await UserChurchDB.isCheckedInToday(Auth.currentUser.uid, churchId);
+    if (alreadyCheckedIn) {
+        closeModal();
+        toast('You already checked in today! 📍', 'info');
+        return;
+    }
+    
     await UserChurchDB.checkIn(Auth.currentUser.uid, churchId, church.name);
     checkedInTodayCache[churchId] = true;
     
@@ -2103,6 +2119,13 @@ async function checkInToChurch(churchId) {
 // Online check-in (not at physical location)
 async function checkInOnline(churchId) {
     const church = getChurchData(churchId);
+    
+    // Check if already checked in today
+    const alreadyCheckedIn = await UserChurchDB.isCheckedInToday(Auth.currentUser.uid, churchId);
+    if (alreadyCheckedIn) {
+        toast('You already checked in today! 📍', 'info');
+        return;
+    }
     
     try {
         await UserChurchDB.checkIn(Auth.currentUser.uid, churchId, church?.name || 'Church', 'online');
@@ -5764,11 +5787,17 @@ async function saveMembershipConfig(e) {
 
 function renderChurchMembers() {
     const church = getChurchData(State.current.user.churchId);
-    const memberCount = church.memberCount || 0;
-    const maxMembers = church.maxMembers || 5;
-    const tier = church.tier || 'free';
+    const memberCount = church?.memberCount || 0;
+    const maxMembers = church?.maxMembers || 5;
+    const tier = church?.tier || 'free';
     const tierNames = { free: 'Free', starter: 'Starter', small: 'Small', medium: 'Medium', large: 'Large', unlimited: 'Unlimited' };
     const tierColors = { free: '#22c55e', starter: '#06b6d4', small: '#3b82f6', medium: '#8b5cf6', large: '#f59e0b', unlimited: '#ef4444' };
+    const churchId = State.current.user?.churchId;
+    
+    // Schedule member load after render
+    if (churchId) {
+        setTimeout(() => loadChurchMembers(churchId), 100);
+    }
     
     return `
     <div class="fade-up">
@@ -5781,8 +5810,8 @@ function renderChurchMembers() {
             </div>
             <div class="card" style="text-align:center;border-top:4px solid #3b82f6">
                 <div id="claimedMemberCount" style="font-size:2.5rem;font-weight:700;color:#3b82f6">-</div>
-                <p style="color:var(--text-secondary);margin:0">Claimed Members</p>
-                <p style="font-size:0.75rem;color:var(--text-tertiary);margin:var(--space-xs) 0 0">Marked "I am a member"</p>
+                <p style="color:var(--text-secondary);margin:0">Confirmed Members</p>
+                <p style="font-size:0.75rem;color:var(--text-tertiary);margin:var(--space-xs) 0 0">Admin confirmed</p>
             </div>
             <div class="card" style="text-align:center;border-top:4px solid #f59e0b">
                 <div id="totalCheckInsCount" style="font-size:2.5rem;font-weight:700;color:#f59e0b">-</div>
@@ -5818,23 +5847,29 @@ function renderChurchMembers() {
         </div>
         
         <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md);flex-wrap:wrap;gap:var(--space-sm)">
                 <h3 style="margin:0">📋 User List</h3>
-                <div style="display:flex;gap:var(--space-sm)">
+                <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap">
                     <button class="btn btn-ghost btn-sm" onclick="filterMembers('all')" id="filterAll" style="background:var(--hover-bg)">All</button>
                     <button class="btn btn-ghost btn-sm" onclick="filterMembers('members')" id="filterMembers">Members Only</button>
+                    <button class="btn btn-ghost btn-sm" onclick="loadChurchMembers('${churchId}')" title="Refresh">🔄</button>
                 </div>
             </div>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">View users who have connected to your church.</p>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">View and manage users who have connected to your church. Use "Make Member" to confirm membership after they complete your church's membership process.</p>
             
             <div id="membersList" style="display:grid;gap:var(--space-md)">
-                <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-xl)">Loading members...</p>
+                <div style="text-align:center;padding:var(--space-xl)">
+                    <div class="loading-spinner" style="width:32px;height:32px;margin:0 auto var(--space-md)"></div>
+                    <p style="color:var(--text-tertiary)">Loading members...</p>
+                </div>
             </div>
         </div>
+        
+        <!-- Debug Info (remove in production) -->
+        <div style="margin-top:var(--space-lg);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);font-size:0.75rem;color:var(--text-tertiary)">
+            <strong>Debug:</strong> Church ID: ${churchId || 'Not set'}
+        </div>
     </div>`;
-    
-    // Load members after render
-    setTimeout(() => loadChurchMembers(State.current.user.churchId), 100);
 }
 
 let allMembersData = [];
@@ -9130,6 +9165,15 @@ function renderChurchVideosPage() {
                 `;
             }).join('')}
         </div>
+        
+        <!-- Footer - Full Width -->
+        ${branding.footerImage ? `
+        <div style="width:100%;height:120px;background:url('${branding.footerImage}') center/cover;margin-top:40px"></div>
+        ` : `
+        <div style="width:100%;padding:40px;text-align:center;background:linear-gradient(180deg, #141414 0%, #000 100%);margin-top:40px">
+            <p style="color:#666;font-size:0.85rem;margin:0">${cachedChurch?.name || 'Church'} Videos</p>
+        </div>
+        `}
     </div>`;
 }
 
