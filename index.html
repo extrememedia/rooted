@@ -3768,10 +3768,11 @@ function renderChurchYouTube() {
         <div class="card" style="margin-bottom:var(--space-lg);background:linear-gradient(135deg,#ef4444,#dc2626);color:white;border:none">
             <div style="display:flex;align-items:center;gap:var(--space-md)">
                 <div style="font-size:2.5rem">🎬</div>
-                <div>
+                <div style="flex:1">
                     <h2 style="margin:0">YouTube Videos</h2>
                     <p style="margin:0;opacity:0.9">Add YouTube channels and select playlists for your members</p>
                 </div>
+                <button class="btn" onclick="refreshYouTubeAdmin()" style="background:rgba(255,255,255,0.2);color:white">🔄 Refresh</button>
             </div>
         </div>
         
@@ -3833,6 +3834,7 @@ function renderChurchYouTube() {
                                     <strong style="display:block">${pl.name}</strong>
                                     <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">${pl.videoCount || 0} videos</p>
                                 </div>
+                                <button class="btn btn-ghost btn-sm" onclick="event.preventDefault();event.stopPropagation();refreshPlaylistVideos('${pl.id}', '${pl.name.replace(/'/g, "\\'")}')" title="Sync from YouTube">🔄</button>
                                 <button class="btn btn-ghost btn-sm" onclick="event.preventDefault();event.stopPropagation();managePlaylistVideos('${pl.id}')" title="Manage Videos">🎥</button>
                                 <button class="btn btn-ghost btn-sm" onclick="event.preventDefault();event.stopPropagation();deletePlaylist('${pl.id}')" style="color:var(--error)" title="Delete">🗑️</button>
                             </label>
@@ -3925,7 +3927,11 @@ async function addYouTubeChannel() {
         });
         
         await ChurchDB.updateChurch(State.current.user.churchId, { ytChannels: channels });
+        
+        // Clear cache and update with fresh data
         delete churchCache[State.current.user.churchId];
+        const freshData = await ChurchDB.getChurchFresh(State.current.user.churchId);
+        churchCache[State.current.user.churchId] = freshData;
         
         // Clear form
         document.getElementById('newChannelUrl').value = '';
@@ -3937,6 +3943,15 @@ async function addYouTubeChannel() {
         console.error('Error adding channel:', e);
         toast('Error adding channel', 'error');
     }
+}
+
+async function refreshYouTubeAdmin() {
+    toast('Refreshing...', 'info');
+    delete churchCache[State.current.user.churchId];
+    const freshData = await ChurchDB.getChurchFresh(State.current.user.churchId);
+    churchCache[State.current.user.churchId] = freshData;
+    render();
+    toast('Refreshed! ✓', 'success');
 }
 
 async function deleteYouTubeChannel(channelId) {
@@ -3994,33 +4009,249 @@ async function addPlaylistToChannel(channelId) {
             return;
         }
         
+        toast('Fetching videos from YouTube...', 'info');
+        
+        // Fetch videos from YouTube playlist
+        const videos = await fetchYouTubePlaylistVideos(playlistId, name);
+        
+        // Get first video thumbnail for playlist
+        const firstVideoId = videos.length > 0 ? videos[0].videoId : null;
+        const thumbnail = firstVideoId 
+            ? `https://img.youtube.com/vi/${firstVideoId}/mqdefault.jpg`
+            : null;
+        
         playlists.push({
             id: playlistId,
             channelId: channelId,
             name: name,
             url: url,
-            thumbnail: `https://i.ytimg.com/vi/${playlistId}/mqdefault.jpg`,
-            videoCount: 0,
+            thumbnail: thumbnail,
+            videoCount: videos.length,
             enabled: true,
             addedAt: new Date().toISOString()
         });
         
-        await ChurchDB.updateChurch(State.current.user.churchId, { ytPlaylists: playlists });
+        // Add videos to church ytVideos
+        const existingVideos = church.ytVideos || [];
+        const newVideos = videos.map(v => ({
+            ...v,
+            playlistId: playlistId,
+            playlistName: name
+        }));
+        
+        await ChurchDB.updateChurch(State.current.user.churchId, { 
+            ytPlaylists: playlists,
+            ytVideos: [...existingVideos, ...newVideos]
+        });
+        
+        // Clear cache and refresh
         delete churchCache[State.current.user.churchId];
+        const freshData = await ChurchDB.getChurchFresh(State.current.user.churchId);
+        churchCache[State.current.user.churchId] = freshData;
         
         // Clear form
         document.getElementById(`playlistUrl_${channelId}`).value = '';
         document.getElementById(`playlistName_${channelId}`).value = '';
         
-        toast('Playlist added! Now add videos to it. 📋', 'success');
-        
-        // Open video management modal
-        managePlaylistVideos(playlistId);
-        
+        toast(`Playlist added with ${videos.length} videos! 🎬`, 'success');
         render();
     } catch (e) {
         console.error('Error adding playlist:', e);
-        toast('Error adding playlist', 'error');
+        toast('Error adding playlist: ' + e.message, 'error');
+    }
+}
+
+// Fetch videos from a YouTube playlist using RSS feed
+async function fetchYouTubePlaylistVideos(playlistId, playlistName) {
+    const videos = [];
+    
+    try {
+        // Try YouTube RSS feed first (works for public playlists)
+        const rssUrl = `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
+        
+        // Use a CORS proxy since YouTube doesn't allow direct browser access
+        const proxyUrls = [
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`,
+            `https://corsproxy.io/?${encodeURIComponent(rssUrl)}`,
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(rssUrl)}`
+        ];
+        
+        let xmlText = null;
+        
+        for (const proxyUrl of proxyUrls) {
+            try {
+                const response = await fetch(proxyUrl, { 
+                    method: 'GET',
+                    headers: { 'Accept': 'application/xml, text/xml, */*' }
+                });
+                if (response.ok) {
+                    xmlText = await response.text();
+                    if (xmlText && xmlText.includes('<entry>')) {
+                        break;
+                    }
+                }
+            } catch (e) {
+                console.log('Proxy failed:', proxyUrl, e);
+                continue;
+            }
+        }
+        
+        if (xmlText && xmlText.includes('<entry>')) {
+            // Parse the RSS XML
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+            const entries = xmlDoc.querySelectorAll('entry');
+            
+            entries.forEach((entry, index) => {
+                const videoId = entry.querySelector('yt\\:videoId, videoId')?.textContent;
+                const title = entry.querySelector('title')?.textContent;
+                const published = entry.querySelector('published')?.textContent;
+                
+                if (videoId && title) {
+                    videos.push({
+                        id: `${playlistId}_${videoId}_${Date.now()}_${index}`,
+                        videoId: videoId,
+                        title: title,
+                        date: published ? new Date(published).toLocaleDateString() : new Date().toLocaleDateString(),
+                        addedAt: new Date().toISOString()
+                    });
+                }
+            });
+        }
+        
+        // If RSS didn't work, try scraping the playlist page
+        if (videos.length === 0) {
+            console.log('RSS feed empty, trying page scrape...');
+            const pageVideos = await scrapeYouTubePlaylistPage(playlistId);
+            videos.push(...pageVideos);
+        }
+        
+    } catch (e) {
+        console.error('Error fetching playlist:', e);
+    }
+    
+    // If still no videos, return empty array (admin can add manually)
+    if (videos.length === 0) {
+        console.log('Could not auto-fetch videos. Admin will need to add manually.');
+    }
+    
+    return videos;
+}
+
+// Fallback: scrape YouTube playlist page for video IDs
+async function scrapeYouTubePlaylistPage(playlistId) {
+    const videos = [];
+    
+    try {
+        const playlistUrl = `https://www.youtube.com/playlist?list=${playlistId}`;
+        const proxyUrls = [
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(playlistUrl)}`,
+            `https://corsproxy.io/?${encodeURIComponent(playlistUrl)}`
+        ];
+        
+        let html = null;
+        
+        for (const proxyUrl of proxyUrls) {
+            try {
+                const response = await fetch(proxyUrl);
+                if (response.ok) {
+                    html = await response.text();
+                    if (html && html.includes('videoId')) {
+                        break;
+                    }
+                }
+            } catch (e) {
+                continue;
+            }
+        }
+        
+        if (html) {
+            // Extract video IDs and titles from the page
+            // YouTube stores video data in a JSON object in the page
+            const videoIdMatches = html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/g) || [];
+            const titleMatches = html.match(/"title":\{"runs":\[\{"text":"([^"]+)"\}\]/g) || [];
+            
+            const seenIds = new Set();
+            videoIdMatches.forEach((match, index) => {
+                const videoId = match.match(/"videoId":"([a-zA-Z0-9_-]{11})"/)?.[1];
+                if (videoId && !seenIds.has(videoId)) {
+                    seenIds.add(videoId);
+                    
+                    // Try to get corresponding title
+                    let title = `Video ${videos.length + 1}`;
+                    if (titleMatches[index]) {
+                        const titleMatch = titleMatches[index].match(/"text":"([^"]+)"/);
+                        if (titleMatch) title = titleMatch[1];
+                    }
+                    
+                    videos.push({
+                        id: `${playlistId}_${videoId}_${Date.now()}_${videos.length}`,
+                        videoId: videoId,
+                        title: title,
+                        date: new Date().toLocaleDateString(),
+                        addedAt: new Date().toISOString()
+                    });
+                }
+            });
+        }
+    } catch (e) {
+        console.error('Error scraping playlist page:', e);
+    }
+    
+    return videos;
+}
+
+// Refresh/sync videos from YouTube playlist
+async function refreshPlaylistVideos(playlistId, playlistName) {
+    toast('Syncing videos from YouTube...', 'info');
+    
+    try {
+        const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
+        const playlists = church.ytPlaylists || [];
+        const existingVideos = church.ytVideos || [];
+        
+        // Fetch fresh videos from YouTube
+        const freshVideos = await fetchYouTubePlaylistVideos(playlistId, playlistName);
+        
+        if (freshVideos.length === 0) {
+            toast('Could not fetch videos from YouTube. Try again later.', 'error');
+            return;
+        }
+        
+        // Remove old videos from this playlist
+        const otherVideos = existingVideos.filter(v => v.playlistId !== playlistId);
+        
+        // Add fresh videos with playlist info
+        const newVideos = freshVideos.map(v => ({
+            ...v,
+            playlistId: playlistId,
+            playlistName: playlistName
+        }));
+        
+        // Update playlist video count and thumbnail
+        const playlistIndex = playlists.findIndex(p => p.id === playlistId);
+        if (playlistIndex !== -1) {
+            playlists[playlistIndex].videoCount = newVideos.length;
+            if (newVideos.length > 0) {
+                playlists[playlistIndex].thumbnail = `https://img.youtube.com/vi/${newVideos[0].videoId}/mqdefault.jpg`;
+            }
+        }
+        
+        await ChurchDB.updateChurch(State.current.user.churchId, { 
+            ytPlaylists: playlists,
+            ytVideos: [...otherVideos, ...newVideos]
+        });
+        
+        // Refresh cache and UI
+        delete churchCache[State.current.user.churchId];
+        const freshData = await ChurchDB.getChurchFresh(State.current.user.churchId);
+        churchCache[State.current.user.churchId] = freshData;
+        
+        toast(`Synced ${newVideos.length} videos! 🎬`, 'success');
+        render();
+    } catch (e) {
+        console.error('Error refreshing playlist:', e);
+        toast('Error syncing videos', 'error');
     }
 }
 
