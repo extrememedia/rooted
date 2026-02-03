@@ -418,6 +418,56 @@ input, textarea, select { font-family: inherit; }
     background: #e50914;
 }
 
+/* Social Media Icons - consistent circular style */
+.social-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s, opacity 0.2s;
+}
+.social-icon:hover {
+    transform: scale(1.1);
+    opacity: 0.9;
+}
+.social-icon img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+.social-icon.facebook { background: #1877F2; }
+.social-icon.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
+.social-icon.youtube { background: #FF0000; }
+.social-icon.twitter { background: #000000; }
+.social-icon.website { background: var(--root-green); }
+
+.social-link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 24px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.social-link-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.social-link-btn img {
+    width: 18px;
+    height: 18px;
+}
+.social-link-btn.facebook { background: #1877F2; color: white; }
+.social-link-btn.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: white; }
+.social-link-btn.youtube { background: #FF0000; color: white; }
+.social-link-btn.twitter { background: #000000; color: white; }
+.social-link-btn.website { background: var(--root-green); color: white; }
+
 /* Video Content */
 .videos-content {
     padding: 20px 40px 60px;
@@ -3302,19 +3352,31 @@ function renderOnboardingStep(step, data) {
                     <form onsubmit="onboardingNext(event)">
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">
                             <div class="input-group">
-                                <label class="input-label">📘 Facebook</label>
+                                <label class="input-label" style="display:flex;align-items:center;gap:6px">
+                                    <span style="width:20px;height:20px;border-radius:50%;background:#1877F2;display:inline-flex;align-items:center;justify-content:center"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/facebook.svg" style="width:12px;height:12px;filter:brightness(0) invert(1)"></span>
+                                    Facebook
+                                </label>
                                 <input type="text" class="input-field" id="ob_facebook" placeholder="facebook.com/..." value="${data.socialMedia.facebook}">
                             </div>
                             <div class="input-group">
-                                <label class="input-label">📸 Instagram</label>
+                                <label class="input-label" style="display:flex;align-items:center;gap:6px">
+                                    <span style="width:20px;height:20px;border-radius:50%;background:linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);display:inline-flex;align-items:center;justify-content:center"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/instagram.svg" style="width:12px;height:12px;filter:brightness(0) invert(1)"></span>
+                                    Instagram
+                                </label>
                                 <input type="text" class="input-field" id="ob_instagram" placeholder="instagram.com/..." value="${data.socialMedia.instagram}">
                             </div>
                             <div class="input-group">
-                                <label class="input-label">🎥 YouTube</label>
+                                <label class="input-label" style="display:flex;align-items:center;gap:6px">
+                                    <span style="width:20px;height:20px;border-radius:50%;background:#FF0000;display:inline-flex;align-items:center;justify-content:center"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/youtube.svg" style="width:12px;height:12px;filter:brightness(0) invert(1)"></span>
+                                    YouTube
+                                </label>
                                 <input type="text" class="input-field" id="ob_youtube" placeholder="youtube.com/@..." value="${data.socialMedia.youtube}">
                             </div>
                             <div class="input-group">
-                                <label class="input-label">🐦 Twitter/X</label>
+                                <label class="input-label" style="display:flex;align-items:center;gap:6px">
+                                    <span style="width:20px;height:20px;border-radius:50%;background:#000000;display:inline-flex;align-items:center;justify-content:center"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/x.svg" style="width:12px;height:12px;filter:brightness(0) invert(1)"></span>
+                                    X/Twitter
+                                </label>
                                 <input type="text" class="input-field" id="ob_twitter" placeholder="twitter.com/..." value="${data.socialMedia.twitter || ''}">
                             </div>
                         </div>
@@ -3368,10 +3430,10 @@ function renderOnboardingStep(step, data) {
                             <div>
                                 <strong style="font-size:0.85rem;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.5px">Social Media</strong>
                                 <div style="display:flex;flex-wrap:wrap;gap:var(--space-xs);margin-top:var(--space-sm)">
-                                    ${data.socialMedia.facebook ? '<span style="background:rgba(66,103,178,0.2);color:#4267B2;padding:4px 10px;border-radius:20px;font-size:0.8rem">📘 Facebook</span>' : ''}
-                                    ${data.socialMedia.instagram ? '<span style="background:rgba(225,48,108,0.2);color:#E1306C;padding:4px 10px;border-radius:20px;font-size:0.8rem">📸 Instagram</span>' : ''}
-                                    ${data.socialMedia.youtube ? '<span style="background:rgba(255,0,0,0.2);color:#FF0000;padding:4px 10px;border-radius:20px;font-size:0.8rem">🎥 YouTube</span>' : ''}
-                                    ${data.socialMedia.twitter ? '<span style="background:rgba(29,161,242,0.2);color:#1DA1F2;padding:4px 10px;border-radius:20px;font-size:0.8rem">🐦 Twitter</span>' : ''}
+                                    ${data.socialMedia.facebook ? '<span style="display:inline-flex;align-items:center;gap:6px;background:#1877F2;color:white;padding:4px 12px;border-radius:20px;font-size:0.8rem"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/facebook.svg" style="width:14px;height:14px;filter:brightness(0) invert(1)">Facebook</span>' : ''}
+                                    ${data.socialMedia.instagram ? '<span style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);color:white;padding:4px 12px;border-radius:20px;font-size:0.8rem"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/instagram.svg" style="width:14px;height:14px;filter:brightness(0) invert(1)">Instagram</span>' : ''}
+                                    ${data.socialMedia.youtube ? '<span style="display:inline-flex;align-items:center;gap:6px;background:#FF0000;color:white;padding:4px 12px;border-radius:20px;font-size:0.8rem"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/youtube.svg" style="width:14px;height:14px;filter:brightness(0) invert(1)">YouTube</span>' : ''}
+                                    ${data.socialMedia.twitter ? '<span style="display:inline-flex;align-items:center;gap:6px;background:#000000;color:white;padding:4px 12px;border-radius:20px;font-size:0.8rem"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/x.svg" style="width:14px;height:14px;filter:brightness(0) invert(1)">X/Twitter</span>' : ''}
                                     ${!data.socialMedia.facebook && !data.socialMedia.instagram && !data.socialMedia.youtube && !data.socialMedia.twitter ? '<span style="color:var(--text-tertiary);font-size:0.85rem">None added</span>' : ''}
                                 </div>
                             </div>
@@ -4573,19 +4635,31 @@ function renderChurchSocial() {
             
             <form onsubmit="handleSocialUpdate(event)">
                 <div class="input-group">
-                    <label class="input-label">📘 Facebook Page</label>
+                    <label class="input-label" style="display:flex;align-items:center;gap:8px">
+                        <span style="width:24px;height:24px;border-radius:50%;background:#1877F2;display:inline-flex;align-items:center;justify-content:center"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/facebook.svg" style="width:14px;height:14px;filter:brightness(0) invert(1)"></span>
+                        Facebook Page
+                    </label>
                     <input type="url" class="input-field" id="socialFacebook" placeholder="https://facebook.com/yourchurch" value="${social.facebook || ''}">
                 </div>
                 <div class="input-group">
-                    <label class="input-label">📸 Instagram</label>
+                    <label class="input-label" style="display:flex;align-items:center;gap:8px">
+                        <span style="width:24px;height:24px;border-radius:50%;background:linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);display:inline-flex;align-items:center;justify-content:center"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/instagram.svg" style="width:14px;height:14px;filter:brightness(0) invert(1)"></span>
+                        Instagram
+                    </label>
                     <input type="url" class="input-field" id="socialInstagram" placeholder="https://instagram.com/yourchurch" value="${social.instagram || ''}">
                 </div>
                 <div class="input-group">
-                    <label class="input-label">🎥 YouTube Channel</label>
+                    <label class="input-label" style="display:flex;align-items:center;gap:8px">
+                        <span style="width:24px;height:24px;border-radius:50%;background:#FF0000;display:inline-flex;align-items:center;justify-content:center"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/youtube.svg" style="width:14px;height:14px;filter:brightness(0) invert(1)"></span>
+                        YouTube Channel
+                    </label>
                     <input type="url" class="input-field" id="socialYoutube" placeholder="https://youtube.com/@yourchurch" value="${social.youtube || ''}">
                 </div>
                 <div class="input-group">
-                    <label class="input-label">🌐 Church Website</label>
+                    <label class="input-label" style="display:flex;align-items:center;gap:8px">
+                        <span style="width:24px;height:24px;border-radius:50%;background:var(--root-green);display:inline-flex;align-items:center;justify-content:center;color:white;font-size:12px">🌐</span>
+                        Church Website
+                    </label>
                     <input type="url" class="input-field" id="socialWebsite" placeholder="https://yourchurch.com" value="${church.website || ''}">
                 </div>
                 <button type="submit" class="btn btn-primary">Save Social Links</button>
@@ -6960,13 +7034,18 @@ function showAddNoteModal(prefillContent = '', prefillSource = '') {
 }
 
 function handleNoteImageSelect(event) {
-    const files = event.target.files;
-    if (!files.length) return;
+    const fileList = event.target.files;
+    if (!fileList.length) return;
+    
+    // CRITICAL: Copy files to array BEFORE clearing input
+    const files = Array.from(fileList);
+    
+    // Clear input immediately so same file can be selected again
+    event.target.value = '';
     
     // Check storage before adding
     if (!checkStorageAndWarn()) {
         toast('Storage full - delete files first', 'error');
-        event.target.value = '';
         return;
     }
     
@@ -6982,6 +7061,7 @@ function handleNoteImageSelect(event) {
             hideUploadOverlay();
             renderNoteImagePreviews();
             checkStorageAndWarn();
+            toast(`${tempNoteImages.length} image(s) ready`, 'success');
             return;
         }
         
@@ -7027,9 +7107,6 @@ function handleNoteImageSelect(event) {
     
     // Start processing
     setTimeout(() => processNextFile(0), 100);
-    
-    // Clear input so same file can be selected again
-    event.target.value = '';
 }
 
 // Full-screen upload overlay
@@ -8891,10 +8968,10 @@ function renderMyChurchContent(church, userChurches, activeChurchId) {
         
         <!-- Quick Links -->
         <div class="quick-links-grid">
-            ${social.facebook ? `<a href="${social.facebook}" target="_blank" class="quick-link"><span class="quick-link-icon">📘</span><span class="quick-link-label">Facebook</span></a>` : ''}
-            ${social.instagram ? `<a href="${social.instagram}" target="_blank" class="quick-link"><span class="quick-link-icon">📸</span><span class="quick-link-label">Instagram</span></a>` : ''}
-            ${social.youtube ? `<a href="${social.youtube}" target="_blank" class="quick-link"><span class="quick-link-icon">🎥</span><span class="quick-link-label">YouTube</span></a>` : ''}
-            ${church?.website ? `<a href="${church.website}" target="_blank" class="quick-link"><span class="quick-link-icon">🌐</span><span class="quick-link-label">Website</span></a>` : ''}
+            ${social.facebook ? `<a href="${social.facebook}" target="_blank" class="quick-link" style="background:#1877F2"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/facebook.svg" style="width:24px;height:24px;filter:brightness(0) invert(1)" alt=""><span class="quick-link-label" style="color:white">Facebook</span></a>` : ''}
+            ${social.instagram ? `<a href="${social.instagram}" target="_blank" class="quick-link" style="background:linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/instagram.svg" style="width:24px;height:24px;filter:brightness(0) invert(1)" alt=""><span class="quick-link-label" style="color:white">Instagram</span></a>` : ''}
+            ${social.youtube ? `<a href="${social.youtube}" target="_blank" class="quick-link" style="background:#FF0000"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/youtube.svg" style="width:24px;height:24px;filter:brightness(0) invert(1)" alt=""><span class="quick-link-label" style="color:white">YouTube</span></a>` : ''}
+            ${church?.website ? `<a href="${church.website}" target="_blank" class="quick-link" style="background:var(--root-green)"><span style="font-size:1.5rem">🌐</span><span class="quick-link-label" style="color:white">Website</span></a>` : ''}
         </div>
         
         <!-- Contact Info -->
