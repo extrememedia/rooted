@@ -99,7 +99,6 @@ input, textarea, select { font-family: inherit; }
 .header-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); color: var(--text-secondary); transition: all var(--transition); }
 .header-btn:hover { background: var(--hover-bg); color: var(--text-primary); }
 .main-body { flex: 1; padding: var(--space-xl); max-width: var(--max-content); width: 100%; margin: 0 auto; box-sizing: border-box; }
-.main-body.full-width { max-width: none; padding: 0; margin: 0; }
 
 /* Components */
 .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: var(--space-lg); }
@@ -232,15 +231,38 @@ input, textarea, select { font-family: inherit; }
 }
 
 /* ========== NETFLIX-STYLE VIDEOS PAGE ========== */
-/* Videos Page - Full Width */
+/* Videos Page - Full Width, Edge to Edge */
 .videos-page {
     min-height: 100vh;
-    background: linear-gradient(180deg, #141414 0%, #0a0a0a 100%);
+    background: #141414;
     color: white;
     overflow-x: hidden;
     box-sizing: border-box;
     padding: 0;
+    margin: 0;
     width: 100%;
+    position: relative;
+}
+
+/* When videos page is shown - override backgrounds */
+.main-body.full-width {
+    max-width: none;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    background: #141414;
+}
+
+/* Body class for videos mode - ensures no purple shows anywhere */
+body.videos-mode {
+    background: #141414;
+}
+body.videos-mode .main-content {
+    background: #141414;
+}
+body.videos-mode .main-header {
+    background: #141414;
+    border-bottom-color: #333;
 }
 
 /* Empty and Loading States */
@@ -2235,6 +2257,9 @@ function navigate(nav) {
     
     State.set({ activeNav: nav });
     toggleSidebar(false);
+    
+    // Toggle videos-mode class on body for full-width styling
+    document.body.classList.toggle('videos-mode', nav === 'church-videos');
     
     // Save nav for page refresh (especially for church admin)
     if (State.current.accountType === 'church') {
