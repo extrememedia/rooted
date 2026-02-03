@@ -3515,11 +3515,19 @@ function renderChurchTools() {
     </div>`;
 }
 
-function handleToolsUpdate(e) {
+async function handleToolsUpdate(e) {
     e.preventDefault();
     const enabledTools = Object.keys(TOOLS).filter(id => document.getElementById('tool-' + id)?.checked);
-    updateChurchData(State.current.user.churchId, { enabledTools });
-    toast('Tool settings updated! 🧰', 'success');
+    
+    try {
+        await ChurchDB.updateChurch(State.current.user.churchId, { enabledTools });
+        // Clear cache to ensure fresh data
+        delete churchCache[State.current.user.churchId];
+        toast('Tool settings updated! 🧰', 'success');
+    } catch (error) {
+        console.error('Error saving tools:', error);
+        toast('Error saving tool settings', 'error');
+    }
 }
 
 // ========== YOUTUBE VIDEOS ==========
@@ -3961,17 +3969,37 @@ function renderChurchMembers() {
     
     return `
     <div class="fade-up">
+        <!-- Stats Overview -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--space-md);margin-bottom:var(--space-lg)">
+            <div class="card" style="text-align:center;border-top:4px solid ${tierColors[tier] || '#22c55e'}">
+                <div style="font-size:2.5rem;font-weight:700;color:${tierColors[tier] || '#22c55e'}">${memberCount}</div>
+                <p style="color:var(--text-secondary);margin:0">Total Users</p>
+                <p style="font-size:0.75rem;color:var(--text-tertiary);margin:var(--space-xs) 0 0">Connected to your church</p>
+            </div>
+            <div class="card" style="text-align:center;border-top:4px solid #3b82f6">
+                <div id="claimedMemberCount" style="font-size:2.5rem;font-weight:700;color:#3b82f6">-</div>
+                <p style="color:var(--text-secondary);margin:0">Claimed Members</p>
+                <p style="font-size:0.75rem;color:var(--text-tertiary);margin:var(--space-xs) 0 0">Marked "I am a member"</p>
+            </div>
+            <div class="card" style="text-align:center;border-top:4px solid #f59e0b">
+                <div id="totalCheckInsCount" style="font-size:2.5rem;font-weight:700;color:#f59e0b">-</div>
+                <p style="color:var(--text-secondary);margin:0">Total Check-ins</p>
+                <p style="font-size:0.75rem;color:var(--text-tertiary);margin:var(--space-xs) 0 0">All time</p>
+            </div>
+        </div>
+        
+        <!-- Capacity -->
         <div class="card" style="margin-bottom:var(--space-lg);border-left:4px solid ${tierColors[tier] || '#22c55e'}">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--space-md)">
                 <div>
                     <h3 style="margin:0;display:flex;align-items:center;gap:var(--space-sm)">
-                        <span>👥</span> Member Overview
+                        <span>📊</span> Capacity
                         <span style="padding:4px 12px;background:${tierColors[tier] || '#22c55e'};color:white;border-radius:20px;font-size:0.75rem;font-weight:600">
                             ${tierNames[tier] || 'Free'} Plan
                         </span>
                     </h3>
                     <p style="color:var(--text-secondary);margin:var(--space-sm) 0 0 0">
-                        ${maxMembers === -1 ? `${memberCount} members (Unlimited capacity)` : `${memberCount} of ${maxMembers} member slots used`}
+                        ${maxMembers === -1 ? `${memberCount} users (Unlimited capacity)` : `${memberCount} of ${maxMembers} user slots used`}
                     </p>
                 </div>
                 <button class="btn btn-primary" onclick="showUpgradeModal()">⬆️ Upgrade Plan</button>
@@ -3987,8 +4015,14 @@ function renderChurchMembers() {
         </div>
         
         <div class="card">
-            <h3 style="margin-bottom:var(--space-md)">📋 Member List</h3>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">View members who have connected to your church.</p>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
+                <h3 style="margin:0">📋 User List</h3>
+                <div style="display:flex;gap:var(--space-sm)">
+                    <button class="btn btn-ghost btn-sm" onclick="filterMembers('all')" id="filterAll" style="background:var(--hover-bg)">All</button>
+                    <button class="btn btn-ghost btn-sm" onclick="filterMembers('members')" id="filterMembers">Members Only</button>
+                </div>
+            </div>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">View users who have connected to your church.</p>
             
             <div id="membersList" style="display:grid;gap:var(--space-md)">
                 <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-xl)">Loading members...</p>
@@ -3998,6 +4032,50 @@ function renderChurchMembers() {
     
     // Load members after render
     setTimeout(() => loadChurchMembers(State.current.user.churchId), 100);
+}
+
+let allMembersData = [];
+
+function filterMembers(filter) {
+    document.getElementById('filterAll').style.background = filter === 'all' ? 'var(--hover-bg)' : '';
+    document.getElementById('filterMembers').style.background = filter === 'members' ? 'var(--hover-bg)' : '';
+    
+    const container = document.getElementById('membersList');
+    if (!container || !allMembersData.length) return;
+    
+    const filtered = filter === 'members' ? allMembersData.filter(m => m.isMember) : allMembersData;
+    renderMembersList(container, filtered);
+}
+
+function renderMembersList(container, members) {
+    if (!members.length) {
+        container.innerHTML = '<p style="color:var(--text-tertiary);text-align:center;padding:var(--space-xl)">No users found.</p>';
+        return;
+    }
+    
+    container.innerHTML = members.map(member => `
+        <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md)">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="display:flex;align-items:center;gap:var(--space-md)">
+                    <div style="width:45px;height:45px;border-radius:50%;background:linear-gradient(135deg,var(--root-green),var(--leaf-green));display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:1.1rem">
+                        ${member.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <strong>${member.name}</strong>
+                        ${member.isMember ? '<span style="background:var(--root-green);color:white;font-size:0.65rem;padding:2px 6px;border-radius:10px;margin-left:var(--space-sm)">Member</span>' : ''}
+                        <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">${member.email}</p>
+                        ${member.phone ? `<p style="font-size:0.75rem;color:var(--text-tertiary);margin:0">📞 ${member.phone}</p>` : ''}
+                    </div>
+                </div>
+                <div style="text-align:right">
+                    <p style="font-size:0.75rem;color:var(--text-tertiary);margin:0">Joined ${new Date(member.joinedAt).toLocaleDateString()}</p>
+                    <button class="btn btn-ghost" onclick="showMemberCheckIns('${member.id}', '${member.name.replace(/'/g, "\\'")}')" style="font-size:0.75rem;padding:var(--space-xs) var(--space-sm);margin-top:var(--space-xs)">
+                        📊 Check-ins
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
 }
 
 async function loadChurchMembers(churchId) {
@@ -4014,6 +4092,11 @@ async function loadChurchMembers(churchId) {
         
         if (snapshot.empty) {
             container.innerHTML = '<p style="color:var(--text-tertiary);text-align:center;padding:var(--space-xl)">No members have joined yet. Share your church\'s access code to invite members!</p>';
+            // Update stats
+            const claimedEl = document.getElementById('claimedMemberCount');
+            const checkInsEl = document.getElementById('totalCheckInsCount');
+            if (claimedEl) claimedEl.textContent = '0';
+            if (checkInsEl) checkInsEl.textContent = '0';
             return;
         }
         
@@ -4023,47 +4106,50 @@ async function loadChurchMembers(churchId) {
             try {
                 const userDoc = await db.collection('users').doc(doc.id).get();
                 const userData = userDoc.exists ? userDoc.data() : {};
+                
+                // Count check-ins for this church
+                const checkInHistory = userData.checkInHistory || [];
+                const churchCheckIns = checkInHistory.filter(c => c.churchId === churchId);
+                
                 return {
                     id: doc.id,
                     ...memberData,
                     name: userData.name || userData.displayName || 'Unknown User',
-                    email: userData.email || 'No email'
+                    email: userData.email || 'No email',
+                    phone: userData.phone || '',
+                    isMember: userData.isMember || false,
+                    checkInCount: churchCheckIns.length
                 };
             } catch (e) {
                 return {
                     id: doc.id,
                     ...memberData,
                     name: 'Unknown User',
-                    email: 'No email'
+                    email: 'No email',
+                    phone: '',
+                    isMember: false,
+                    checkInCount: 0
                 };
             }
         });
         
         const members = await Promise.all(memberPromises);
         
-        container.innerHTML = members.map(member => `
-            <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md)">
-                <div style="display:flex;justify-content:space-between;align-items:center">
-                    <div style="display:flex;align-items:center;gap:var(--space-md)">
-                        <div style="width:45px;height:45px;border-radius:50%;background:linear-gradient(135deg,var(--root-green),var(--leaf-green));display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:1.1rem">
-                            ${member.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                            <strong>${member.name}</strong>
-                            ${member.isMember ? '<span style="background:var(--root-green);color:white;font-size:0.65rem;padding:2px 6px;border-radius:10px;margin-left:var(--space-sm)">Member</span>' : ''}
-                            <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">${member.email}</p>
-                            ${member.phone ? `<p style="font-size:0.75rem;color:var(--text-tertiary);margin:0">📞 ${member.phone}</p>` : ''}
-                        </div>
-                    </div>
-                    <div style="text-align:right">
-                        <p style="font-size:0.75rem;color:var(--text-tertiary);margin:0">Joined ${new Date(member.joinedAt).toLocaleDateString()}</p>
-                        <button class="btn btn-ghost" onclick="showMemberCheckIns('${member.id}', '${member.name.replace(/'/g, "\\'")}')" style="font-size:0.75rem;padding:var(--space-xs) var(--space-sm);margin-top:var(--space-xs)">
-                            📊 Check-in History
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `).join('');
+        // Store for filtering
+        allMembersData = members;
+        
+        // Calculate stats
+        const claimedMembers = members.filter(m => m.isMember).length;
+        const totalCheckIns = members.reduce((sum, m) => sum + (m.checkInCount || 0), 0);
+        
+        // Update stat cards
+        const claimedEl = document.getElementById('claimedMemberCount');
+        const checkInsEl = document.getElementById('totalCheckInsCount');
+        if (claimedEl) claimedEl.textContent = claimedMembers.toString();
+        if (checkInsEl) checkInsEl.textContent = totalCheckIns.toString();
+        
+        // Render member list
+        renderMembersList(container, members);
         
     } catch (e) {
         console.error('Error loading members:', e);
@@ -4411,6 +4497,9 @@ function renderApp() {
                 <div class="nav-item ${activeNav === 'my-church' ? 'active' : ''}" onclick="navigate('my-church')">
                     <span class="nav-item-icon">⛪</span> Church Feed
                 </div>
+                <div class="nav-item ${activeNav === 'church-videos' ? 'active' : ''}" onclick="navigate('church-videos')">
+                    <span class="nav-item-icon">🎬</span> Videos
+                </div>
             </div>
         </nav>
         <div class="sidebar-footer">
@@ -4444,7 +4533,7 @@ function renderApp() {
 }
 
 function getPageTitle(nav) {
-    const titles = { dashboard: 'Dashboard', tools: 'Growth Tools', progress: 'My Progress', profile: 'Profile', settings: 'Settings', 'my-church': 'My Church' };
+    const titles = { dashboard: 'Dashboard', tools: 'Growth Tools', progress: 'My Progress', profile: 'Profile', settings: 'Settings', 'my-church': 'My Church', 'church-videos': 'Videos' };
     return titles[nav] || 'Dashboard';
 }
 
@@ -4456,6 +4545,7 @@ function renderPage(page) {
         case 'profile': return renderProfile();
         case 'settings': return renderSettings();
         case 'my-church': return renderMyChurch();
+        case 'church-videos': return renderChurchVideosPage();
         default: return renderDashboard();
     }
 }
@@ -4604,17 +4694,32 @@ setInterval(updateClock, 1000);
 setTimeout(updateClock, 100);
 
 function renderTools() {
-    const tools = Object.values(TOOLS);
+    // Get user's church and enabled tools
+    const userChurchId = Auth.currentUser ? getUserChurch(Auth.currentUser.uid) : null;
+    const church = userChurchId ? getChurchData(userChurchId) : null;
+    const enabledToolIds = church?.enabledTools || Object.keys(TOOLS); // Default to all if no church
+    
+    // Filter tools: show enabled active tools + coming soon tools
+    const tools = Object.values(TOOLS).filter(t => {
+        if (t.status === 'coming') return true; // Always show coming soon
+        return enabledToolIds.includes(t.id); // Only show enabled active tools
+    });
+    
     const categories = [...new Set(tools.map(t => t.category))];
+    
     return `
     <div class="fade-up">
         <p style="color:var(--text-secondary);margin-bottom:var(--space-xl)">Discover tools designed to help you grow in your faith.</p>
-        ${categories.map(cat => `
+        ${church ? `<p style="font-size:0.85rem;color:var(--text-tertiary);margin-bottom:var(--space-md)">Showing ${enabledToolIds.length} tools enabled by ${church.name}</p>` : ''}
+        ${categories.map(cat => {
+            const catTools = tools.filter(t => t.category === cat);
+            if (!catTools.length) return '';
+            return `
             <div class="section-header"><h3 class="section-title" style="text-transform:capitalize">${cat}</h3></div>
             <div class="grid grid-3" style="margin-bottom:var(--space-2xl)">
-                ${tools.filter(t => t.category === cat).map(t => renderToolCard(t)).join('')}
-            </div>
-        `).join('')}
+                ${catTools.map(t => renderToolCard(t)).join('')}
+            </div>`;
+        }).join('')}
     </div>`;
 }
 
@@ -4635,6 +4740,10 @@ function renderToolCard(tool) {
 function openTool(toolId) {
     const tool = TOOLS[toolId];
     if (!tool) return;
+    
+    // Track tool usage
+    trackToolUsage(toolId);
+    
     if (tool.type === 'internal') {
         State.set({ screen: 'tool-seasons' });
     } else if (tool.type === 'external' && tool.path) {
@@ -4644,15 +4753,283 @@ function openTool(toolId) {
 }
 
 function renderProgress() {
+    const user = Auth.currentUser;
+    const userChurchId = getUserChurch(user?.uid);
+    const userChurches = getUserChurches(user?.uid);
+    
+    // Load progress data after render
+    setTimeout(() => loadProgressData(), 100);
+    
     return `
     <div class="fade-up">
-        <div class="empty-state">
-            <div class="empty-state-icon">📊</div>
-            <h3 class="empty-state-title">Track Your Growth</h3>
-            <p class="empty-state-description">Complete tools and assessments to see your progress here.</p>
-            <button class="btn btn-primary" style="margin-top:var(--space-lg)" onclick="navigate('tools')">Start a Tool</button>
+        <!-- Progress Header -->
+        <div class="welcome-banner" style="background:linear-gradient(135deg,#8b5cf6,#a78bfa)">
+            <h2 class="welcome-title">📊 My Progress</h2>
+            <p class="welcome-subtitle">Track your spiritual growth journey</p>
+        </div>
+        
+        <!-- Quick Stats -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--space-md);margin:var(--space-lg) 0">
+            <div class="card" style="text-align:center;padding:var(--space-lg)">
+                <div style="font-size:2.5rem;font-weight:700;color:#22c55e" id="statCheckIns">-</div>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.85rem">Check-ins</p>
+            </div>
+            <div class="card" style="text-align:center;padding:var(--space-lg)">
+                <div style="font-size:2.5rem;font-weight:700;color:#3b82f6" id="statToolsUsed">-</div>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.85rem">Tools Used</p>
+            </div>
+            <div class="card" style="text-align:center;padding:var(--space-lg)">
+                <div style="font-size:2.5rem;font-weight:700;color:#f59e0b" id="statStreak">-</div>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.85rem">Day Streak</p>
+            </div>
+            <div class="card" style="text-align:center;padding:var(--space-lg)">
+                <div style="font-size:2.5rem;font-weight:700;color:#ef4444" id="statChurches">-</div>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.85rem">Churches</p>
+            </div>
+        </div>
+        
+        <!-- Check-in History -->
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="margin-bottom:var(--space-md);display:flex;align-items:center;gap:var(--space-sm)">
+                <span style="font-size:1.3rem">📍</span> Check-in History
+            </h3>
+            <div id="checkInHistoryList" style="max-height:300px;overflow-y:auto">
+                <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-lg)">Loading...</p>
+            </div>
+        </div>
+        
+        <!-- Tools Activity -->
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="margin-bottom:var(--space-md);display:flex;align-items:center;gap:var(--space-sm)">
+                <span style="font-size:1.3rem">🛠️</span> Tools Activity
+            </h3>
+            <div id="toolsActivityList">
+                <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-lg)">Loading...</p>
+            </div>
+        </div>
+        
+        <!-- Assessments Completed -->
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="margin-bottom:var(--space-md);display:flex;align-items:center;gap:var(--space-sm)">
+                <span style="font-size:1.3rem">📝</span> Assessments
+            </h3>
+            <div id="assessmentsList">
+                <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-lg)">Loading...</p>
+            </div>
+        </div>
+        
+        <!-- Weekly Activity Chart -->
+        <div class="card">
+            <h3 style="margin-bottom:var(--space-md);display:flex;align-items:center;gap:var(--space-sm)">
+                <span style="font-size:1.3rem">📈</span> This Week
+            </h3>
+            <div id="weeklyChart" style="display:flex;align-items:flex-end;justify-content:space-between;height:120px;padding:var(--space-md) 0">
+                ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day, i) => `
+                    <div style="display:flex;flex-direction:column;align-items:center;flex:1">
+                        <div id="bar${i}" style="width:30px;background:var(--hover-bg);border-radius:4px 4px 0 0;height:10px;transition:height 0.3s,background 0.3s"></div>
+                        <span style="font-size:0.7rem;color:var(--text-tertiary);margin-top:var(--space-xs)">${day}</span>
+                    </div>
+                `).join('')}
+            </div>
         </div>
     </div>`;
+}
+
+async function loadProgressData() {
+    const user = Auth.currentUser;
+    if (!user) return;
+    
+    const userChurches = getUserChurches(user.uid);
+    
+    // Update churches count
+    const churchesEl = document.getElementById('statChurches');
+    if (churchesEl) churchesEl.textContent = userChurches.length.toString();
+    
+    // Load from localStorage for tool usage
+    const toolUsage = JSON.parse(localStorage.getItem('rooted_tool_usage') || '{}');
+    const toolsUsed = Object.keys(toolUsage).length;
+    const toolsEl = document.getElementById('statToolsUsed');
+    if (toolsEl) toolsEl.textContent = toolsUsed.toString();
+    
+    // Calculate streak
+    const activityDays = JSON.parse(localStorage.getItem('rooted_activity_days') || '[]');
+    const streak = calculateStreak(activityDays);
+    const streakEl = document.getElementById('statStreak');
+    if (streakEl) streakEl.textContent = streak.toString();
+    
+    // Load check-in data from Firebase
+    if (firebaseInitialized) {
+        try {
+            const userDoc = await db.collection('users').doc(user.uid).get();
+            const userData = userDoc.exists ? userDoc.data() : {};
+            const checkInHistory = userData.checkInHistory || [];
+            
+            // Update check-ins count
+            const checkInsEl = document.getElementById('statCheckIns');
+            if (checkInsEl) checkInsEl.textContent = checkInHistory.length.toString();
+            
+            // Render check-in history
+            const checkInList = document.getElementById('checkInHistoryList');
+            if (checkInList) {
+                if (checkInHistory.length === 0) {
+                    checkInList.innerHTML = '<p style="color:var(--text-tertiary);text-align:center;padding:var(--space-lg)">No check-ins yet. Visit your church to check in!</p>';
+                } else {
+                    // Sort by date descending
+                    const sorted = [...checkInHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
+                    checkInList.innerHTML = sorted.slice(0, 10).map(c => `
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-sm) 0;border-bottom:1px solid var(--border-color)">
+                            <div style="display:flex;align-items:center;gap:var(--space-sm)">
+                                <span style="font-size:1.2rem">📍</span>
+                                <span>${c.churchName || 'Church'}</span>
+                            </div>
+                            <span style="font-size:0.8rem;color:var(--text-tertiary)">${new Date(c.date).toLocaleDateString()}</span>
+                        </div>
+                    `).join('');
+                }
+            }
+            
+            // Update weekly chart
+            updateWeeklyChart(checkInHistory, toolUsage);
+            
+        } catch (e) {
+            console.error('Error loading progress data:', e);
+        }
+    } else {
+        // Local mode
+        const checkInsEl = document.getElementById('statCheckIns');
+        if (checkInsEl) checkInsEl.textContent = '0';
+        
+        const checkInList = document.getElementById('checkInHistoryList');
+        if (checkInList) {
+            checkInList.innerHTML = '<p style="color:var(--text-tertiary);text-align:center;padding:var(--space-lg)">Connect to Firebase to track check-ins.</p>';
+        }
+    }
+    
+    // Render tools activity
+    const toolsActivityEl = document.getElementById('toolsActivityList');
+    if (toolsActivityEl) {
+        if (Object.keys(toolUsage).length === 0) {
+            toolsActivityEl.innerHTML = '<p style="color:var(--text-tertiary);text-align:center;padding:var(--space-lg)">No tools used yet. Start your growth journey!</p>';
+        } else {
+            toolsActivityEl.innerHTML = Object.entries(toolUsage).map(([toolId, data]) => {
+                const tool = TOOLS[toolId];
+                return `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-sm) 0;border-bottom:1px solid var(--border-color)">
+                    <div style="display:flex;align-items:center;gap:var(--space-sm)">
+                        <span style="font-size:1.2rem">${tool?.icon || '🛠️'}</span>
+                        <span>${tool?.name || toolId}</span>
+                    </div>
+                    <div style="text-align:right">
+                        <span style="font-size:0.9rem;font-weight:600">${data.count || 1}x</span>
+                        <span style="font-size:0.75rem;color:var(--text-tertiary);display:block">${data.lastUsed ? new Date(data.lastUsed).toLocaleDateString() : ''}</span>
+                    </div>
+                </div>
+            `;
+            }).join('');
+        }
+    }
+    
+    // Render assessments (Seasons quiz, etc.)
+    const assessmentsEl = document.getElementById('assessmentsList');
+    const seasonsResult = localStorage.getItem('rooted_seasons_result');
+    const formationResult = localStorage.getItem('rooted_formation_result');
+    
+    if (assessmentsEl) {
+        const assessments = [];
+        if (seasonsResult) {
+            try {
+                const result = JSON.parse(seasonsResult);
+                assessments.push({ name: 'Seasons of Faith', result: result.character || result.name, date: result.date });
+            } catch (e) {}
+        }
+        if (formationResult) {
+            try {
+                const result = JSON.parse(formationResult);
+                assessments.push({ name: 'Spiritual Formation', result: 'Completed', date: result.date });
+            } catch (e) {}
+        }
+        
+        if (assessments.length === 0) {
+            assessmentsEl.innerHTML = '<p style="color:var(--text-tertiary);text-align:center;padding:var(--space-lg)">No assessments completed yet. Try the Seasons of Faith quiz!</p>';
+        } else {
+            assessmentsEl.innerHTML = assessments.map(a => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-sm) 0;border-bottom:1px solid var(--border-color)">
+                    <div>
+                        <strong>${a.name}</strong>
+                        <span style="color:var(--root-green);margin-left:var(--space-sm)">${a.result}</span>
+                    </div>
+                    <span style="font-size:0.8rem;color:var(--text-tertiary)">${a.date || ''}</span>
+                </div>
+            `).join('');
+        }
+    }
+}
+
+function calculateStreak(activityDays) {
+    if (!activityDays.length) return 0;
+    
+    const today = new Date().toISOString().split('T')[0];
+    const sorted = [...activityDays].sort((a, b) => new Date(b) - new Date(a));
+    
+    let streak = 0;
+    let currentDate = new Date(today);
+    
+    for (const day of sorted) {
+        const dayDate = new Date(day).toISOString().split('T')[0];
+        const checkDate = currentDate.toISOString().split('T')[0];
+        
+        if (dayDate === checkDate) {
+            streak++;
+            currentDate.setDate(currentDate.getDate() - 1);
+        } else {
+            break;
+        }
+    }
+    
+    return streak;
+}
+
+function updateWeeklyChart(checkIns, toolUsage) {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    
+    // Get activity for each day of the week
+    for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - dayOfWeek + i);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        // Count activities on this day
+        const checkInsOnDay = checkIns.filter(c => c.date === dateStr).length;
+        const toolsOnDay = Object.values(toolUsage).filter(t => t.lastUsed?.split('T')[0] === dateStr).length;
+        const total = checkInsOnDay + toolsOnDay;
+        
+        const bar = document.getElementById(`bar${i}`);
+        if (bar) {
+            const height = Math.min(total * 25 + 10, 100);
+            bar.style.height = `${height}px`;
+            bar.style.background = total > 0 ? 'linear-gradient(135deg,var(--root-green),var(--leaf-green))' : 'var(--hover-bg)';
+        }
+    }
+}
+
+// Track tool usage
+function trackToolUsage(toolId) {
+    const toolUsage = JSON.parse(localStorage.getItem('rooted_tool_usage') || '{}');
+    if (!toolUsage[toolId]) {
+        toolUsage[toolId] = { count: 0 };
+    }
+    toolUsage[toolId].count++;
+    toolUsage[toolId].lastUsed = new Date().toISOString();
+    localStorage.setItem('rooted_tool_usage', JSON.stringify(toolUsage));
+    
+    // Track activity day
+    const activityDays = JSON.parse(localStorage.getItem('rooted_activity_days') || '[]');
+    const today = new Date().toISOString().split('T')[0];
+    if (!activityDays.includes(today)) {
+        activityDays.push(today);
+        localStorage.setItem('rooted_activity_days', JSON.stringify(activityDays));
+    }
 }
 
 function renderProfile() {
@@ -5420,51 +5797,71 @@ function renderMyChurchContent(church, userChurches, activeChurchId) {
     const isNearby = isWithinGeofence(activeChurchId);
     const isCheckedIn = checkedInTodayCache[activeChurchId] || false;
     const distanceFeet = getDistanceToChurch(activeChurchId);
+    const branding = church?.branding || {};
+    const videos = church?.youtubeVideos || [];
+    const playlists = church?.youtubePlaylists || [];
+    
+    // Get church brand colors or seasonal colors
+    const colors = getSeasonalColors(branding);
     
     return `
     <div class="fade-up">
-        <!-- Refresh Button -->
-        <div style="display:flex;justify-content:flex-end;margin-bottom:var(--space-md)">
-            <button class="btn btn-ghost" onclick="refreshMyChurch()" style="font-size:0.85rem">🔄 Refresh</button>
+        <!-- Church Header with Branding -->
+        <div style="position:relative;border-radius:var(--radius-xl);overflow:hidden;margin-bottom:var(--space-lg)">
+            ${branding.headerImage ? `
+                <div style="position:absolute;inset:0;background:url('${branding.headerImage}') center/cover"></div>
+                <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(0,0,0,0.8),rgba(0,0,0,0.3))"></div>
+            ` : `
+                <div style="position:absolute;inset:0;background:linear-gradient(135deg,${colors.primary},${colors.secondary})"></div>
+            `}
+            <div style="position:relative;padding:var(--space-2xl);color:white">
+                <div style="display:flex;align-items:center;gap:var(--space-lg)">
+                    ${branding.logo ? `
+                        <img src="${branding.logo}" alt="" style="width:70px;height:70px;border-radius:var(--radius-lg);object-fit:contain;background:white;padding:6px;flex-shrink:0">
+                    ` : `
+                        <div style="width:70px;height:70px;background:rgba(255,255,255,0.2);border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;font-size:2rem;flex-shrink:0">⛪</div>
+                    `}
+                    <div style="flex:1">
+                        <h2 style="margin:0 0 var(--space-xs);font-size:1.5rem">${church?.name || 'Church'}</h2>
+                        <p style="margin:0;opacity:0.9;font-size:0.9rem">${church?.address || ''}</p>
+                    </div>
+                    <div style="display:flex;gap:var(--space-xs)">
+                        <button class="btn btn-ghost" onclick="refreshMyChurch()" style="color:white;opacity:0.8">🔄</button>
+                        <button class="btn btn-ghost" onclick="showManageChurchModal('${activeChurchId}')" style="color:white;opacity:0.8">⚙️</button>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <!-- Church Switcher -->
         ${userChurches.length > 1 || userChurches.length < 5 ? `
-        <div class="card" style="margin-bottom:var(--space-lg)">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
-                <h3 style="margin:0">My Churches</h3>
-                ${userChurches.length < 5 ? `<button class="btn btn-ghost" onclick="showChurchSearch()" style="font-size:0.9rem">+ Add Church</button>` : ''}
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:var(--space-sm)">
-                ${userChurches.map(cId => {
-                    const c = getChurchData(cId);
-                    const isActive = cId === activeChurchId;
-                    const cNearby = isWithinGeofence(cId);
-                    return `
-                    <div style="display:flex;align-items:center;gap:var(--space-sm);padding:var(--space-sm) var(--space-md);background:${isActive ? 'linear-gradient(135deg,var(--root-green),var(--leaf-green))' : 'var(--hover-bg)'};border-radius:var(--radius-md);cursor:pointer;${isActive ? 'color:white' : ''}" onclick="switchChurch('${cId}')">
-                        <span>⛪</span>
-                        <span style="font-size:0.9rem;font-weight:${isActive ? '600' : '400'}">${c?.name || 'Unknown'}</span>
-                        ${cNearby ? '<span style="font-size:0.7rem;background:${isActive ? "rgba(255,255,255,0.3)" : "var(--success)"};color:${isActive ? "white" : "white"};padding:2px 6px;border-radius:10px">📍 Nearby</span>' : ''}
-                        ${isActive ? '<span style="font-size:0.8rem">✓</span>' : ''}
-                    </div>`;
-                }).join('')}
-            </div>
-            <p style="font-size:0.8rem;color:var(--text-tertiary);margin-top:var(--space-sm)">${userChurches.length}/5 churches connected</p>
+        <div style="display:flex;gap:var(--space-sm);overflow-x:auto;padding:var(--space-xs) 0;margin-bottom:var(--space-lg)">
+            ${userChurches.map(cId => {
+                const c = getChurchData(cId);
+                const isActive = cId === activeChurchId;
+                return `
+                <div style="display:flex;align-items:center;gap:var(--space-sm);padding:var(--space-sm) var(--space-md);background:${isActive ? `linear-gradient(135deg,${colors.primary},${colors.secondary})` : 'var(--hover-bg)'};border-radius:var(--radius-md);cursor:pointer;white-space:nowrap;${isActive ? 'color:white' : ''}" onclick="switchChurch('${cId}')">
+                    <span>⛪</span>
+                    <span style="font-weight:${isActive ? '600' : '400'}">${c?.name || 'Unknown'}</span>
+                    ${isActive ? '<span>✓</span>' : ''}
+                </div>`;
+            }).join('')}
+            ${userChurches.length < 5 ? `<button class="btn btn-ghost" onclick="showChurchSearch()" style="white-space:nowrap">+ Add</button>` : ''}
         </div>
         ` : ''}
         
         <!-- Check-in Status Banner -->
         ${isNearby ? `
-        <div class="card" style="margin-bottom:var(--space-lg);background:linear-gradient(135deg,${isCheckedIn ? 'var(--success)' : 'var(--warning)'},${isCheckedIn ? '#16a34a' : '#ea580c'});color:white">
+        <div class="card" style="margin-bottom:var(--space-lg);background:linear-gradient(135deg,${isCheckedIn ? '#22c55e' : '#f59e0b'},${isCheckedIn ? '#16a34a' : '#ea580c'});color:white;border:none">
             <div style="display:flex;align-items:center;justify-content:space-between">
                 <div style="display:flex;align-items:center;gap:var(--space-md)">
-                    <div style="font-size:2rem">${isCheckedIn ? '✓' : '📍'}</div>
+                    <div style="width:50px;height:50px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem">${isCheckedIn ? '✓' : '📍'}</div>
                     <div>
-                        <strong style="display:block">${isCheckedIn ? 'Checked In!' : 'You\'re at ' + (church?.name || 'church')}</strong>
-                        <span style="font-size:0.85rem;opacity:0.9">${isCheckedIn ? 'Welcome! Access your on-site resources below.' : 'Tap to check in and access exclusive resources'}</span>
+                        <strong style="display:block;font-size:1.1rem">${isCheckedIn ? 'You\'re Checked In!' : 'You\'re at ' + (church?.name || 'church')}</strong>
+                        <span style="font-size:0.85rem;opacity:0.9">${isCheckedIn ? 'Welcome! Access your on-site resources below.' : 'Tap to check in and access exclusive content'}</span>
                     </div>
                 </div>
-                ${!isCheckedIn ? `<button class="btn" onclick="checkInToChurch('${activeChurchId}')" style="background:white;color:var(--warning)">Check In</button>` : ''}
+                ${!isCheckedIn ? `<button class="btn" onclick="checkInToChurch('${activeChurchId}')" style="background:white;color:#f59e0b;font-weight:600">✓ Check In</button>` : ''}
             </div>
         </div>
         ` : distanceFeet ? `
@@ -5481,83 +5878,102 @@ function renderMyChurchContent(church, userChurches, activeChurchId) {
         
         <!-- On-Site Resources (only visible when checked in) -->
         ${isCheckedIn && church?.checkInResources?.length ? `
-        <div class="card" style="margin-bottom:var(--space-lg);border:2px solid var(--success)">
+        <div class="card" style="margin-bottom:var(--space-lg);border:2px solid #22c55e">
             <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-md)">
-                <span style="background:var(--success);color:white;padding:4px 10px;border-radius:20px;font-size:0.8rem">📍 On-Site Only</span>
+                <span style="background:#22c55e;color:white;padding:4px 10px;border-radius:20px;font-size:0.8rem">📍 On-Site Only</span>
                 <h3 style="margin:0">Resources Available Now</h3>
             </div>
             ${church.checkInResources.map(r => `
                 <a href="${r.url}" target="_blank" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);text-decoration:none;color:inherit">
-                    <div style="width:40px;height:40px;background:linear-gradient(135deg,var(--success),#16a34a);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📄</div>
+                    <div style="width:40px;height:40px;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📄</div>
                     <div style="flex:1;min-width:0">
                         <strong style="display:block;font-size:0.95rem">${r.title}</strong>
-                        <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">${r.type.toUpperCase()}</p>
+                        <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">${r.type?.toUpperCase() || 'FILE'}</p>
                     </div>
-                    <span style="color:var(--success)">↓</span>
+                    <span style="color:#22c55e">↓</span>
                 </a>
             `).join('')}
         </div>
         ` : ''}
         
-        <!-- Active Church Header -->
-        <div class="welcome-banner" style="background:linear-gradient(135deg,var(--root-green),var(--leaf-green))">
-            <div style="display:flex;justify-content:space-between;align-items:start">
-                <div>
-                    <h2 class="welcome-title">⛪ ${church?.name || 'Church'}</h2>
-                    <p class="welcome-subtitle">${church?.address || 'Address not available'}</p>
+        <!-- Videos Card - Link to Videos Page -->
+        ${videos.length ? `
+        <div class="card" style="margin-bottom:var(--space-lg);cursor:pointer;transition:transform 0.2s" onclick="navigate('church-videos')" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="display:flex;align-items:center;gap:var(--space-md)">
+                    <div style="width:60px;height:60px;background:linear-gradient(135deg,#ef4444,#f97316);border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;font-size:1.8rem">🎬</div>
+                    <div>
+                        <h3 style="margin:0">Videos</h3>
+                        <p style="color:var(--text-secondary);margin:var(--space-xs) 0 0;font-size:0.9rem">${videos.length} videos available</p>
+                    </div>
                 </div>
-                <button class="btn btn-ghost" onclick="showManageChurchModal('${activeChurchId}')" style="color:white;font-size:0.85rem;opacity:0.8">⚙️</button>
+                <span style="font-size:1.5rem;color:var(--text-tertiary)">→</span>
+            </div>
+            <!-- Preview thumbnails -->
+            <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-md);overflow:hidden">
+                ${videos.slice(0, 4).map(v => `
+                    <div style="width:80px;height:45px;border-radius:var(--radius-sm);overflow:hidden;flex-shrink:0">
+                        <img src="https://img.youtube.com/vi/${v.videoId}/default.jpg" alt="" style="width:100%;height:100%;object-fit:cover">
+                    </div>
+                `).join('')}
+                ${videos.length > 4 ? `<div style="width:80px;height:45px;border-radius:var(--radius-sm);background:var(--hover-bg);display:flex;align-items:center;justify-content:center;font-size:0.8rem;color:var(--text-secondary)">+${videos.length - 4} more</div>` : ''}
             </div>
         </div>
-        
-        <!-- Social Media Links -->
-        <div class="card" style="margin:var(--space-lg) 0">
-            <h3 style="margin-bottom:var(--space-md)">🔗 Connect With Us</h3>
-            <div style="display:flex;flex-wrap:wrap;gap:var(--space-sm)">
-                ${social.facebook ? `<a href="${social.facebook}" target="_blank" class="btn btn-secondary" style="flex:1;min-width:120px;justify-content:center">📘 Facebook</a>` : ''}
-                ${social.instagram ? `<a href="${social.instagram}" target="_blank" class="btn btn-secondary" style="flex:1;min-width:120px;justify-content:center">📸 Instagram</a>` : ''}
-                ${social.youtube ? `<a href="${social.youtube}" target="_blank" class="btn btn-secondary" style="flex:1;min-width:120px;justify-content:center">🎥 YouTube</a>` : ''}
-                ${church?.website ? `<a href="${church.website}" target="_blank" class="btn btn-secondary" style="flex:1;min-width:120px;justify-content:center">🌐 Website</a>` : ''}
-                ${!social.facebook && !social.instagram && !social.youtube && !church?.website ? '<p style="color:var(--text-tertiary)">No social links available</p>' : ''}
-            </div>
-        </div>
+        ` : ''}
         
         <!-- Announcements -->
+        ${church?.announcements?.length ? `
         <div class="card" style="margin-bottom:var(--space-lg)">
-            <h3 style="margin-bottom:var(--space-lg)">📢 Announcements</h3>
-            ${church?.announcements?.length ? church.announcements.map(a => `
-                <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);border-left:4px solid var(--root-green)">
-                    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:var(--space-sm)">
+            <h3 style="margin-bottom:var(--space-md)">📢 Announcements</h3>
+            ${church.announcements.map(a => `
+                <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);border-left:4px solid ${colors.primary}">
+                    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:var(--space-xs)">
                         <strong>${a.title}</strong>
                         <span style="font-size:0.8rem;color:var(--text-tertiary)">${a.date}</span>
                     </div>
-                    <p style="color:var(--text-secondary);font-size:0.95rem">${a.content}</p>
+                    <p style="color:var(--text-secondary);font-size:0.9rem;margin:0">${a.content}</p>
                 </div>
-            `).join('') : '<p style="color:var(--text-tertiary)">No announcements at this time.</p>'}
+            `).join('')}
         </div>
+        ` : ''}
         
-        <!-- Resources / Discipleship Materials -->
+        <!-- Resources -->
+        ${church?.resources?.length ? `
         <div class="card" style="margin-bottom:var(--space-lg)">
-            <h3 style="margin-bottom:var(--space-lg)">📄 Resources</h3>
-            ${church?.resources?.length ? church.resources.map(r => `
-                <a href="${r.url}" target="_blank" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);text-decoration:none;color:inherit">
-                    <div style="width:50px;height:50px;background:linear-gradient(135deg,#ef4444,#f97316);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0">📄</div>
+            <h3 style="margin-bottom:var(--space-md)">📄 Resources</h3>
+            ${church.resources.map(r => `
+                <a href="${r.url}" target="_blank" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);text-decoration:none;color:inherit;transition:background 0.2s" onmouseover="this.style.background='var(--card-bg)'" onmouseout="this.style.background='var(--hover-bg)'">
+                    <div style="width:45px;height:45px;background:linear-gradient(135deg,#ef4444,#f97316);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">📄</div>
                     <div style="flex:1;min-width:0">
                         <strong style="display:block">${r.title}</strong>
-                        <p style="font-size:0.85rem;color:var(--text-tertiary)">${r.type.toUpperCase()} • ${r.date}</p>
+                        <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">${r.type?.toUpperCase() || 'FILE'} • ${r.date}</p>
                     </div>
-                    <span style="color:var(--root-green)">↓</span>
+                    <span style="color:${colors.primary};font-size:1.2rem">↓</span>
                 </a>
-            `).join('') : '<p style="color:var(--text-tertiary)">No resources available yet. Check back soon!</p>'}
+            `).join('')}
+        </div>
+        ` : ''}
+        
+        <!-- Quick Links -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:var(--space-sm);margin-bottom:var(--space-lg)">
+            ${social.facebook ? `<a href="${social.facebook}" target="_blank" style="display:flex;flex-direction:column;align-items:center;padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-lg);text-decoration:none;color:inherit;transition:transform 0.2s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"><span style="font-size:1.5rem;margin-bottom:var(--space-xs)">📘</span><span style="font-size:0.8rem">Facebook</span></a>` : ''}
+            ${social.instagram ? `<a href="${social.instagram}" target="_blank" style="display:flex;flex-direction:column;align-items:center;padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-lg);text-decoration:none;color:inherit;transition:transform 0.2s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"><span style="font-size:1.5rem;margin-bottom:var(--space-xs)">📸</span><span style="font-size:0.8rem">Instagram</span></a>` : ''}
+            ${social.youtube ? `<a href="${social.youtube}" target="_blank" style="display:flex;flex-direction:column;align-items:center;padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-lg);text-decoration:none;color:inherit;transition:transform 0.2s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"><span style="font-size:1.5rem;margin-bottom:var(--space-xs)">🎥</span><span style="font-size:0.8rem">YouTube</span></a>` : ''}
+            ${church?.website ? `<a href="${church.website}" target="_blank" style="display:flex;flex-direction:column;align-items:center;padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-lg);text-decoration:none;color:inherit;transition:transform 0.2s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"><span style="font-size:1.5rem;margin-bottom:var(--space-xs)">🌐</span><span style="font-size:0.8rem">Website</span></a>` : ''}
         </div>
         
-        <!-- Church Info -->
-        <div class="card">
-            <h3 style="margin-bottom:var(--space-md)">📍 Contact Information</h3>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-sm)"><strong>Address:</strong> ${church?.address || 'Not available'}</p>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-sm)"><strong>Phone:</strong> ${church?.phone || 'Not available'}</p>
-            ${church?.website ? `<p style="color:var(--text-secondary)"><strong>Website:</strong> <a href="${church.website}" target="_blank" style="color:var(--root-green)">${church.website}</a></p>` : ''}
+        <!-- Contact Info -->
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="margin-bottom:var(--space-md)">📍 Contact</h3>
+            ${church?.address ? `<p style="color:var(--text-secondary);margin:0 0 var(--space-xs)">📍 ${church.address}</p>` : ''}
+            ${church?.phone ? `<p style="color:var(--text-secondary);margin:0 0 var(--space-xs)">📞 ${church.phone}</p>` : ''}
+            ${church?.website ? `<p style="color:var(--text-secondary);margin:0"><a href="${church.website}" target="_blank" style="color:${colors.primary}">🌐 ${church.website}</a></p>` : ''}
         </div>
+        
+        <!-- Footer with branding -->
+        ${branding.footerImage ? `
+        <div style="border-radius:var(--radius-lg);overflow:hidden;height:100px;background:url('${branding.footerImage}') center/cover"></div>
+        ` : ''}
     </div>`;
 }
 
@@ -5569,6 +5985,150 @@ function switchChurch(churchId) {
         toast('Switched church! ⛪', 'success');
         render();
     }
+}
+
+// Netflix-style Videos Page
+function renderChurchVideosPage() {
+    const userChurchId = getUserChurch(Auth.currentUser?.uid);
+    if (!userChurchId) {
+        return `
+        <div class="fade-up">
+            <div class="empty-state">
+                <div class="empty-state-icon">🎬</div>
+                <h3 class="empty-state-title">No Church Connected</h3>
+                <p class="empty-state-description">Connect to a church to view their videos.</p>
+                <button class="btn btn-primary" onclick="showChurchSearch()" style="margin-top:var(--space-lg)">Find My Church</button>
+            </div>
+        </div>`;
+    }
+    
+    const church = getChurchData(userChurchId);
+    const videos = church?.youtubeVideos || [];
+    const playlists = church?.youtubePlaylists || [];
+    const branding = church?.branding || {};
+    const colors = getSeasonalColors(branding);
+    
+    if (!videos.length) {
+        return `
+        <div class="fade-up">
+            <div class="empty-state">
+                <div class="empty-state-icon">🎬</div>
+                <h3 class="empty-state-title">No Videos Yet</h3>
+                <p class="empty-state-description">${church?.name || 'Your church'} hasn't added any videos yet. Check back soon!</p>
+                <button class="btn btn-secondary" onclick="navigate('my-church')" style="margin-top:var(--space-lg)">← Back to Church Feed</button>
+            </div>
+        </div>`;
+    }
+    
+    return `
+    <div class="fade-up" style="background:linear-gradient(180deg,rgba(0,0,0,0.3) 0%,transparent 200px)">
+        <!-- Hero Section with Featured Video -->
+        ${videos.length ? `
+        <div style="position:relative;height:350px;margin:-var(--space-lg);margin-bottom:var(--space-xl);padding:var(--space-lg);display:flex;align-items:flex-end;background:linear-gradient(135deg,${colors.primary}33,${colors.secondary}33),url('https://img.youtube.com/vi/${videos[0].videoId}/maxresdefault.jpg') center/cover">
+            <div style="position:absolute;inset:0;background:linear-gradient(to top,var(--bg-primary) 0%,transparent 60%)"></div>
+            <div style="position:relative;z-index:1;max-width:600px">
+                ${branding.logo ? `<img src="${branding.logo}" alt="" style="width:50px;height:50px;border-radius:var(--radius-md);margin-bottom:var(--space-md);object-fit:contain;background:white;padding:4px">` : ''}
+                <h1 style="margin:0 0 var(--space-sm);font-size:1.8rem">${videos[0].title}</h1>
+                <p style="color:var(--text-secondary);margin:0 0 var(--space-md)">${church?.name} • ${videos[0].category} • ${videos[0].date}</p>
+                <div style="display:flex;gap:var(--space-sm)">
+                    <button class="btn btn-primary" onclick="playYouTubeVideo('${videos[0].videoId}', '${(videos[0].title || '').replace(/'/g, "\\'")}')" style="background:white;color:#000">
+                        ▶️ Play Now
+                    </button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('allVideosSection').scrollIntoView({behavior:'smooth'})">
+                        Browse All
+                    </button>
+                </div>
+            </div>
+        </div>
+        ` : ''}
+        
+        <!-- Playlist Filter -->
+        ${playlists.length ? `
+        <div style="display:flex;gap:var(--space-sm);overflow-x:auto;padding:var(--space-md) 0;margin-bottom:var(--space-lg)">
+            <button class="btn btn-secondary video-playlist-btn active" onclick="filterVideosPlaylist('')" data-playlist="">All</button>
+            ${playlists.map(p => `
+                <button class="btn btn-ghost video-playlist-btn" onclick="filterVideosPlaylist('${p.id}')" data-playlist="${p.id}">${p.name}</button>
+            `).join('')}
+        </div>
+        ` : ''}
+        
+        <div id="allVideosSection">
+        <!-- Video Categories (Netflix rows) -->
+        ${(() => {
+            const categories = ['sermons', 'worship', 'bible-study', 'testimonies', 'events', 'other'];
+            const categoryNames = { sermons: 'Sermons', worship: 'Worship', 'bible-study': 'Bible Study', testimonies: 'Testimonies', events: 'Events', other: 'Other' };
+            
+            return categories.map(cat => {
+                const catVideos = videos.filter(v => v.category === cat);
+                if (!catVideos.length) return '';
+                
+                return `
+                <div class="video-category-row" data-category="${cat}" style="margin-bottom:var(--space-xl)">
+                    <h3 style="margin-bottom:var(--space-md);font-size:1.3rem">${categoryNames[cat] || cat}</h3>
+                    <div style="display:flex;gap:var(--space-lg);overflow-x:auto;padding:var(--space-sm) 0;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch">
+                        ${catVideos.map(v => `
+                            <div class="video-card" data-playlist="${v.playlistId || ''}" style="flex-shrink:0;width:280px;scroll-snap-align:start;cursor:pointer;transition:transform 0.3s,box-shadow 0.3s;border-radius:var(--radius-lg);overflow:hidden;background:var(--card-bg)" onclick="playYouTubeVideo('${v.videoId}', '${(v.title || '').replace(/'/g, "\\'")}')" onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 10px 40px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none'">
+                                <div style="position:relative;aspect-ratio:16/9;background:#000">
+                                    <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" alt="" style="width:100%;height:100%;object-fit:cover" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 9%22><rect fill=%22%23333%22 width=%2216%22 height=%229%22/><text x=%228%22 y=%225%22 text-anchor=%22middle%22 fill=%22%23666%22 font-size=%222%22>🎬</text></svg>'">
+                                    <div style="position:absolute;inset:0;background:rgba(0,0,0,0);display:flex;align-items:center;justify-content:center;transition:background 0.3s" onmouseover="this.style.background='rgba(0,0,0,0.5)';this.querySelector('.play-btn').style.transform='scale(1)'" onmouseout="this.style.background='rgba(0,0,0,0)';this.querySelector('.play-btn').style.transform='scale(0)'">
+                                        <div class="play-btn" style="width:60px;height:60px;background:rgba(255,255,255,0.95);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;transform:scale(0);transition:transform 0.3s">▶️</div>
+                                    </div>
+                                    <div style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.8);color:white;padding:2px 6px;border-radius:4px;font-size:0.7rem">${v.category}</div>
+                                </div>
+                                <div style="padding:var(--space-md)">
+                                    <h4 style="margin:0 0 var(--space-xs);font-size:0.95rem;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${v.title}</h4>
+                                    <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">${v.date}</p>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            }).join('');
+        })()}
+        </div>
+        
+        <!-- All Videos Grid -->
+        <div style="margin-top:var(--space-2xl)">
+            <h3 style="margin-bottom:var(--space-lg);font-size:1.3rem">📺 All Videos (${videos.length})</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--space-lg)">
+                ${videos.map(v => `
+                    <div class="video-card-grid" data-playlist="${v.playlistId || ''}" style="cursor:pointer;border-radius:var(--radius-lg);overflow:hidden;background:var(--card-bg);transition:transform 0.2s" onclick="playYouTubeVideo('${v.videoId}', '${(v.title || '').replace(/'/g, "\\'")}')" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="position:relative;aspect-ratio:16/9;background:#000">
+                            <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" alt="" style="width:100%;height:100%;object-fit:cover">
+                            <div style="position:absolute;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'">
+                                <div style="width:50px;height:50px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center">▶️</div>
+                            </div>
+                        </div>
+                        <div style="padding:var(--space-sm)">
+                            <h4 style="margin:0;font-size:0.85rem;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${v.title}</h4>
+                            <p style="font-size:0.75rem;color:var(--text-tertiary);margin:var(--space-xs) 0 0">${v.date}</p>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    </div>`;
+}
+
+function filterVideosPlaylist(playlistId) {
+    // Update button states
+    document.querySelectorAll('.video-playlist-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.playlist === playlistId);
+        btn.style.background = btn.dataset.playlist === playlistId ? 'var(--root-green)' : '';
+        btn.style.color = btn.dataset.playlist === playlistId ? 'white' : '';
+    });
+    
+    // Filter video cards
+    document.querySelectorAll('.video-card, .video-card-grid').forEach(card => {
+        const cardPlaylist = card.dataset.playlist || '';
+        card.style.display = (!playlistId || cardPlaylist === playlistId) ? '' : 'none';
+    });
+    
+    // Show/hide category rows based on if they have visible videos
+    document.querySelectorAll('.video-category-row').forEach(row => {
+        const hasVisibleVideos = row.querySelectorAll('.video-card:not([style*="display: none"])').length > 0;
+        row.style.display = hasVisibleVideos ? '' : 'none';
+    });
 }
 
 // Get seasonal colors based on church branding
