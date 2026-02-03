@@ -236,6 +236,37 @@ input, textarea, select { font-family: inherit; }
     color: white;
 }
 
+/* Empty and Loading States */
+.videos-empty, .videos-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    padding: 40px 20px;
+    text-align: center;
+}
+.videos-empty-icon {
+    font-size: 4rem;
+    margin-bottom: 24px;
+}
+.videos-empty h3 {
+    margin: 0 0 12px;
+    font-size: 1.5rem;
+}
+.videos-empty p {
+    color: #999;
+    margin: 0 0 24px;
+}
+.videos-loading .loading-spinner {
+    border-color: #333;
+    border-top-color: #e50914;
+    margin-bottom: 16px;
+}
+.videos-loading p {
+    color: #999;
+}
+
 /* Hero Section */
 .videos-hero {
     position: relative;
@@ -342,19 +373,11 @@ input, textarea, select { font-family: inherit; }
 
 /* Filter Bar */
 .videos-filter-bar {
-    padding: 20px 40px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
+    padding: 16px 40px;
     background: rgba(0,0,0,0.5);
     position: sticky;
     top: 0;
     z-index: 100;
-}
-.videos-filter-label {
-    color: #999;
-    font-size: 0.9rem;
-    flex-shrink: 0;
 }
 .videos-filter-buttons {
     display: flex;
@@ -377,6 +400,7 @@ input, textarea, select { font-family: inherit; }
     font-size: 0.9rem;
     white-space: nowrap;
     flex-shrink: 0;
+    transition: background 0.2s;
 }
 .video-filter-btn.active {
     background: #e50914;
@@ -387,19 +411,19 @@ input, textarea, select { font-family: inherit; }
     padding: 20px 40px 60px;
 }
 .video-row {
-    margin-bottom: 40px;
+    margin-bottom: 32px;
 }
 .video-row-title {
-    font-size: 1.3rem;
+    font-size: 1.4rem;
     font-weight: 600;
-    margin: 0 0 16px;
+    margin: 0 0 12px;
     color: white;
 }
 .video-row-scroll {
     display: flex;
-    gap: 16px;
+    gap: 10px;
     overflow-x: auto;
-    padding-bottom: 16px;
+    padding-bottom: 8px;
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
@@ -409,91 +433,71 @@ input, textarea, select { font-family: inherit; }
     display: none;
 }
 
-/* Video Cards */
-.video-card-netflix {
+/* Netflix Thumbnail-Only Cards */
+.video-thumb {
     flex-shrink: 0;
     width: 280px;
+    aspect-ratio: 16/9;
     scroll-snap-align: start;
     cursor: pointer;
-    border-radius: 8px;
+    border-radius: 4px;
     overflow: hidden;
-    background: #1a1a1a;
-    transition: transform 0.3s, box-shadow 0.3s;
-}
-.video-card-netflix:hover {
-    transform: scale(1.05);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-}
-.video-card-thumb {
     position: relative;
-    aspect-ratio: 16/9;
     background: #000;
+    transition: transform 0.2s;
 }
-.video-card-thumb img {
+.video-thumb:hover {
+    transform: scale(1.05);
+    z-index: 10;
+}
+.video-thumb img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
-.video-card-play {
+.video-thumb-play {
     position: absolute;
     inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     background: rgba(0,0,0,0);
-    transition: background 0.3s;
+    transition: background 0.2s;
 }
-.video-card-netflix:hover .video-card-play {
-    background: rgba(0,0,0,0.5);
+.video-thumb:hover .video-thumb-play {
+    background: rgba(0,0,0,0.4);
 }
-.video-card-play span {
+.video-thumb-play span {
     width: 50px;
     height: 50px;
-    background: rgba(255,255,255,0.9);
+    background: rgba(255,255,255,0.95);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.2rem;
+    opacity: 0;
     transform: scale(0.8);
-    transition: transform 0.3s;
+    transition: opacity 0.2s, transform 0.2s;
 }
-.video-card-netflix:hover .video-card-play span {
+.video-thumb:hover .video-thumb-play span {
+    opacity: 1;
     transform: scale(1);
-}
-.video-card-info {
-    padding: 12px;
-}
-.video-card-title {
-    margin: 0;
-    font-weight: 500;
-    font-size: 0.95rem;
-    color: white;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    line-height: 1.4;
-}
-.video-card-date {
-    margin: 8px 0 0;
-    font-size: 0.8rem;
-    color: #999;
 }
 
 /* ========== MOBILE RESPONSIVE - VIDEOS PAGE ========== */
 @media (max-width: 768px) {
     .videos-hero {
         height: 50vh;
-        min-height: 300px;
-        max-height: 400px;
+        min-height: 280px;
+        max-height: 380px;
     }
     .videos-hero-content {
         padding: 20px;
         max-width: 100%;
     }
     .videos-hero-title {
-        font-size: 1.5rem;
+        font-size: 1.4rem;
         margin-bottom: 8px;
     }
     .videos-hero-meta {
@@ -524,14 +528,10 @@ input, textarea, select { font-family: inherit; }
     /* Filter Bar Mobile */
     .videos-filter-bar {
         padding: 12px 16px;
-        gap: 10px;
-    }
-    .videos-filter-label {
-        display: none;
     }
     .video-filter-btn {
-        padding: 6px 12px;
-        font-size: 0.8rem;
+        padding: 6px 14px;
+        font-size: 0.85rem;
     }
     
     /* Video Content Mobile */
@@ -543,31 +543,22 @@ input, textarea, select { font-family: inherit; }
     }
     .video-row-title {
         font-size: 1.1rem;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
     }
     .video-row-scroll {
-        gap: 12px;
-        padding-bottom: 8px;
+        gap: 8px;
     }
     
-    /* Video Cards Mobile */
-    .video-card-netflix {
-        width: 160px;
+    /* Larger thumbnails on mobile - 200px */
+    .video-thumb {
+        width: 200px;
     }
-    .video-card-play span {
-        width: 40px;
-        height: 40px;
+    .video-thumb-play span {
+        width: 44px;
+        height: 44px;
         font-size: 1rem;
-    }
-    .video-card-info {
-        padding: 8px;
-    }
-    .video-card-title {
-        font-size: 0.8rem;
-    }
-    .video-card-date {
-        font-size: 0.7rem;
-        margin-top: 4px;
+        opacity: 1;
+        transform: scale(0.9);
     }
 }
 
@@ -575,17 +566,17 @@ input, textarea, select { font-family: inherit; }
 @media (max-width: 480px) {
     .videos-hero {
         height: 45vh;
-        min-height: 250px;
-        max-height: 350px;
+        min-height: 240px;
+        max-height: 320px;
     }
     .videos-hero-content {
         padding: 16px;
     }
     .videos-hero-title {
-        font-size: 1.25rem;
+        font-size: 1.2rem;
     }
     .videos-hero-church {
-        margin-bottom: 12px;
+        margin-bottom: 10px;
         gap: 8px;
     }
     .videos-hero-buttons {
@@ -598,15 +589,13 @@ input, textarea, select { font-family: inherit; }
         min-width: 100px;
     }
     
-    .video-card-netflix {
-        width: 140px;
+    /* 170px thumbnails on phones */
+    .video-thumb {
+        width: 170px;
     }
-    .video-card-info {
-        padding: 6px;
-    }
-    .video-card-title {
-        font-size: 0.75rem;
-        -webkit-line-clamp: 2;
+    .video-thumb-play span {
+        width: 40px;
+        height: 40px;
     }
 }
 
@@ -8111,55 +8100,55 @@ function renderChurchVideosPage() {
     const userChurchId = getUserChurch(Auth.currentUser?.uid);
     if (!userChurchId) {
         return `
-        <div class="fade-up" style="max-width:100%;margin:0 auto">
-            <div class="empty-state">
-                <div class="empty-state-icon">🎬</div>
-                <h3 class="empty-state-title">No Church Connected</h3>
-                <p class="empty-state-description">Connect to a church to view their videos.</p>
-                <button class="btn btn-primary" onclick="showChurchSearch()" style="margin-top:var(--space-lg)">Find My Church</button>
+        <div class="videos-page">
+            <div class="videos-empty">
+                <div class="videos-empty-icon">🎬</div>
+                <h3>No Church Connected</h3>
+                <p>Connect to a church to view their videos.</p>
+                <button class="btn btn-primary" onclick="showChurchSearch()">Find My Church</button>
             </div>
         </div>`;
     }
     
-    // Check if we have cached data
     const cachedChurch = churchCache[userChurchId];
     
     if (!cachedChurch) {
-        // No cache - load from Firebase
         loadChurchDataAndRerender(userChurchId, 'church-videos');
         return `
         <div class="videos-page">
-            <div style="text-align:center;padding:100px 20px">
-                <div class="loading-spinner" style="margin:0 auto var(--space-lg);border-color:#333;border-top-color:#e50914"></div>
-                <p style="color:#999">Loading videos...</p>
+            <div class="videos-loading">
+                <div class="loading-spinner"></div>
+                <p>Loading videos...</p>
             </div>
         </div>`;
     }
     
-    // Get videos and only show enabled playlists
     const allVideos = cachedChurch?.ytVideos || [];
-    const allPlaylists = (cachedChurch?.ytPlaylists || []).filter(p => p.enabled !== false);
-    const channels = cachedChurch?.ytChannels || [];
+    const allPlaylists = (cachedChurch?.ytPlaylists || []).filter(p => p.enabled !== false && p.name);
     const branding = cachedChurch?.branding || {};
     
-    // Filter videos to only those in enabled playlists
     const videos = allVideos.filter(v => allPlaylists.find(p => p.id === v.playlistId));
     
     if (!videos.length) {
         return `
         <div class="videos-page">
-            <div style="max-width:600px;margin:100px auto;text-align:center;padding:0 20px">
-                <div style="font-size:4rem;margin-bottom:24px">📺</div>
-                <h2 style="color:white;margin:0 0 16px;font-size:1.5rem">No Videos Yet</h2>
-                <p style="color:#999;margin:0 0 32px">${cachedChurch?.name || 'Your church'} hasn't added any videos yet. Check back soon!</p>
-                <button class="btn" onclick="goBack()" style="background:#333;color:white">← Back to Church</button>
+            <div class="videos-empty">
+                <div class="videos-empty-icon">📺</div>
+                <h3>No Videos Yet</h3>
+                <p>${cachedChurch?.name || 'Your church'} hasn't added any videos yet.</p>
+                <button class="btn videos-back-btn" onclick="goBack()">← Back to Church</button>
             </div>
         </div>`;
     }
     
-    // Sort videos by date (newest first)
     const sortedVideos = [...videos].sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0));
     const featuredVideo = sortedVideos[0];
+    
+    // Get continue watching from localStorage
+    const watchHistory = getContinueWatching(userChurchId);
+    const continueWatchingVideos = watchHistory
+        .map(h => videos.find(v => v.videoId === h.videoId))
+        .filter(Boolean);
     
     return `
     <div class="videos-page">
@@ -8170,22 +8159,19 @@ function renderChurchVideosPage() {
             <div class="videos-hero-gradient-bottom"></div>
             
             <div class="videos-hero-content">
-                <!-- Church Logo -->
                 <div class="videos-hero-church">
                     ${branding.logo ? `<img src="${branding.logo}" class="videos-hero-logo" alt="">` : `<div class="videos-hero-logo-placeholder">⛪</div>`}
                     <span class="videos-hero-church-name">${cachedChurch?.name || 'Church'}</span>
                 </div>
                 
-                <!-- Featured Video Info -->
                 <h1 class="videos-hero-title">${featuredVideo.title}</h1>
                 
                 <p class="videos-hero-meta">
-                    ${allPlaylists.find(p => p.id === featuredVideo.playlistId)?.name || 'Video'} • ${featuredVideo.date || 'Recently added'}
+                    ${allPlaylists.find(p => p.id === featuredVideo.playlistId)?.name || 'Video'}
                 </p>
                 
-                <!-- Action Buttons -->
                 <div class="videos-hero-buttons">
-                    <button class="videos-play-btn" onclick="playYouTubeVideo('${featuredVideo.videoId}', '${(featuredVideo.title || '').replace(/'/g, "\\'")}')">
+                    <button class="videos-play-btn" onclick="playAndTrackVideo('${featuredVideo.videoId}', '${(featuredVideo.title || '').replace(/'/g, "\\'")}', '${userChurchId}')">
                         ▶ Play
                     </button>
                     <button class="videos-back-btn" onclick="goBack()">
@@ -8197,18 +8183,32 @@ function renderChurchVideosPage() {
         
         <!-- Filter Bar -->
         <div class="videos-filter-bar">
-            <span class="videos-filter-label">Filter:</span>
             <div class="videos-filter-buttons">
                 <button class="video-filter-btn active" onclick="filterVideos('all')" data-filter="all">All Videos</button>
-                <button class="video-filter-btn" onclick="filterVideos('recent')" data-filter="recent">Most Recent</button>
-                ${allPlaylists.slice(0, 5).map(pl => `
+                ${allPlaylists.map(pl => `
                     <button class="video-filter-btn" onclick="filterVideos('playlist_${pl.id}')" data-filter="playlist_${pl.id}">${pl.name}</button>
                 `).join('')}
             </div>
         </div>
         
-        <!-- Video Rows by Playlist -->
+        <!-- Video Content -->
         <div class="videos-content">
+            <!-- Continue Watching Section -->
+            ${continueWatchingVideos.length ? `
+            <div class="video-row" data-playlist="continue">
+                <h3 class="video-row-title">Continue Watching</h3>
+                <div class="video-row-scroll">
+                    ${continueWatchingVideos.map(v => `
+                        <div class="video-thumb" onclick="playAndTrackVideo('${v.videoId}', '${(v.title || '').replace(/'/g, "\\'")}', '${userChurchId}')">
+                            <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" alt="${v.title || ''}">
+                            <div class="video-thumb-play"><span>▶</span></div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            ` : ''}
+            
+            <!-- Playlist Rows -->
             ${allPlaylists.map(playlist => {
                 const playlistVideos = videos.filter(v => v.playlistId === playlist.id);
                 if (!playlistVideos.length) return '';
@@ -8218,17 +8218,9 @@ function renderChurchVideosPage() {
                     <h3 class="video-row-title">${playlist.name}</h3>
                     <div class="video-row-scroll">
                         ${playlistVideos.map(v => `
-                            <div class="video-card-netflix" onclick="playYouTubeVideo('${v.videoId}', '${(v.title || '').replace(/'/g, "\\'")}')">
-                                <div class="video-card-thumb">
-                                    <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" alt="">
-                                    <div class="video-card-play">
-                                        <span>▶</span>
-                                    </div>
-                                </div>
-                                <div class="video-card-info">
-                                    <p class="video-card-title">${v.title}</p>
-                                    <p class="video-card-date">${v.date || ''}</p>
-                                </div>
+                            <div class="video-thumb" onclick="playAndTrackVideo('${v.videoId}', '${(v.title || '').replace(/'/g, "\\'")}', '${userChurchId}')">
+                                <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" alt="${v.title || ''}">
+                                <div class="video-thumb-play"><span>▶</span></div>
                             </div>
                         `).join('')}
                     </div>
@@ -8239,35 +8231,59 @@ function renderChurchVideosPage() {
     </div>`;
 }
 
+// Continue Watching - localStorage functions
+function getContinueWatching(churchId) {
+    try {
+        const history = JSON.parse(localStorage.getItem('rooted_watch_history') || '{}');
+        return (history[churchId] || []).slice(0, 10);
+    } catch (e) {
+        return [];
+    }
+}
+
+function addToWatchHistory(videoId, title, churchId) {
+    try {
+        const history = JSON.parse(localStorage.getItem('rooted_watch_history') || '{}');
+        if (!history[churchId]) history[churchId] = [];
+        
+        // Remove if already exists
+        history[churchId] = history[churchId].filter(h => h.videoId !== videoId);
+        
+        // Add to front
+        history[churchId].unshift({
+            videoId,
+            title,
+            timestamp: Date.now()
+        });
+        
+        // Keep only last 20
+        history[churchId] = history[churchId].slice(0, 20);
+        
+        localStorage.setItem('rooted_watch_history', JSON.stringify(history));
+    } catch (e) {
+        console.error('Error saving watch history:', e);
+    }
+}
+
+function playAndTrackVideo(videoId, title, churchId) {
+    addToWatchHistory(videoId, title, churchId);
+    playYouTubeVideo(videoId, title);
+}
+
 // Filter videos function
 function filterVideos(filter) {
-    // Update button styles
     document.querySelectorAll('.video-filter-btn').forEach(btn => {
-        if (btn.dataset.filter === filter) {
-            btn.style.background = '#e50914';
-        } else {
-            btn.style.background = '#333';
-        }
+        btn.classList.toggle('active', btn.dataset.filter === filter);
     });
     
-    // Show/hide video rows based on filter
-    const rows = document.querySelectorAll('.video-row');
-    
-    if (filter === 'all') {
-        rows.forEach(row => row.style.display = 'block');
-    } else if (filter === 'recent') {
-        // Show all rows but could sort by date
-        rows.forEach(row => row.style.display = 'block');
-    } else if (filter.startsWith('playlist_')) {
-        const playlistId = filter.replace('playlist_', '');
-        rows.forEach(row => {
-            if (row.dataset.playlist === playlistId) {
-                row.style.display = 'block';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-    }
+    document.querySelectorAll('.video-row').forEach(row => {
+        if (filter === 'all') {
+            row.style.display = '';
+        } else if (filter.startsWith('playlist_')) {
+            const playlistId = filter.replace('playlist_', '');
+            row.style.display = (row.dataset.playlist === playlistId || row.dataset.playlist === 'continue') ? '' : 'none';
+        }
+    });
 }
 
 // Get seasonal colors based on church branding
