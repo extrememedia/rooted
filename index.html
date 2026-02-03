@@ -3535,89 +3535,269 @@ function renderChurchYouTube() {
     const church = getChurchData(State.current.user.churchId);
     const ytConfig = church.youtubeConfig || {};
     const videos = church.youtubeVideos || [];
-    const enabledPlaylists = church.youtubeEnabledPlaylists || [];
-    const channelPlaylists = church.youtubeChannelPlaylists || [];
+    const playlists = church.youtubePlaylists || [];
     
     return `
     <div class="fade-up">
-        <!-- YouTube Channel Setup -->
+        <!-- YouTube Channel Info -->
         <div class="card" style="margin-bottom:var(--space-lg)">
-            <h3 style="margin-bottom:var(--space-md)">🎬 YouTube Channel Setup</h3>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Connect your church's YouTube channel to automatically show videos to your members.</p>
+            <h3 style="margin-bottom:var(--space-md)">🎬 YouTube Channel</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Link your church's YouTube channel so members know where to find your content.</p>
             
             <div class="input-group">
-                <label class="input-label">YouTube Channel URL or ID</label>
-                <div style="display:flex;gap:var(--space-sm)">
-                    <input type="text" class="input-field" id="ytChannelUrl" value="${ytConfig.channelUrl || ''}" placeholder="https://youtube.com/@YourChurch or channel ID" style="flex:1">
-                    <button class="btn btn-primary" onclick="connectYouTubeChannel()">🔗 Connect</button>
-                </div>
-                <p style="font-size:0.8rem;color:var(--text-tertiary);margin-top:var(--space-xs)">
-                    Enter your channel URL (e.g., youtube.com/@YourChurch) or channel ID
-                </p>
+                <label class="input-label">YouTube Channel URL</label>
+                <input type="text" class="input-field" id="ytChannelUrl" value="${ytConfig.channelUrl || ''}" placeholder="https://youtube.com/@YourChurch">
             </div>
+            <button class="btn btn-primary" onclick="saveYouTubeChannel()">💾 Save Channel</button>
             
-            ${ytConfig.channelId ? `
-            <div style="margin-top:var(--space-lg);padding:var(--space-md);background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:var(--radius-md);color:white">
-                <div style="display:flex;align-items:center;gap:var(--space-md)">
-                    <div style="width:50px;height:50px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem">✓</div>
+            ${ytConfig.channelUrl ? `
+            <div style="margin-top:var(--space-lg);padding:var(--space-md);background:linear-gradient(135deg,#ef4444,#dc2626);border-radius:var(--radius-md)">
+                <a href="${ytConfig.channelUrl}" target="_blank" style="display:flex;align-items:center;gap:var(--space-md);color:white;text-decoration:none">
+                    <div style="width:50px;height:50px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem">▶️</div>
                     <div>
                         <strong>Channel Connected</strong>
-                        <p style="margin:0;opacity:0.9;font-size:0.9rem">${ytConfig.channelName || ytConfig.channelId}</p>
+                        <p style="margin:0;opacity:0.9;font-size:0.9rem">${ytConfig.channelUrl}</p>
                     </div>
-                    <button class="btn" onclick="refreshYouTubeChannel()" style="margin-left:auto;background:rgba(255,255,255,0.2);color:white">🔄 Refresh</button>
-                </div>
+                </a>
             </div>
             ` : ''}
         </div>
         
-        <!-- Playlist Selection -->
-        ${ytConfig.channelId ? `
+        <!-- Playlists Management -->
         <div class="card" style="margin-bottom:var(--space-lg)">
-            <h3 style="margin-bottom:var(--space-md)">📋 Select Playlists to Show</h3>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Choose which playlists from your channel should be visible to members. You can also show all uploaded videos.</p>
+            <h3 style="margin-bottom:var(--space-md)">📋 Video Playlists</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Create playlists to organize your videos (e.g., "Sunday Sermons", "Worship", "Bible Study").</p>
             
-            <div id="playlistSelectionArea">
-                ${channelPlaylists.length ? `
-                    <!-- Show All Uploads Option -->
-                    <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
-                        <input type="checkbox" id="playlist_uploads" ${enabledPlaylists.includes('uploads') ? 'checked' : ''} onchange="togglePlaylistEnabled('uploads', this.checked)" style="width:20px;height:20px;accent-color:var(--root-green)">
+            <!-- Add Playlist Form -->
+            <div style="display:flex;gap:var(--space-sm);margin-bottom:var(--space-lg)">
+                <input type="text" class="input-field" id="newPlaylistName" placeholder="Playlist name (e.g., Sunday Sermons)" style="flex:1">
+                <button class="btn btn-primary" onclick="createPlaylist()">➕ Create</button>
+            </div>
+            
+            <!-- Existing Playlists -->
+            ${playlists.length ? `
+            <div style="display:flex;flex-wrap:wrap;gap:var(--space-md)">
+                ${playlists.map(p => `
+                    <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);display:flex;align-items:center;gap:var(--space-md);min-width:200px">
+                        <span style="font-size:1.5rem">📋</span>
                         <div style="flex:1">
-                            <strong>📺 All Uploaded Videos</strong>
-                            <p style="font-size:0.85rem;color:var(--text-tertiary);margin:0">Show all videos from your channel</p>
+                            <strong>${p.name}</strong>
+                            <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">${videos.filter(v => v.playlistId === p.id).length} videos</p>
                         </div>
+                        <button class="btn btn-ghost" onclick="deletePlaylist('${p.id}')" style="color:var(--error);padding:4px">🗑️</button>
                     </div>
-                    
-                    <p style="font-size:0.9rem;color:var(--text-secondary);margin:var(--space-lg) 0 var(--space-md)"><strong>Channel Playlists:</strong></p>
-                    
-                    ${channelPlaylists.map(pl => `
-                        <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);display:flex;align-items:center;gap:var(--space-md)">
-                            <input type="checkbox" id="playlist_${pl.id}" ${enabledPlaylists.includes(pl.id) ? 'checked' : ''} onchange="togglePlaylistEnabled('${pl.id}', this.checked)" style="width:20px;height:20px;accent-color:var(--root-green)">
-                            <div style="width:80px;height:45px;background:#000;border-radius:var(--radius-sm);overflow:hidden;flex-shrink:0">
-                                ${pl.thumbnail ? `<img src="${pl.thumbnail}" alt="" style="width:100%;height:100%;object-fit:cover">` : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#666">📋</div>'}
+                `).join('')}
+            </div>
+            ` : '<p style="color:var(--text-tertiary)">No playlists yet. Create one to organize your videos.</p>'}
+        </div>
+        
+        <!-- Add Video -->
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="margin-bottom:var(--space-md)">🎥 Add Video</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Add YouTube videos for your members to watch.</p>
+            
+            <form onsubmit="handleYouTubeAdd(event)">
+                <div class="input-group">
+                    <label class="input-label">Video Title</label>
+                    <input type="text" class="input-field" id="ytVideoTitle" placeholder="Sunday Sermon - Faith in Action" required>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">YouTube Video URL</label>
+                    <input type="text" class="input-field" id="ytVideoUrl" placeholder="https://youtube.com/watch?v=..." required>
+                    <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:var(--space-xs)">Paste the video URL from YouTube</p>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">
+                    <div class="input-group">
+                        <label class="input-label">Category</label>
+                        <select class="input-field" id="ytVideoCategory">
+                            <option value="sermons">Sermons</option>
+                            <option value="worship">Worship</option>
+                            <option value="bible-study">Bible Study</option>
+                            <option value="testimonies">Testimonies</option>
+                            <option value="events">Events</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Playlist</label>
+                        <select class="input-field" id="ytVideoPlaylist">
+                            <option value="">No Playlist</option>
+                            ${playlists.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">➕ Add Video</button>
+            </form>
+        </div>
+        
+        <!-- Video List -->
+        <div class="card">
+            <h3 style="margin-bottom:var(--space-md)">📹 Your Videos (${videos.length})</h3>
+            
+            ${videos.length ? `
+                <div style="display:grid;gap:var(--space-md);max-height:500px;overflow-y:auto">
+                    ${videos.map(v => `
+                        <div style="display:flex;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md)">
+                            <div style="width:140px;height:79px;background:#000;border-radius:var(--radius-sm);overflow:hidden;flex-shrink:0">
+                                <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" alt="" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">
                             </div>
                             <div style="flex:1;min-width:0">
-                                <strong style="display:block">${pl.title}</strong>
-                                <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">${pl.videoCount || 0} videos</p>
+                                <strong style="display:block;margin-bottom:4px">${v.title}</strong>
+                                <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">${v.category || 'Video'} • ${v.date || ''}</p>
+                                ${v.playlistId ? `<span style="font-size:0.7rem;background:var(--root-green);color:white;padding:2px 8px;border-radius:10px;margin-top:4px;display:inline-block">${playlists.find(p => p.id === v.playlistId)?.name || 'Playlist'}</span>` : ''}
                             </div>
+                            <button class="btn btn-ghost" onclick="deleteYouTubeVideo('${v.id}')" style="color:var(--error)">🗑️</button>
                         </div>
                     `).join('')}
-                ` : `
-                    <div style="text-align:center;padding:var(--space-xl);color:var(--text-tertiary)">
-                        <p>No playlists found. Click "Refresh" above to fetch playlists from your channel.</p>
-                        <button class="btn btn-secondary" onclick="refreshYouTubeChannel()" style="margin-top:var(--space-md)">🔄 Fetch Playlists</button>
-                    </div>
-                `}
-            </div>
+                </div>
+            ` : `
+                <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-xl)">No videos added yet. Add your first video above!</p>
+            `}
         </div>
-        ` : ''}
+    </div>`;
+}
+
+async function saveYouTubeChannel() {
+    const channelUrl = document.getElementById('ytChannelUrl')?.value?.trim() || '';
+    
+    const ytConfig = {
+        channelUrl,
+        updatedAt: new Date().toISOString()
+    };
+    
+    try {
+        await ChurchDB.updateChurch(State.current.user.churchId, { youtubeConfig: ytConfig });
+        delete churchCache[State.current.user.churchId];
+        toast('YouTube channel saved! 🎬', 'success');
+        render();
+    } catch (e) {
+        console.error('Error saving YouTube config:', e);
+        toast('Error saving channel', 'error');
+    }
+}
+
+async function createPlaylist() {
+    const name = document.getElementById('newPlaylistName')?.value?.trim();
+    if (!name) {
+        toast('Please enter a playlist name', 'error');
+        return;
+    }
+    
+    try {
+        const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
+        const playlists = church.youtubePlaylists || [];
         
-        <!-- Manual Video Add (Fallback) -->
-        <div class="card" style="margin-bottom:var(--space-lg)">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
-                <h3 style="margin:0">➕ Add Individual Video</h3>
-                <button class="btn btn-ghost btn-sm" onclick="toggleManualVideoForm()" id="manualVideoToggle">Show Form</button>
-            </div>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">Manually add videos if they're not in your playlists.</p>
+        playlists.push({
+            id: 'pl_' + Date.now(),
+            name: name,
+            createdAt: new Date().toISOString()
+        });
+        
+        await ChurchDB.updateChurch(State.current.user.churchId, { youtubePlaylists: playlists });
+        delete churchCache[State.current.user.churchId];
+        
+        document.getElementById('newPlaylistName').value = '';
+        toast('Playlist created! 📋', 'success');
+        render();
+    } catch (e) {
+        console.error('Error creating playlist:', e);
+        toast('Error creating playlist', 'error');
+    }
+}
+
+async function deletePlaylist(playlistId) {
+    if (!confirm('Delete this playlist? Videos in this playlist will not be deleted.')) return;
+    
+    try {
+        const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
+        const playlists = (church.youtubePlaylists || []).filter(p => p.id !== playlistId);
+        
+        await ChurchDB.updateChurch(State.current.user.churchId, { youtubePlaylists: playlists });
+        delete churchCache[State.current.user.churchId];
+        
+        toast('Playlist deleted', 'info');
+        render();
+    } catch (e) {
+        console.error('Error deleting playlist:', e);
+        toast('Error deleting playlist', 'error');
+    }
+}
+
+function extractYouTubeId(url) {
+    if (!url) return '';
+    const match = url.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/watch\?.+&v=))([^&?\s]+)/);
+    return match ? match[1] : '';
+}
+
+async function handleYouTubeAdd(e) {
+    e.preventDefault();
+    const title = document.getElementById('ytVideoTitle').value.trim();
+    const url = document.getElementById('ytVideoUrl').value.trim();
+    const category = document.getElementById('ytVideoCategory').value;
+    const playlistId = document.getElementById('ytVideoPlaylist').value || null;
+    
+    const videoId = extractYouTubeId(url);
+    if (!videoId) {
+        toast('Invalid YouTube URL. Make sure it\'s a valid YouTube video link.', 'error');
+        return;
+    }
+    
+    try {
+        const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
+        const videos = church.youtubeVideos || [];
+        const playlists = church.youtubePlaylists || [];
+        
+        // Check for duplicates
+        if (videos.find(v => v.videoId === videoId)) {
+            toast('This video has already been added', 'error');
+            return;
+        }
+        
+        const playlistName = playlistId ? playlists.find(p => p.id === playlistId)?.name : null;
+        
+        videos.unshift({
+            id: Date.now().toString(),
+            title,
+            url,
+            videoId,
+            category,
+            playlistId,
+            playlistName,
+            date: new Date().toISOString().split('T')[0]
+        });
+        
+        await ChurchDB.updateChurch(State.current.user.churchId, { youtubeVideos: videos });
+        delete churchCache[State.current.user.churchId];
+        
+        // Clear form
+        document.getElementById('ytVideoTitle').value = '';
+        document.getElementById('ytVideoUrl').value = '';
+        
+        toast('Video added! 🎬', 'success');
+        render();
+    } catch (e) {
+        console.error('Error adding video:', e);
+        toast('Error adding video', 'error');
+    }
+}
+
+async function deleteYouTubeVideo(videoId) {
+    if (!confirm('Remove this video?')) return;
+    
+    try {
+        const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
+        const videos = (church.youtubeVideos || []).filter(v => v.id !== videoId);
+        
+        await ChurchDB.updateChurch(State.current.user.churchId, { youtubeVideos: videos });
+        delete churchCache[State.current.user.churchId];
+        
+        toast('Video removed', 'info');
+        render();
+    } catch (e) {
+        console.error('Error removing video:', e);
+        toast('Error removing video', 'error');
+    }
+}
             
             <div id="manualVideoForm" style="display:none">
                 <form onsubmit="handleYouTubeAdd(event)">
@@ -3670,327 +3850,6 @@ function renderChurchYouTube() {
             ` : '<p style="color:var(--text-tertiary);text-align:center;padding:var(--space-xl)">No videos yet. Connect your YouTube channel or add videos manually.</p>'}
         </div>
     </div>`;
-}
-
-function toggleManualVideoForm() {
-    const form = document.getElementById('manualVideoForm');
-    const btn = document.getElementById('manualVideoToggle');
-    if (form.style.display === 'none') {
-        form.style.display = 'block';
-        btn.textContent = 'Hide Form';
-    } else {
-        form.style.display = 'none';
-        btn.textContent = 'Show Form';
-    }
-}
-
-async function connectYouTubeChannel() {
-    const input = document.getElementById('ytChannelUrl').value.trim();
-    if (!input) {
-        toast('Please enter a YouTube channel URL or ID', 'error');
-        return;
-    }
-    
-    toast('Connecting to YouTube channel...', 'info');
-    
-    // Extract channel ID from various URL formats
-    let channelId = input;
-    let channelName = '';
-    
-    // Handle different YouTube URL formats
-    if (input.includes('youtube.com')) {
-        if (input.includes('/@')) {
-            // Handle format: youtube.com/@ChannelName
-            const match = input.match(/@([^\/\?]+)/);
-            if (match) channelName = match[1];
-        } else if (input.includes('/channel/')) {
-            // Handle format: youtube.com/channel/UC...
-            const match = input.match(/\/channel\/([^\/\?]+)/);
-            if (match) channelId = match[1];
-        } else if (input.includes('/c/')) {
-            // Handle format: youtube.com/c/ChannelName
-            const match = input.match(/\/c\/([^\/\?]+)/);
-            if (match) channelName = match[1];
-        } else if (input.includes('/user/')) {
-            // Handle format: youtube.com/user/Username
-            const match = input.match(/\/user\/([^\/\?]+)/);
-            if (match) channelName = match[1];
-        }
-    }
-    
-    // Save channel config
-    const ytConfig = {
-        channelUrl: input,
-        channelId: channelId,
-        channelName: channelName || channelId,
-        connectedAt: new Date().toISOString()
-    };
-    
-    await ChurchDB.updateChurch(State.current.user.churchId, { youtubeConfig: ytConfig });
-    delete churchCache[State.current.user.churchId];
-    
-    toast('Channel connected! Now fetching playlists...', 'success');
-    
-    // Fetch playlists
-    await fetchYouTubePlaylists(channelId, channelName);
-    
-    render();
-}
-
-async function fetchYouTubePlaylists(channelId, channelName) {
-    // Note: YouTube Data API requires an API key for full access
-    // For now, we'll create a simple flow where admins manually add playlists
-    // In production, you'd use the YouTube Data API v3
-    
-    // Create some default playlist options
-    const defaultPlaylists = [
-        { id: 'uploads', title: 'All Uploads', videoCount: 0, isDefault: true },
-    ];
-    
-    await ChurchDB.updateChurch(State.current.user.churchId, { 
-        youtubeChannelPlaylists: defaultPlaylists,
-        youtubeEnabledPlaylists: ['uploads'] // Enable uploads by default
-    });
-    
-    delete churchCache[State.current.user.churchId];
-    
-    // Show modal for adding playlists manually
-    showAddPlaylistModal();
-}
-
-function showAddPlaylistModal() {
-    showModal(`
-        <div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
-            <div class="modal-header">
-                <h3 class="modal-title">📋 Add YouTube Playlist</h3>
-                <button class="modal-close" onclick="closeModal()">✕</button>
-            </div>
-            <div class="modal-body">
-                <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Add playlists from your YouTube channel. You can find playlist URLs on your YouTube channel page.</p>
-                
-                <div class="input-group">
-                    <label class="input-label">Playlist Name</label>
-                    <input type="text" class="input-field" id="newPlaylistTitle" placeholder="e.g., Sunday Sermons 2024">
-                </div>
-                <div class="input-group">
-                    <label class="input-label">Playlist URL</label>
-                    <input type="text" class="input-field" id="newPlaylistUrl" placeholder="https://youtube.com/playlist?list=PL...">
-                    <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:var(--space-xs)">Copy the playlist URL from YouTube</p>
-                </div>
-                
-                <button class="btn btn-primary btn-block" onclick="addYouTubePlaylist()">➕ Add Playlist</button>
-            </div>
-        </div>
-    `);
-}
-
-async function addYouTubePlaylist() {
-    const title = document.getElementById('newPlaylistTitle')?.value?.trim();
-    const url = document.getElementById('newPlaylistUrl')?.value?.trim();
-    
-    if (!title) {
-        toast('Please enter a playlist name', 'error');
-        return;
-    }
-    
-    // Extract playlist ID from URL
-    let playlistId = '';
-    if (url) {
-        const match = url.match(/[?&]list=([^&]+)/);
-        if (match) {
-            playlistId = match[1];
-        } else {
-            playlistId = url; // Assume it's just the ID
-        }
-    } else {
-        playlistId = 'custom_' + Date.now();
-    }
-    
-    const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
-    const playlists = church.youtubeChannelPlaylists || [];
-    
-    playlists.push({
-        id: playlistId,
-        title: title,
-        url: url,
-        videoCount: 0,
-        addedAt: new Date().toISOString()
-    });
-    
-    await ChurchDB.updateChurch(State.current.user.churchId, { youtubeChannelPlaylists: playlists });
-    delete churchCache[State.current.user.churchId];
-    
-    closeModal();
-    toast('Playlist added! Now add videos from this playlist.', 'success');
-    
-    // Show video add modal
-    showAddPlaylistVideosModal(playlistId, title);
-}
-
-function showAddPlaylistVideosModal(playlistId, playlistName) {
-    showModal(`
-        <div class="modal" onclick="event.stopPropagation()" style="max-width:600px">
-            <div class="modal-header">
-                <h3 class="modal-title">🎬 Add Videos to "${playlistName}"</h3>
-                <button class="modal-close" onclick="closeModal()">✕</button>
-            </div>
-            <div class="modal-body">
-                <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Add videos from this playlist. Paste YouTube video URLs one at a time.</p>
-                
-                <div class="input-group">
-                    <label class="input-label">Video URL</label>
-                    <input type="text" class="input-field" id="playlistVideoUrl" placeholder="https://youtube.com/watch?v=...">
-                </div>
-                <div class="input-group">
-                    <label class="input-label">Video Title (optional - will auto-detect)</label>
-                    <input type="text" class="input-field" id="playlistVideoTitle" placeholder="Leave blank to use YouTube title">
-                </div>
-                
-                <div style="display:flex;gap:var(--space-sm)">
-                    <button class="btn btn-primary" onclick="addVideoToPlaylist('${playlistId}', '${playlistName}')" style="flex:1">➕ Add Video</button>
-                    <button class="btn btn-secondary" onclick="closeModal()">Done</button>
-                </div>
-                
-                <div id="addedVideosPreview" style="margin-top:var(--space-lg)"></div>
-            </div>
-        </div>
-    `);
-}
-
-async function addVideoToPlaylist(playlistId, playlistName) {
-    const url = document.getElementById('playlistVideoUrl')?.value?.trim();
-    let title = document.getElementById('playlistVideoTitle')?.value?.trim();
-    
-    if (!url) {
-        toast('Please enter a video URL', 'error');
-        return;
-    }
-    
-    const videoId = extractYouTubeId(url);
-    if (!videoId) {
-        toast('Invalid YouTube URL', 'error');
-        return;
-    }
-    
-    // If no title provided, use video ID (in production, you'd fetch from YouTube API)
-    if (!title) {
-        title = 'Video ' + videoId.substring(0, 8);
-    }
-    
-    const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
-    const videos = church.youtubeVideos || [];
-    
-    // Check if video already exists
-    if (videos.find(v => v.videoId === videoId)) {
-        toast('This video is already added', 'error');
-        return;
-    }
-    
-    videos.unshift({
-        id: Date.now(),
-        title,
-        url,
-        videoId,
-        playlistId,
-        playlistName,
-        category: 'sermons',
-        date: new Date().toISOString().split('T')[0]
-    });
-    
-    await ChurchDB.updateChurch(State.current.user.churchId, { youtubeVideos: videos });
-    delete churchCache[State.current.user.churchId];
-    
-    // Clear input and show preview
-    document.getElementById('playlistVideoUrl').value = '';
-    document.getElementById('playlistVideoTitle').value = '';
-    
-    const preview = document.getElementById('addedVideosPreview');
-    preview.innerHTML = `
-        <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);display:flex;align-items:center;gap:var(--space-md)">
-            <img src="https://img.youtube.com/vi/${videoId}/default.jpg" alt="" style="width:60px;height:34px;border-radius:var(--radius-sm);object-fit:cover">
-            <div>
-                <strong style="font-size:0.9rem">✓ Added: ${title}</strong>
-                <p style="font-size:0.75rem;color:var(--text-tertiary);margin:0">to ${playlistName}</p>
-            </div>
-        </div>
-    ` + preview.innerHTML;
-    
-    toast('Video added! 🎬', 'success');
-}
-
-async function togglePlaylistEnabled(playlistId, enabled) {
-    const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
-    let enabledPlaylists = church.youtubeEnabledPlaylists || [];
-    
-    if (enabled) {
-        if (!enabledPlaylists.includes(playlistId)) {
-            enabledPlaylists.push(playlistId);
-        }
-    } else {
-        enabledPlaylists = enabledPlaylists.filter(id => id !== playlistId);
-    }
-    
-    await ChurchDB.updateChurch(State.current.user.churchId, { youtubeEnabledPlaylists: enabledPlaylists });
-    delete churchCache[State.current.user.churchId];
-    
-    toast(enabled ? 'Playlist enabled' : 'Playlist hidden from members', 'info');
-}
-
-async function refreshYouTubeChannel() {
-    toast('Refreshing channel data...', 'info');
-    const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
-    
-    // In production, this would fetch fresh data from YouTube API
-    // For now, just show the add playlist modal
-    showAddPlaylistModal();
-}
-
-function extractYouTubeId(url) {
-    if (!url) return '';
-    const match = url.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/watch\?.+&v=))([^&?\s]+)/);
-    return match ? match[1] : '';
-}
-
-async function handleYouTubeAdd(e) {
-    e.preventDefault();
-    const title = document.getElementById('ytVideoTitle').value;
-    const url = document.getElementById('ytVideoUrl').value;
-    const category = document.getElementById('ytVideoCategory').value;
-    
-    const videoId = extractYouTubeId(url);
-    if (!videoId) {
-        toast('Invalid YouTube URL', 'error');
-        return;
-    }
-    
-    const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
-    const videos = church.youtubeVideos || [];
-    
-    videos.unshift({
-        id: Date.now(),
-        title,
-        url,
-        videoId,
-        category,
-        date: new Date().toISOString().split('T')[0]
-    });
-    
-    await ChurchDB.updateChurch(State.current.user.churchId, { youtubeVideos: videos });
-    delete churchCache[State.current.user.churchId];
-    
-    toast('Video added! 🎬', 'success');
-    render();
-}
-
-async function deleteYouTubeVideo(videoId) {
-    const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
-    const videos = (church.youtubeVideos || []).filter(v => v.id !== parseInt(videoId));
-    
-    await ChurchDB.updateChurch(State.current.user.churchId, { youtubeVideos: videos });
-    delete churchCache[State.current.user.churchId];
-    
-    toast('Video removed', 'info');
-    render();
 }
 
 // ========== CHURCH BRANDING ==========
@@ -4168,91 +4027,148 @@ async function setSeasonalTheme(season) {
 function renderChurchMembership() {
     const church = getChurchData(State.current.user.churchId);
     const membershipConfig = church.membershipConfig || {};
+    // Support both old single 'type' and new 'methods' array
+    const methods = membershipConfig.methods || (membershipConfig.type ? [membershipConfig.type] : ['contact']);
     
     return `
     <div class="fade-up">
         <div class="card" style="margin-bottom:var(--space-lg)">
             <h3 style="margin-bottom:var(--space-md)">✨ Membership Interest Settings</h3>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">When users express interest in becoming a member, where should we direct them?</p>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">When users express interest in becoming a member, how should they contact you? Select all that apply.</p>
             
             <div style="display:flex;flex-direction:column;gap:var(--space-md)">
-                <label style="display:flex;align-items:start;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);cursor:pointer;border:2px solid ${membershipConfig.type === 'email' ? 'var(--root-green)' : 'transparent'}">
-                    <input type="radio" name="membershipType" value="email" ${membershipConfig.type === 'email' ? 'checked' : ''} onchange="updateMembershipType('email')" style="margin-top:4px">
-                    <div>
+                <label style="display:flex;align-items:start;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);cursor:pointer;border:2px solid ${methods.includes('email') ? 'var(--root-green)' : 'transparent'}">
+                    <input type="checkbox" id="methodEmail" ${methods.includes('email') ? 'checked' : ''} style="margin-top:4px;width:20px;height:20px;accent-color:var(--root-green)">
+                    <div style="flex:1">
                         <strong>📧 Email Request</strong>
-                        <p style="font-size:0.85rem;color:var(--text-secondary);margin:var(--space-xs) 0 0">Users will be prompted to email your church</p>
+                        <p style="font-size:0.85rem;color:var(--text-secondary);margin:var(--space-xs) 0 0">Users can email your church about membership</p>
                     </div>
                 </label>
                 
-                <label style="display:flex;align-items:start;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);cursor:pointer;border:2px solid ${membershipConfig.type === 'url' ? 'var(--root-green)' : 'transparent'}">
-                    <input type="radio" name="membershipType" value="url" ${membershipConfig.type === 'url' ? 'checked' : ''} onchange="updateMembershipType('url')" style="margin-top:4px">
-                    <div>
+                <label style="display:flex;align-items:start;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);cursor:pointer;border:2px solid ${methods.includes('url') ? 'var(--root-green)' : 'transparent'}">
+                    <input type="checkbox" id="methodUrl" ${methods.includes('url') ? 'checked' : ''} style="margin-top:4px;width:20px;height:20px;accent-color:var(--root-green)">
+                    <div style="flex:1">
                         <strong>🌐 Website Link</strong>
-                        <p style="font-size:0.85rem;color:var(--text-secondary);margin:var(--space-xs) 0 0">Users will be directed to a page on your website</p>
+                        <p style="font-size:0.85rem;color:var(--text-secondary);margin:var(--space-xs) 0 0">Direct users to a page on your website</p>
                     </div>
                 </label>
                 
-                <label style="display:flex;align-items:start;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);cursor:pointer;border:2px solid ${!membershipConfig.type || membershipConfig.type === 'contact' ? 'var(--root-green)' : 'transparent'}">
-                    <input type="radio" name="membershipType" value="contact" ${!membershipConfig.type || membershipConfig.type === 'contact' ? 'checked' : ''} onchange="updateMembershipType('contact')" style="margin-top:4px">
-                    <div>
+                <label style="display:flex;align-items:start;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);cursor:pointer;border:2px solid ${methods.includes('contact') ? 'var(--root-green)' : 'transparent'}">
+                    <input type="checkbox" id="methodContact" ${methods.includes('contact') ? 'checked' : ''} style="margin-top:4px;width:20px;height:20px;accent-color:var(--root-green)">
+                    <div style="flex:1">
                         <strong>📞 Contact Church</strong>
-                        <p style="font-size:0.85rem;color:var(--text-secondary);margin:var(--space-xs) 0 0">Show church contact info (phone/website)</p>
+                        <p style="font-size:0.85rem;color:var(--text-secondary);margin:var(--space-xs) 0 0">Show church phone number and address</p>
                     </div>
                 </label>
             </div>
+        </div>
+        
+        <!-- Configuration Fields -->
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="margin-bottom:var(--space-md)">⚙️ Contact Details</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Enter the contact information for each method you selected above.</p>
             
-            <div id="membershipConfigFields" style="margin-top:var(--space-lg)">
-                ${membershipConfig.type === 'email' ? `
-                    <div class="input-group">
-                        <label class="input-label">Contact Email</label>
-                        <input type="email" class="input-field" id="membershipEmail" value="${membershipConfig.email || ''}" placeholder="membership@yourchurch.com">
+            <div class="input-group">
+                <label class="input-label">📧 Contact Email</label>
+                <input type="email" class="input-field" id="membershipEmail" value="${membershipConfig.email || ''}" placeholder="membership@yourchurch.com">
+                <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:var(--space-xs)">Email address for membership inquiries</p>
+            </div>
+            
+            <div class="input-group">
+                <label class="input-label">🌐 Membership Page URL</label>
+                <input type="url" class="input-field" id="membershipUrl" value="${membershipConfig.url || ''}" placeholder="https://yourchurch.com/membership">
+                <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:var(--space-xs)">Link to your membership information or sign-up page</p>
+            </div>
+            
+            <div class="input-group">
+                <label class="input-label">📞 Phone Number</label>
+                <input type="tel" class="input-field" id="membershipPhone" value="${membershipConfig.phone || church.phone || ''}" placeholder="(555) 123-4567">
+                <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:var(--space-xs)">Phone number for membership inquiries</p>
+            </div>
+            
+            <button class="btn btn-primary btn-lg" onclick="saveMembershipConfig()" style="margin-top:var(--space-lg)">💾 Save Membership Settings</button>
+        </div>
+        
+        <!-- Preview -->
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="margin-bottom:var(--space-md)">👁️ User Preview</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">This is what users will see when they click "Interested in Membership":</p>
+            <div style="padding:var(--space-lg);background:var(--hover-bg);border-radius:var(--radius-md)">
+                ${methods.includes('email') && membershipConfig.email ? `
+                    <a href="mailto:${membershipConfig.email}" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);color:var(--text-primary);text-decoration:none">
+                        <span style="font-size:1.5rem">📧</span>
+                        <div>
+                            <strong>Email Us</strong>
+                            <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">${membershipConfig.email}</p>
+                        </div>
+                    </a>
+                ` : ''}
+                ${methods.includes('url') && membershipConfig.url ? `
+                    <a href="${membershipConfig.url}" target="_blank" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);color:var(--text-primary);text-decoration:none">
+                        <span style="font-size:1.5rem">🌐</span>
+                        <div>
+                            <strong>Visit Our Website</strong>
+                            <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">${membershipConfig.url}</p>
+                        </div>
+                    </a>
+                ` : ''}
+                ${methods.includes('contact') ? `
+                    <div style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-md)">
+                        <span style="font-size:1.5rem">📞</span>
+                        <div>
+                            <strong>Call Us</strong>
+                            <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">${membershipConfig.phone || church.phone || 'No phone set'}</p>
+                        </div>
                     </div>
-                    <button class="btn btn-primary" onclick="saveMembershipConfig()">Save Settings</button>
-                ` : membershipConfig.type === 'url' ? `
-                    <div class="input-group">
-                        <label class="input-label">Membership Page URL</label>
-                        <input type="url" class="input-field" id="membershipUrl" value="${membershipConfig.url || ''}" placeholder="https://yourchurch.com/membership">
-                    </div>
-                    <button class="btn btn-primary" onclick="saveMembershipConfig()">Save Settings</button>
-                ` : `
-                    <p style="color:var(--text-tertiary)">Users will see your church's phone number and website link.</p>
-                `}
+                ` : ''}
+                ${!methods.length || (!methods.includes('email') && !methods.includes('url') && !methods.includes('contact')) ? `
+                    <p style="color:var(--text-tertiary);text-align:center">Select at least one contact method above</p>
+                ` : ''}
             </div>
         </div>
         
         <!-- Membership Requests -->
         <div class="card">
             <h3 style="margin-bottom:var(--space-lg)">📋 Membership Interest List</h3>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">Users who expressed interest in membership (tracked in app).</p>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">Users who expressed interest in membership.</p>
             <div id="membershipInterestList">
-                <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-lg)">Coming soon - Interest tracking will show here</p>
+                <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-lg)">Interest tracking will show here when users express interest</p>
             </div>
         </div>
     </div>`;
 }
 
-function updateMembershipType(type) {
-    const church = getChurchData(State.current.user.churchId);
-    const membershipConfig = church.membershipConfig || {};
-    membershipConfig.type = type;
-    updateChurchData(State.current.user.churchId, { membershipConfig });
-    render();
-}
-
 async function saveMembershipConfig() {
-    const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
-    const membershipConfig = church.membershipConfig || {};
+    // Gather selected methods
+    const methods = [];
+    if (document.getElementById('methodEmail')?.checked) methods.push('email');
+    if (document.getElementById('methodUrl')?.checked) methods.push('url');
+    if (document.getElementById('methodContact')?.checked) methods.push('contact');
     
-    if (membershipConfig.type === 'email') {
-        membershipConfig.email = document.getElementById('membershipEmail')?.value || '';
-    } else if (membershipConfig.type === 'url') {
-        membershipConfig.url = document.getElementById('membershipUrl')?.value || '';
+    // Gather field values
+    const email = document.getElementById('membershipEmail')?.value?.trim() || '';
+    const url = document.getElementById('membershipUrl')?.value?.trim() || '';
+    const phone = document.getElementById('membershipPhone')?.value?.trim() || '';
+    
+    // Build config object
+    const membershipConfig = {
+        methods,
+        email,
+        url,
+        phone,
+        updatedAt: new Date().toISOString()
+    };
+    
+    try {
+        await ChurchDB.updateChurch(State.current.user.churchId, { membershipConfig });
+        delete churchCache[State.current.user.churchId];
+        
+        toast('Membership settings saved! ✨', 'success');
+        render();
+    } catch (e) {
+        console.error('Error saving membership config:', e);
+        toast('Error saving settings', 'error');
     }
-    
-    await ChurchDB.updateChurch(State.current.user.churchId, { membershipConfig });
-    delete churchCache[State.current.user.churchId];
-    
-    toast('Membership settings saved! ✨', 'success');
 }
 
 function renderChurchMembers() {
@@ -6755,18 +6671,11 @@ function renderChurchVideosPage() {
     
     const church = getChurchData(userChurchId);
     const videos = church?.youtubeVideos || [];
-    const channelPlaylists = church?.youtubeChannelPlaylists || [];
-    const enabledPlaylists = church?.youtubeEnabledPlaylists || [];
+    const playlists = church?.youtubePlaylists || [];
     const branding = church?.branding || {};
     const colors = getSeasonalColors(branding);
     
-    // Filter videos by enabled playlists (if any playlists are enabled)
-    let displayVideos = videos;
-    if (enabledPlaylists.length > 0 && !enabledPlaylists.includes('uploads')) {
-        displayVideos = videos.filter(v => v.playlistId && enabledPlaylists.includes(v.playlistId));
-    }
-    
-    if (!displayVideos.length) {
+    if (!videos.length) {
         return `
         <div class="fade-up">
             <div class="empty-state">
@@ -6778,13 +6687,16 @@ function renderChurchVideosPage() {
         </div>`;
     }
     
-    // Get unique playlists from videos
-    const videoPlaylists = [...new Set(displayVideos.filter(v => v.playlistName).map(v => ({ id: v.playlistId, name: v.playlistName })))];
+    // Build playlist info from videos
     const uniquePlaylists = [];
     const seenIds = new Set();
-    displayVideos.forEach(v => {
-        if (v.playlistId && v.playlistName && !seenIds.has(v.playlistId)) {
-            uniquePlaylists.push({ id: v.playlistId, name: v.playlistName });
+    videos.forEach(v => {
+        if (v.playlistId && !seenIds.has(v.playlistId)) {
+            const playlistInfo = playlists.find(p => p.id === v.playlistId);
+            uniquePlaylists.push({ 
+                id: v.playlistId, 
+                name: v.playlistName || playlistInfo?.name || 'Playlist' 
+            });
             seenIds.add(v.playlistId);
         }
     });
@@ -6793,19 +6705,19 @@ function renderChurchVideosPage() {
     <div class="fade-up">
         <!-- Hero Section with Featured Video -->
         <div style="position:relative;border-radius:var(--radius-xl);overflow:hidden;margin-bottom:var(--space-xl)">
-            <div style="position:absolute;inset:0;background:linear-gradient(135deg,${colors.primary}66,${colors.secondary}66),url('https://img.youtube.com/vi/${displayVideos[0].videoId}/maxresdefault.jpg') center/cover"></div>
+            <div style="position:absolute;inset:0;background:linear-gradient(135deg,${colors.primary}66,${colors.secondary}66),url('https://img.youtube.com/vi/${videos[0].videoId}/maxresdefault.jpg') center/cover"></div>
             <div style="position:absolute;inset:0;background:linear-gradient(to top,var(--bg-primary) 0%,transparent 70%)"></div>
             <div style="position:relative;padding:var(--space-2xl) var(--space-xl);min-height:280px;display:flex;flex-direction:column;justify-content:flex-end">
                 <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-sm)">
                     ${branding.logo ? `<img src="${branding.logo}" alt="" style="width:40px;height:40px;border-radius:var(--radius-md);object-fit:contain;background:white;padding:3px">` : ''}
                     <span style="font-size:0.9rem;color:var(--text-secondary)">${church?.name}</span>
                 </div>
-                <h1 style="margin:0 0 var(--space-sm);font-size:1.6rem;max-width:500px">${displayVideos[0].title}</h1>
+                <h1 style="margin:0 0 var(--space-sm);font-size:1.6rem;max-width:500px">${videos[0].title}</h1>
                 <p style="color:var(--text-secondary);margin:0 0 var(--space-lg);font-size:0.9rem">
-                    ${displayVideos[0].playlistName || displayVideos[0].category || 'Video'} • ${displayVideos[0].date}
+                    ${videos[0].playlistName || videos[0].category || 'Video'} • ${videos[0].date}
                 </p>
                 <div style="display:flex;gap:var(--space-sm)">
-                    <button class="btn" onclick="playYouTubeVideo('${displayVideos[0].videoId}', '${(displayVideos[0].title || '').replace(/'/g, "\\'")}')" style="background:white;color:#000;font-weight:600">
+                    <button class="btn" onclick="playYouTubeVideo('${videos[0].videoId}', '${(videos[0].title || '').replace(/'/g, "\\'")}')" style="background:white;color:#000;font-weight:600">
                         ▶️ Play
                     </button>
                 </div>
@@ -6824,7 +6736,7 @@ function renderChurchVideosPage() {
         
         <!-- Videos by Playlist (Netflix style rows) -->
         ${uniquePlaylists.length > 0 ? uniquePlaylists.map(playlist => {
-            const playlistVideos = displayVideos.filter(v => v.playlistId === playlist.id);
+            const playlistVideos = videos.filter(v => v.playlistId === playlist.id);
             if (!playlistVideos.length) return '';
             
             return `
@@ -6845,7 +6757,7 @@ function renderChurchVideosPage() {
                 ${uniquePlaylists.length > 0 ? '📺 Other Videos' : '📺 All Videos'}
             </h3>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--space-md)">
-                ${displayVideos.filter(v => !v.playlistId || !uniquePlaylists.find(p => p.id === v.playlistId)).map(v => renderVideoCardGrid(v)).join('')}
+                ${videos.filter(v => !v.playlistId || !uniquePlaylists.find(p => p.id === v.playlistId)).map(v => renderVideoCardGrid(v)).join('')}
             </div>
         </div>
     </div>`;
