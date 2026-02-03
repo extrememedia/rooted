@@ -1026,6 +1026,18 @@ async function loadUserChurchData() {
     cachedUserChurches = await UserChurchDB.getUserChurches(Auth.currentUser.uid);
     const activeId = await UserChurchDB.getActiveChurch(Auth.currentUser.uid);
     cachedActiveChurch = activeId || cachedUserChurches[0] || null;
+    
+    // Preload active church data into cache
+    if (cachedActiveChurch && !churchCache[cachedActiveChurch]) {
+        try {
+            const churchData = await ChurchDB.getChurch(cachedActiveChurch);
+            if (churchData) {
+                churchCache[cachedActiveChurch] = churchData;
+            }
+        } catch (e) {
+            console.error('Error preloading church data:', e);
+        }
+    }
 }
 
 function getUserChurches(userId) {
@@ -5429,8 +5441,23 @@ setTimeout(updateClock, 100);
 function renderTools() {
     // Get user's church and enabled tools
     const userChurchId = Auth.currentUser ? getUserChurch(Auth.currentUser.uid) : null;
-    const church = userChurchId ? getChurchData(userChurchId) : null;
-    const enabledToolIds = church?.enabledTools || Object.keys(TOOLS); // Default to all if no church
+    
+    // Check if we have cached church data
+    const cachedChurch = userChurchId ? churchCache[userChurchId] : null;
+    
+    // If user has a church but no cached data, load it
+    if (userChurchId && !cachedChurch) {
+        loadChurchDataAndRerender(userChurchId, 'tools');
+        // Show all tools while loading
+        return renderToolsContent(null);
+    }
+    
+    return renderToolsContent(cachedChurch);
+}
+
+function renderToolsContent(church) {
+    // If church exists and has enabledTools, use those; otherwise show all tools
+    const enabledToolIds = church?.enabledTools || Object.keys(TOOLS);
     
     // Filter tools: show enabled active tools + coming soon tools
     const tools = Object.values(TOOLS).filter(t => {
@@ -5443,7 +5470,7 @@ function renderTools() {
     return `
     <div class="fade-up" style="max-width:900px;margin:0 auto">
         <p style="color:var(--text-secondary);margin-bottom:var(--space-xl);text-align:center">Discover tools designed to help you grow in your faith.</p>
-        ${church ? `<p style="font-size:0.85rem;color:var(--text-tertiary);margin-bottom:var(--space-lg);text-align:center">Showing ${enabledToolIds.length} tools enabled by ${church.name}</p>` : ''}
+        ${church ? `<p style="font-size:0.85rem;color:var(--text-tertiary);margin-bottom:var(--space-lg);text-align:center">Showing ${tools.filter(t => t.status === 'active').length} tools enabled by ${church.name}</p>` : ''}
         ${categories.map(cat => {
             const catTools = tools.filter(t => t.category === cat);
             if (!catTools.length) return '';
@@ -6700,14 +6727,14 @@ function renderMyChurch() {
         </div>`;
     }
     
-    // Show loading state, then load fresh data
-    setTimeout(() => loadMyChurchData(activeChurchId), 0);
+    // Check if we have cached data
+    const cachedChurch = churchCache[activeChurchId];
     
-    // Return loading state initially
-    const church = getChurchData(activeChurchId);
-    if (!church) {
+    if (!cachedChurch) {
+        // No cache - load from Firebase and show loading state
+        loadChurchDataAndRerender(activeChurchId, 'my-church');
         return `
-        <div class="fade-up">
+        <div class="fade-up" style="max-width:800px;margin:0 auto">
             <div class="card" style="text-align:center;padding:var(--space-2xl)">
                 <div class="loading-spinner" style="margin:0 auto var(--space-lg)"></div>
                 <p style="color:var(--text-secondary)">Loading church data...</p>
@@ -6715,33 +6742,50 @@ function renderMyChurch() {
         </div>`;
     }
     
-    return renderMyChurchContent(church, userChurches, activeChurchId);
+    return renderMyChurchContent(cachedChurch, userChurches, activeChurchId);
 }
 
-// Load fresh church data from Firebase and re-render
-async function loadMyChurchData(churchId) {
+// Universal function to load church data and re-render current page
+async function loadChurchDataAndRerender(churchId, expectedNav) {
     if (!churchId) return;
     
     try {
         // Force fresh data from Firebase
         const freshChurch = await ChurchDB.getChurchFresh(churchId);
         
-        // Update cache
         if (freshChurch) {
+            // Update cache
             churchCache[churchId] = freshChurch;
             
-            // Re-render if still on my-church page
-            if (State.current.activeNav === 'my-church') {
-                const contentArea = document.querySelector('.main-content');
-                if (contentArea) {
-                    const userChurches = getUserChurches(Auth.currentUser.uid);
-                    contentArea.innerHTML = renderMyChurchContent(freshChurch, userChurches, churchId);
-                }
+            // Re-render if still on expected page
+            if (State.current.activeNav === expectedNav) {
+                render();
             }
         }
     } catch (e) {
         console.error('Error loading church data:', e);
     }
+}
+
+// Ensure church data is loaded for user pages
+async function ensureChurchDataLoaded(churchId) {
+    if (!churchId) return null;
+    
+    // If not in cache, load from Firebase
+    if (!churchCache[churchId]) {
+        try {
+            const church = await ChurchDB.getChurchFresh(churchId);
+            if (church) {
+                churchCache[churchId] = church;
+            }
+            return church;
+        } catch (e) {
+            console.error('Error loading church:', e);
+            return null;
+        }
+    }
+    
+    return churchCache[churchId];
 }
 
 function renderMyChurchContent(church, userChurches, activeChurchId) {
@@ -6986,11 +7030,25 @@ function renderChurchVideosPage() {
         </div>`;
     }
     
-    const church = getChurchData(userChurchId);
+    // Check if we have cached data
+    const cachedChurch = churchCache[userChurchId];
+    
+    if (!cachedChurch) {
+        // No cache - load from Firebase
+        loadChurchDataAndRerender(userChurchId, 'church-videos');
+        return `
+        <div class="fade-up" style="max-width:900px;margin:0 auto">
+            <div class="card" style="text-align:center;padding:var(--space-2xl)">
+                <div class="loading-spinner" style="margin:0 auto var(--space-lg)"></div>
+                <p style="color:var(--text-secondary)">Loading videos...</p>
+            </div>
+        </div>`;
+    }
+    
     // Support both old (youtubeVideos) and new (ytVideos) field names
-    const videos = church?.ytVideos || church?.youtubeVideos || [];
-    const playlists = church?.ytPlaylists || church?.youtubePlaylists || [];
-    const branding = church?.branding || {};
+    const videos = cachedChurch?.ytVideos || cachedChurch?.youtubeVideos || [];
+    const playlists = cachedChurch?.ytPlaylists || cachedChurch?.youtubePlaylists || [];
+    const branding = cachedChurch?.branding || {};
     const colors = getSeasonalColors(branding);
     
     if (!videos.length) {
@@ -6999,7 +7057,7 @@ function renderChurchVideosPage() {
             <div class="empty-state">
                 <div class="empty-state-icon">🎬</div>
                 <h3 class="empty-state-title">No Videos Yet</h3>
-                <p class="empty-state-description">${church?.name || 'Your church'} hasn't added any videos yet. Check back soon!</p>
+                <p class="empty-state-description">${cachedChurch?.name || 'Your church'} hasn't added any videos yet. Check back soon!</p>
                 <button class="btn btn-secondary" onclick="goBack()" style="margin-top:var(--space-lg)">← Back</button>
             </div>
         </div>`;
@@ -7031,7 +7089,7 @@ function renderChurchVideosPage() {
             <div style="position:relative;padding:var(--space-2xl) var(--space-xl);min-height:250px;display:flex;flex-direction:column;justify-content:flex-end">
                 <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-sm)">
                     ${branding.logo ? `<img src="${branding.logo}" alt="" style="width:40px;height:40px;border-radius:var(--radius-md);object-fit:contain;background:white;padding:3px">` : ''}
-                    <span style="font-size:0.9rem;color:var(--text-secondary)">${church?.name}</span>
+                    <span style="font-size:0.9rem;color:var(--text-secondary)">${cachedChurch?.name}</span>
                 </div>
                 <h1 style="margin:0 0 var(--space-sm);font-size:1.4rem;max-width:500px">${videos[0].title}</h1>
                 <p style="color:var(--text-secondary);margin:0 0 var(--space-lg);font-size:0.85rem">
