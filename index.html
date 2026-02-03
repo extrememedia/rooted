@@ -4230,147 +4230,169 @@ async function setSeasonalTheme(season) {
 function renderChurchMembership() {
     const church = getChurchData(State.current.user.churchId);
     const membershipConfig = church.membershipConfig || {};
-    // Support both old single 'type' and new 'methods' array
-    const methods = membershipConfig.methods || (membershipConfig.type ? [membershipConfig.type] : ['contact']);
+    
+    // Get methods - default to empty array if not set
+    const methods = Array.isArray(membershipConfig.methods) ? membershipConfig.methods : [];
+    
+    // Get field values with fallbacks
+    const savedEmail = membershipConfig.email || '';
+    const savedUrl = membershipConfig.url || '';
+    const savedPhone = membershipConfig.phone || '';
     
     return `
-    <div class="fade-up">
+    <div class="fade-up" style="max-width:800px;margin:0 auto">
         <div class="card" style="margin-bottom:var(--space-lg)">
             <h3 style="margin-bottom:var(--space-md)">✨ Membership Interest Settings</h3>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">When users express interest in becoming a member, how should they contact you? Select all that apply.</p>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Configure how users can express interest in becoming a member. This information will be shown to users in the app.</p>
             
-            <div style="display:flex;flex-direction:column;gap:var(--space-md)">
-                <label style="display:flex;align-items:start;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);cursor:pointer;border:2px solid ${methods.includes('email') ? 'var(--root-green)' : 'transparent'}">
-                    <input type="checkbox" id="methodEmail" ${methods.includes('email') ? 'checked' : ''} style="margin-top:4px;width:20px;height:20px;accent-color:var(--root-green)">
-                    <div style="flex:1">
-                        <strong>📧 Email Request</strong>
-                        <p style="font-size:0.85rem;color:var(--text-secondary);margin:var(--space-xs) 0 0">Users can email your church about membership</p>
-                    </div>
-                </label>
+            <form id="membershipForm" onsubmit="saveMembershipConfig(event)">
+                <!-- Contact Methods -->
+                <h4 style="margin-bottom:var(--space-md);font-size:1rem">Contact Methods</h4>
+                <p style="color:var(--text-tertiary);font-size:0.85rem;margin-bottom:var(--space-md)">Select which methods users can use to contact you:</p>
                 
-                <label style="display:flex;align-items:start;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);cursor:pointer;border:2px solid ${methods.includes('url') ? 'var(--root-green)' : 'transparent'}">
-                    <input type="checkbox" id="methodUrl" ${methods.includes('url') ? 'checked' : ''} style="margin-top:4px;width:20px;height:20px;accent-color:var(--root-green)">
-                    <div style="flex:1">
-                        <strong>🌐 Website Link</strong>
-                        <p style="font-size:0.85rem;color:var(--text-secondary);margin:var(--space-xs) 0 0">Direct users to a page on your website</p>
-                    </div>
-                </label>
+                <div style="display:flex;flex-direction:column;gap:var(--space-md);margin-bottom:var(--space-xl)">
+                    <label style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);cursor:pointer">
+                        <input type="checkbox" name="method" value="email" ${methods.includes('email') ? 'checked' : ''} style="width:20px;height:20px;accent-color:var(--root-green)">
+                        <div style="flex:1">
+                            <strong>📧 Email</strong>
+                            <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">Users can email your church</p>
+                        </div>
+                    </label>
+                    
+                    <label style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);cursor:pointer">
+                        <input type="checkbox" name="method" value="url" ${methods.includes('url') ? 'checked' : ''} style="width:20px;height:20px;accent-color:var(--root-green)">
+                        <div style="flex:1">
+                            <strong>🌐 Website Link</strong>
+                            <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">Direct users to a webpage</p>
+                        </div>
+                    </label>
+                    
+                    <label style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);cursor:pointer">
+                        <input type="checkbox" name="method" value="phone" ${methods.includes('phone') ? 'checked' : ''} style="width:20px;height:20px;accent-color:var(--root-green)">
+                        <div style="flex:1">
+                            <strong>📞 Phone</strong>
+                            <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">Show your phone number</p>
+                        </div>
+                    </label>
+                </div>
                 
-                <label style="display:flex;align-items:start;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);cursor:pointer;border:2px solid ${methods.includes('contact') ? 'var(--root-green)' : 'transparent'}">
-                    <input type="checkbox" id="methodContact" ${methods.includes('contact') ? 'checked' : ''} style="margin-top:4px;width:20px;height:20px;accent-color:var(--root-green)">
-                    <div style="flex:1">
-                        <strong>📞 Contact Church</strong>
-                        <p style="font-size:0.85rem;color:var(--text-secondary);margin:var(--space-xs) 0 0">Show church phone number and address</p>
-                    </div>
-                </label>
-            </div>
+                <!-- Contact Details -->
+                <h4 style="margin-bottom:var(--space-md);font-size:1rem">Contact Details</h4>
+                <p style="color:var(--text-tertiary);font-size:0.85rem;margin-bottom:var(--space-md)">Enter the details for each method:</p>
+                
+                <div class="input-group">
+                    <label class="input-label">📧 Church Email</label>
+                    <input type="email" class="input-field" name="email" id="membershipEmail" value="${savedEmail}" placeholder="info@yourchurch.com">
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">🌐 Membership Page URL</label>
+                    <input type="url" class="input-field" name="url" id="membershipUrl" value="${savedUrl}" placeholder="https://yourchurch.com/membership">
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">📞 Phone Number</label>
+                    <input type="tel" class="input-field" name="phone" id="membershipPhone" value="${savedPhone}" placeholder="(555) 123-4567">
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-lg btn-block" style="margin-top:var(--space-lg)">💾 Save Settings</button>
+            </form>
         </div>
         
-        <!-- Configuration Fields -->
+        <!-- Current Saved Values (for debugging/confirmation) -->
         <div class="card" style="margin-bottom:var(--space-lg)">
-            <h3 style="margin-bottom:var(--space-md)">⚙️ Contact Details</h3>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Enter the contact information for each method you selected above.</p>
-            
-            <div class="input-group">
-                <label class="input-label">📧 Contact Email</label>
-                <input type="email" class="input-field" id="membershipEmail" value="${membershipConfig.email || ''}" placeholder="membership@yourchurch.com">
-                <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:var(--space-xs)">Email address for membership inquiries</p>
+            <h3 style="margin-bottom:var(--space-md)">📋 Current Saved Settings</h3>
+            <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md)">
+                <p style="margin:0 0 var(--space-sm)"><strong>Methods:</strong> ${methods.length > 0 ? methods.join(', ') : 'None selected'}</p>
+                <p style="margin:0 0 var(--space-sm)"><strong>Email:</strong> ${savedEmail || 'Not set'}</p>
+                <p style="margin:0 0 var(--space-sm)"><strong>URL:</strong> ${savedUrl || 'Not set'}</p>
+                <p style="margin:0"><strong>Phone:</strong> ${savedPhone || 'Not set'}</p>
             </div>
-            
-            <div class="input-group">
-                <label class="input-label">🌐 Membership Page URL</label>
-                <input type="url" class="input-field" id="membershipUrl" value="${membershipConfig.url || ''}" placeholder="https://yourchurch.com/membership">
-                <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:var(--space-xs)">Link to your membership information or sign-up page</p>
-            </div>
-            
-            <div class="input-group">
-                <label class="input-label">📞 Phone Number</label>
-                <input type="tel" class="input-field" id="membershipPhone" value="${membershipConfig.phone || church.phone || ''}" placeholder="(555) 123-4567">
-                <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:var(--space-xs)">Phone number for membership inquiries</p>
-            </div>
-            
-            <button class="btn btn-primary btn-lg" onclick="saveMembershipConfig()" style="margin-top:var(--space-lg)">💾 Save Membership Settings</button>
         </div>
         
         <!-- Preview -->
-        <div class="card" style="margin-bottom:var(--space-lg)">
+        <div class="card">
             <h3 style="margin-bottom:var(--space-md)">👁️ User Preview</h3>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">This is what users will see when they click "Interested in Membership":</p>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">This is what users will see:</p>
             <div style="padding:var(--space-lg);background:var(--hover-bg);border-radius:var(--radius-md)">
-                ${methods.includes('email') && membershipConfig.email ? `
-                    <a href="mailto:${membershipConfig.email}" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);color:var(--text-primary);text-decoration:none">
+                ${methods.includes('email') && savedEmail ? `
+                    <a href="mailto:${savedEmail}" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);color:var(--text-primary);text-decoration:none">
                         <span style="font-size:1.5rem">📧</span>
                         <div>
                             <strong>Email Us</strong>
-                            <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">${membershipConfig.email}</p>
+                            <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">${savedEmail}</p>
                         </div>
                     </a>
                 ` : ''}
-                ${methods.includes('url') && membershipConfig.url ? `
-                    <a href="${membershipConfig.url}" target="_blank" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);color:var(--text-primary);text-decoration:none">
+                ${methods.includes('url') && savedUrl ? `
+                    <a href="${savedUrl}" target="_blank" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);color:var(--text-primary);text-decoration:none">
                         <span style="font-size:1.5rem">🌐</span>
                         <div>
                             <strong>Visit Our Website</strong>
-                            <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">${membershipConfig.url}</p>
+                            <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">${savedUrl}</p>
                         </div>
                     </a>
                 ` : ''}
-                ${methods.includes('contact') ? `
-                    <div style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-md)">
+                ${methods.includes('phone') && savedPhone ? `
+                    <a href="tel:${savedPhone.replace(/\D/g, '')}" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-md);color:var(--text-primary);text-decoration:none">
                         <span style="font-size:1.5rem">📞</span>
                         <div>
                             <strong>Call Us</strong>
-                            <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">${membershipConfig.phone || church.phone || 'No phone set'}</p>
+                            <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">${savedPhone}</p>
                         </div>
-                    </div>
+                    </a>
                 ` : ''}
-                ${!methods.length || (!methods.includes('email') && !methods.includes('url') && !methods.includes('contact')) ? `
-                    <p style="color:var(--text-tertiary);text-align:center">Select at least one contact method above</p>
+                ${methods.length === 0 ? `
+                    <p style="color:var(--text-tertiary);text-align:center">Select contact methods and save to show preview</p>
                 ` : ''}
-            </div>
-        </div>
-        
-        <!-- Membership Requests -->
-        <div class="card">
-            <h3 style="margin-bottom:var(--space-lg)">📋 Membership Interest List</h3>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">Users who expressed interest in membership.</p>
-            <div id="membershipInterestList">
-                <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-lg)">Interest tracking will show here when users express interest</p>
             </div>
         </div>
     </div>`;
 }
 
-async function saveMembershipConfig() {
-    // Gather selected methods
-    const methods = [];
-    if (document.getElementById('methodEmail')?.checked) methods.push('email');
-    if (document.getElementById('methodUrl')?.checked) methods.push('url');
-    if (document.getElementById('methodContact')?.checked) methods.push('contact');
+async function saveMembershipConfig(e) {
+    if (e) e.preventDefault();
     
-    // Gather field values
-    const email = document.getElementById('membershipEmail')?.value?.trim() || '';
-    const url = document.getElementById('membershipUrl')?.value?.trim() || '';
-    const phone = document.getElementById('membershipPhone')?.value?.trim() || '';
+    const form = document.getElementById('membershipForm');
+    if (!form) {
+        toast('Form not found', 'error');
+        return;
+    }
+    
+    // Get selected methods using querySelectorAll
+    const methodCheckboxes = form.querySelectorAll('input[name="method"]:checked');
+    const methods = Array.from(methodCheckboxes).map(cb => cb.value);
+    
+    // Get field values directly from form elements
+    const email = form.querySelector('#membershipEmail')?.value?.trim() || '';
+    const url = form.querySelector('#membershipUrl')?.value?.trim() || '';
+    const phone = form.querySelector('#membershipPhone')?.value?.trim() || '';
     
     // Build config object
     const membershipConfig = {
-        methods,
-        email,
-        url,
-        phone,
+        methods: methods,
+        email: email,
+        url: url,
+        phone: phone,
         updatedAt: new Date().toISOString()
     };
     
+    console.log('Saving membership config:', membershipConfig);
+    
     try {
-        await ChurchDB.updateChurch(State.current.user.churchId, { membershipConfig });
+        // Save to Firebase
+        await ChurchDB.updateChurch(State.current.user.churchId, { membershipConfig: membershipConfig });
+        
+        // Clear cache to ensure fresh data on next load
         delete churchCache[State.current.user.churchId];
         
         toast('Membership settings saved! ✨', 'success');
+        
+        // Re-render to show updated values
         render();
     } catch (e) {
         console.error('Error saving membership config:', e);
-        toast('Error saving settings', 'error');
+        toast('Error saving settings: ' + e.message, 'error');
     }
 }
 
@@ -5992,23 +6014,51 @@ function updateMembershipStatus() {
 async function showMembershipInterest(churchId) {
     const church = await ChurchDB.getChurchFresh(churchId);
     const membershipConfig = church?.membershipConfig || {};
+    const methods = Array.isArray(membershipConfig.methods) ? membershipConfig.methods : [];
     
     let content = '';
-    if (membershipConfig.type === 'email') {
-        content = `
-            <p style="margin-bottom:var(--space-lg)">Please email the church to express your interest in membership:</p>
-            <a href="mailto:${membershipConfig.email}?subject=Membership Interest" class="btn btn-primary btn-block">
-                📧 Email ${membershipConfig.email}
-            </a>
-        `;
-    } else if (membershipConfig.type === 'url') {
-        content = `
-            <p style="margin-bottom:var(--space-lg)">Visit the church website to learn about membership:</p>
-            <a href="${membershipConfig.url}" target="_blank" class="btn btn-primary btn-block">
-                🌐 Visit Membership Page
-            </a>
-        `;
+    
+    // Build content based on selected methods
+    if (methods.length > 0) {
+        content = '<p style="margin-bottom:var(--space-lg)">Choose how you\'d like to connect with us:</p>';
+        
+        if (methods.includes('email') && membershipConfig.email) {
+            content += `
+                <a href="mailto:${membershipConfig.email}?subject=Membership Interest at ${church?.name || 'Church'}" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);color:var(--text-primary);text-decoration:none">
+                    <span style="font-size:1.5rem">📧</span>
+                    <div style="flex:1">
+                        <strong>Email Us</strong>
+                        <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">${membershipConfig.email}</p>
+                    </div>
+                </a>
+            `;
+        }
+        
+        if (methods.includes('url') && membershipConfig.url) {
+            content += `
+                <a href="${membershipConfig.url}" target="_blank" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);color:var(--text-primary);text-decoration:none">
+                    <span style="font-size:1.5rem">🌐</span>
+                    <div style="flex:1">
+                        <strong>Visit Website</strong>
+                        <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">Learn more online</p>
+                    </div>
+                </a>
+            `;
+        }
+        
+        if (methods.includes('phone') && membershipConfig.phone) {
+            content += `
+                <a href="tel:${membershipConfig.phone.replace(/\D/g, '')}" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);color:var(--text-primary);text-decoration:none">
+                    <span style="font-size:1.5rem">📞</span>
+                    <div style="flex:1">
+                        <strong>Call Us</strong>
+                        <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">${membershipConfig.phone}</p>
+                    </div>
+                </a>
+            `;
+        }
     } else {
+        // Fallback if no methods configured
         content = `
             <p style="margin-bottom:var(--space-lg)">Contact the church directly to learn about becoming a member.</p>
             ${church?.phone ? `<p style="margin-bottom:var(--space-sm)">📞 ${church.phone}</p>` : ''}
