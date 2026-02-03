@@ -231,19 +231,20 @@ input, textarea, select { font-family: inherit; }
 }
 
 /* ========== NETFLIX-STYLE VIDEOS PAGE ========== */
+/* Videos Page - Full Width (breaks out of .main-body constraints) */
 .videos-page {
     min-height: 100vh;
     background: linear-gradient(180deg, #141414 0%, #0a0a0a 100%);
-    margin: -24px;
-    padding: 0;
     color: white;
     overflow-x: hidden;
-    width: calc(100% + 48px);
-    max-width: none;
     box-sizing: border-box;
-    position: relative;
-    left: 0;
-    right: 0;
+    padding: 0;
+    
+    /* Negative margins to break out of .main-body padding */
+    margin: calc(-1 * var(--space-xl));
+    
+    /* Calculate full width: viewport - sidebar */
+    width: calc(100vw - var(--sidebar-width));
 }
 
 /* Empty and Loading States */
