@@ -4578,6 +4578,8 @@ function renderDashboard() {
     const user = Auth.currentUser;
     const userChurchId = getUserChurch(Auth.currentUser?.uid);
     const userChurch = userChurchId ? getChurchData(userChurchId) : null;
+    const notes = JSON.parse(localStorage.getItem('rooted_notes') || '[]');
+    const toolHistory = JSON.parse(localStorage.getItem('rooted_tool_history') || '[]');
     
     return `
     <div class="fade-up">
@@ -4615,20 +4617,72 @@ function renderDashboard() {
             </div>
         </div>
         
-        <div class="stat-grid" style="margin-bottom:var(--space-2xl)">
-            <div class="stat-card">
+        <div class="stat-grid" style="margin-bottom:var(--space-xl)">
+            <div class="stat-card" onclick="navigate('tools')" style="cursor:pointer">
                 <div class="stat-label">Tools Available</div>
                 <div class="stat-value">${Object.values(TOOLS).filter(t => t.status === 'active').length}</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Coming Soon</div>
-                <div class="stat-value">${Object.values(TOOLS).filter(t => t.status === 'coming').length}</div>
+            <div class="stat-card" onclick="navigate('progress')" style="cursor:pointer">
+                <div class="stat-label">My Progress</div>
+                <div class="stat-value" style="font-size:1.5rem">📈</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Account</div>
-                <div class="stat-value" style="font-size:1rem">${user?.provider === 'google.com' ? '🔗 Google' : '📧 Email'}</div>
+            <div class="stat-card" onclick="showNotesModal()" style="cursor:pointer">
+                <div class="stat-label">My Notes</div>
+                <div class="stat-value">${notes.length}</div>
             </div>
         </div>
+        
+        <!-- Recent Tool History -->
+        ${toolHistory.length > 0 ? `
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
+                <h3 style="margin:0;display:flex;align-items:center;gap:var(--space-sm)">
+                    <span>🕐</span> Recent Activity
+                </h3>
+                <button class="btn btn-ghost btn-sm" onclick="navigate('progress')">View All →</button>
+            </div>
+            <div style="display:flex;gap:var(--space-md);overflow-x:auto;padding:var(--space-sm) 0">
+                ${toolHistory.slice(0, 5).map(h => {
+                    const tool = TOOLS[h.toolId];
+                    return `
+                    <div style="flex-shrink:0;width:140px;padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-lg);cursor:pointer;text-align:center" onclick="${h.hasResults ? `viewToolResults('${h.toolId}', '${h.sessionId}')` : `openTool('${h.toolId}')`}">
+                        <div style="font-size:2rem;margin-bottom:var(--space-sm)">${tool?.icon || '🛠️'}</div>
+                        <p style="font-size:0.85rem;font-weight:500;margin:0">${tool?.name || h.toolId}</p>
+                        <p style="font-size:0.7rem;color:var(--text-tertiary);margin:var(--space-xs) 0 0">${h.date}</p>
+                        ${h.hasResults ? '<span style="font-size:0.65rem;background:var(--root-green);color:white;padding:2px 6px;border-radius:10px">View Results</span>' : ''}
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>
+        ` : ''}
+        
+        <!-- Quick Notes Preview -->
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
+                <h3 style="margin:0;display:flex;align-items:center;gap:var(--space-sm)">
+                    <span>📝</span> My Notes
+                </h3>
+                <button class="btn btn-primary btn-sm" onclick="showAddNoteModal()">+ Add Note</button>
+            </div>
+            ${notes.length > 0 ? `
+                <div style="display:grid;gap:var(--space-sm)">
+                    ${notes.slice(0, 3).map((note, i) => `
+                        <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);cursor:pointer" onclick="showNoteDetail(${i})">
+                            <div style="display:flex;justify-content:space-between;align-items:start">
+                                <strong style="font-size:0.95rem">${note.title || 'Untitled Note'}</strong>
+                                <span style="font-size:0.7rem;color:var(--text-tertiary)">${note.date}</span>
+                            </div>
+                            <p style="font-size:0.85rem;color:var(--text-secondary);margin:var(--space-xs) 0 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${note.content}</p>
+                            ${note.source ? `<span style="font-size:0.7rem;color:var(--root-green);display:block;margin-top:var(--space-xs)">From: ${note.source}</span>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+                ${notes.length > 3 ? `<button class="btn btn-ghost btn-block" onclick="showNotesModal()" style="margin-top:var(--space-md)">View All ${notes.length} Notes →</button>` : ''}
+            ` : `
+                <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-lg)">No notes yet. Save insights from your Bible studies and tools!</p>
+            `}
+        </div>
+        
         <div class="section-header">
             <h3 class="section-title">Start Growing</h3>
             <button class="btn btn-ghost btn-sm" onclick="navigate('tools')">View All →</button>
@@ -4637,6 +4691,163 @@ function renderDashboard() {
             ${Object.values(TOOLS).filter(t => t.status === 'active').slice(0, 2).map(t => renderToolCard(t)).join('')}
         </div>
     </div>`;
+}
+
+// ========== NOTES SYSTEM ==========
+function showNotesModal() {
+    const notes = JSON.parse(localStorage.getItem('rooted_notes') || '[]');
+    
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:600px;max-height:80vh;display:flex;flex-direction:column">
+            <div class="modal-header">
+                <h3 class="modal-title">📝 My Notes</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body" style="flex:1;overflow-y:auto">
+                <button class="btn btn-primary btn-block" onclick="closeModal();showAddNoteModal()" style="margin-bottom:var(--space-lg)">+ Add New Note</button>
+                ${notes.length > 0 ? `
+                    <div style="display:grid;gap:var(--space-md)">
+                        ${notes.map((note, i) => `
+                            <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md)">
+                                <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:var(--space-sm)">
+                                    <strong>${note.title || 'Untitled Note'}</strong>
+                                    <div style="display:flex;gap:var(--space-xs)">
+                                        <button class="btn btn-ghost btn-sm" onclick="editNote(${i})" style="padding:4px 8px">✏️</button>
+                                        <button class="btn btn-ghost btn-sm" onclick="deleteNote(${i})" style="padding:4px 8px;color:var(--error)">🗑️</button>
+                                    </div>
+                                </div>
+                                <p style="font-size:0.9rem;color:var(--text-secondary);margin:0;white-space:pre-wrap">${note.content}</p>
+                                <div style="display:flex;justify-content:space-between;margin-top:var(--space-sm)">
+                                    ${note.source ? `<span style="font-size:0.75rem;color:var(--root-green)">From: ${note.source}</span>` : '<span></span>'}
+                                    <span style="font-size:0.75rem;color:var(--text-tertiary)">${note.date}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : '<p style="color:var(--text-tertiary);text-align:center;padding:var(--space-xl)">No notes yet. Add your first note!</p>'}
+            </div>
+        </div>
+    `);
+}
+
+function showAddNoteModal(prefillContent = '', prefillSource = '') {
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
+            <div class="modal-header">
+                <h3 class="modal-title">📝 Add Note</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label class="input-label">Title (optional)</label>
+                    <input type="text" class="input-field" id="noteTitle" placeholder="Note title...">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Content</label>
+                    <textarea class="input-field" id="noteContent" rows="6" placeholder="Write your note...">${prefillContent}</textarea>
+                </div>
+                ${prefillSource ? `<input type="hidden" id="noteSource" value="${prefillSource}">` : ''}
+                <button class="btn btn-primary btn-block" onclick="saveNote()">💾 Save Note</button>
+            </div>
+        </div>
+    `);
+}
+
+function saveNote(editIndex = null) {
+    const title = document.getElementById('noteTitle')?.value?.trim() || '';
+    const content = document.getElementById('noteContent')?.value?.trim() || '';
+    const source = document.getElementById('noteSource')?.value || '';
+    
+    if (!content) {
+        toast('Please enter some content', 'error');
+        return;
+    }
+    
+    const notes = JSON.parse(localStorage.getItem('rooted_notes') || '[]');
+    const note = {
+        title,
+        content,
+        source,
+        date: new Date().toLocaleDateString()
+    };
+    
+    if (editIndex !== null) {
+        notes[editIndex] = note;
+    } else {
+        notes.unshift(note);
+    }
+    
+    localStorage.setItem('rooted_notes', JSON.stringify(notes));
+    closeModal();
+    toast('Note saved! 📝', 'success');
+    render();
+}
+
+function editNote(index) {
+    const notes = JSON.parse(localStorage.getItem('rooted_notes') || '[]');
+    const note = notes[index];
+    
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
+            <div class="modal-header">
+                <h3 class="modal-title">✏️ Edit Note</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label class="input-label">Title</label>
+                    <input type="text" class="input-field" id="noteTitle" value="${note.title || ''}">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Content</label>
+                    <textarea class="input-field" id="noteContent" rows="6">${note.content}</textarea>
+                </div>
+                <input type="hidden" id="noteSource" value="${note.source || ''}">
+                <button class="btn btn-primary btn-block" onclick="saveNote(${index})">💾 Save Changes</button>
+            </div>
+        </div>
+    `);
+}
+
+function deleteNote(index) {
+    if (!confirm('Delete this note?')) return;
+    
+    const notes = JSON.parse(localStorage.getItem('rooted_notes') || '[]');
+    notes.splice(index, 1);
+    localStorage.setItem('rooted_notes', JSON.stringify(notes));
+    
+    toast('Note deleted', 'info');
+    showNotesModal();
+}
+
+function showNoteDetail(index) {
+    const notes = JSON.parse(localStorage.getItem('rooted_notes') || '[]');
+    const note = notes[index];
+    
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
+            <div class="modal-header">
+                <h3 class="modal-title">${note.title || 'Note'}</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="white-space:pre-wrap;line-height:1.6">${note.content}</p>
+                <div style="display:flex;justify-content:space-between;margin-top:var(--space-lg);padding-top:var(--space-md);border-top:1px solid var(--border-color)">
+                    ${note.source ? `<span style="font-size:0.85rem;color:var(--root-green)">From: ${note.source}</span>` : '<span></span>'}
+                    <span style="font-size:0.85rem;color:var(--text-tertiary)">${note.date}</span>
+                </div>
+                <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-lg)">
+                    <button class="btn btn-secondary" onclick="editNote(${index})" style="flex:1">✏️ Edit</button>
+                    <button class="btn btn-ghost" onclick="deleteNote(${index})" style="color:var(--error)">🗑️ Delete</button>
+                </div>
+            </div>
+        </div>
+    `);
+}
+
+// Save content to notes from tools
+function saveToNotes(content, source) {
+    showAddNoteModal(content, source);
 }
 
 // Clock and Timer functionality
@@ -4744,12 +4955,79 @@ function openTool(toolId) {
     // Track tool usage
     trackToolUsage(toolId);
     
+    // Save to tool history
+    saveToolHistory(toolId);
+    
     if (tool.type === 'internal') {
         State.set({ screen: 'tool-seasons' });
     } else if (tool.type === 'external' && tool.path) {
         localStorage.setItem('rooted_nav', 'tools');
         window.open(TOOLS_BASE_PATH + tool.path, '_blank');
     }
+}
+
+// Save tool session to history for revisiting
+function saveToolHistory(toolId, hasResults = false, sessionId = null) {
+    const history = JSON.parse(localStorage.getItem('rooted_tool_history') || '[]');
+    
+    const entry = {
+        toolId,
+        sessionId: sessionId || Date.now().toString(),
+        date: new Date().toLocaleDateString(),
+        timestamp: Date.now(),
+        hasResults
+    };
+    
+    // Remove old entries for same tool (keep latest)
+    const filtered = history.filter(h => h.toolId !== toolId);
+    filtered.unshift(entry);
+    
+    // Keep only last 20 entries
+    localStorage.setItem('rooted_tool_history', JSON.stringify(filtered.slice(0, 20)));
+}
+
+// View saved tool results
+function viewToolResults(toolId, sessionId) {
+    const tool = TOOLS[toolId];
+    if (!tool) return;
+    
+    // For Seasons quiz, show saved results
+    if (toolId === 'seasons') {
+        const result = localStorage.getItem('rooted_seasons_result');
+        if (result) {
+            showSeasonsResults(JSON.parse(result));
+            return;
+        }
+    }
+    
+    // For other tools, just open them
+    openTool(toolId);
+}
+
+// Show Seasons results from saved data
+function showSeasonsResults(result) {
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:600px;max-height:80vh;display:flex;flex-direction:column">
+            <div class="modal-header">
+                <h3 class="modal-title">🌱 Your Season: ${result.character || result.name}</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body" style="flex:1;overflow-y:auto">
+                ${result.description ? `<p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">${result.description}</p>` : ''}
+                ${result.verse ? `
+                    <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);border-left:4px solid var(--root-green);margin-bottom:var(--space-lg)">
+                        <p style="font-style:italic;margin:0">"${result.verse}"</p>
+                        ${result.reference ? `<p style="font-size:0.85rem;color:var(--text-tertiary);margin:var(--space-sm) 0 0">— ${result.reference}</p>` : ''}
+                    </div>
+                ` : ''}
+                <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap">
+                    <button class="btn btn-primary" onclick="closeModal();openTool('seasons')">🔄 Retake Quiz</button>
+                    <button class="btn btn-secondary" onclick="saveToNotes('My Season: ${result.character || result.name}\\n\\n${result.description || ''}', 'Seasons of Faith Quiz')">📝 Save to Notes</button>
+                </div>
+                <p style="font-size:0.8rem;color:var(--text-tertiary);margin-top:var(--space-lg)">Completed: ${result.date || 'Unknown'}</p>
+            </div>
+        </div>
+    `);
 }
 
 function renderProgress() {
@@ -6370,6 +6648,28 @@ function shareQuizStudy() {
     }
 }
 
+function saveResultToNotes() {
+    const sorted = Object.entries(quizState.scores).sort((a,b)=>b[1]-a[1]);
+    const char = CHARACTERS[sorted[0][0]];
+    
+    const content = `🌱 My Season: ${char.name} - ${char.title}
+
+${char.description}
+
+📖 Key Scriptures:
+${char.scriptures.map(s => `"${s.t}" — ${s.r}`).join('\n\n')}
+
+🎯 Why I Match:
+${char.whyMatch.map(w => `• ${w}`).join('\n')}
+
+💡 Key Truth: ${char.study.keyTruth}
+
+📝 Memory Verse: ${char.study.memoryVerse}`;
+    
+    saveToNotes(content, 'Seasons of Faith Quiz');
+    toast('Saved to your notes! 📝', 'success');
+}
+
 function printQuizStudy() {
     const sorted = Object.entries(quizState.scores).sort((a,b)=>b[1]-a[1]);
     const r = CHARACTERS[sorted[0][0]];
@@ -6457,6 +6757,22 @@ function renderQuiz() {
         const topThree = sorted.slice(0, 3).map(([k]) => CHARACTERS[k]);
         const exp = quizState.expanded;
         
+        // Save result to localStorage for later viewing
+        const savedResult = {
+            character: char.name,
+            characterId: topId,
+            title: char.title,
+            description: char.description,
+            icon: char.icon,
+            color: char.color,
+            scores: quizState.scores,
+            date: new Date().toLocaleDateString()
+        };
+        localStorage.setItem('rooted_seasons_result', JSON.stringify(savedResult));
+        
+        // Update tool history with results flag
+        saveToolHistory('seasons', true, Date.now().toString());
+        
         if (Auth.currentUser) {
             UserDB.saveQuizResult(Auth.currentUser.uid, 'seasons', { character: topId, scores: quizState.scores });
             UserDB.saveToolProgress(Auth.currentUser.uid, 'seasons', { completed: true, character: topId });
@@ -6481,6 +6797,10 @@ function renderQuiz() {
                         <span style="font-size:1.5rem;display:block;margin-bottom:4px">🔗</span>
                         <span style="font-size:0.85rem;font-weight:500">Share Quiz</span>
                     </button>
+                    <button onclick="saveResultToNotes()" style="background:linear-gradient(135deg,#22c55e,#16a34a);backdrop-filter:blur(10px);border-radius:16px;padding:16px;border:none;text-align:center;cursor:pointer;color:white">
+                        <span style="font-size:1.5rem;display:block;margin-bottom:4px">📝</span>
+                        <span style="font-size:0.85rem;font-weight:500">Save to Notes</span>
+                    </button>
                     <button onclick="shareQuizStudy()" style="background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border-radius:16px;padding:16px;border:1px solid rgba(255,255,255,0.2);text-align:center;cursor:pointer;color:white">
                         <span style="font-size:1.5rem;display:block;margin-bottom:4px">📤</span>
                         <span style="font-size:0.85rem;font-weight:500">Share Study</span>
@@ -6488,10 +6808,6 @@ function renderQuiz() {
                     <button onclick="printQuizStudy()" style="background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border-radius:16px;padding:16px;border:1px solid rgba(255,255,255,0.2);text-align:center;cursor:pointer;color:white">
                         <span style="font-size:1.5rem;display:block;margin-bottom:4px">🖨️</span>
                         <span style="font-size:0.85rem;font-weight:500">Print Guide</span>
-                    </button>
-                    <button onclick="printQuizStudy()" style="background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border-radius:16px;padding:16px;border:1px solid rgba(255,255,255,0.2);text-align:center;cursor:pointer;color:white">
-                        <span style="font-size:1.5rem;display:block;margin-bottom:4px">📄</span>
-                        <span style="font-size:0.85rem;font-weight:500">Save as PDF</span>
                     </button>
                 </div>
 
@@ -6617,6 +6933,9 @@ async function init() {
     // Check for regular user session
     const user = await Auth.init();
     if (user) {
+        // CRITICAL: Load user's church connections
+        await loadUserChurchData();
+        
         const activeNav = savedNav || 'dashboard';
         localStorage.removeItem('rooted_nav');
         State.set({ screen: 'app', user, activeNav });
