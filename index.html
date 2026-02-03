@@ -9114,20 +9114,32 @@ function renderChurchVideosPage() {
         </div>`;
     }
     
-    const sortedVideos = [...videos].sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0));
-    const featuredVideo = sortedVideos[0];
+    // Pick a random video for the hero
+    const randomIndex = Math.floor(Math.random() * videos.length);
+    const featuredVideo = videos[randomIndex];
     
     // Get continue watching from localStorage
     const watchHistory = getContinueWatching(userChurchId);
     const continueWatchingVideos = watchHistory
-        .map(h => videos.find(v => v.videoId === h.videoId))
+        .map(h => {
+            const video = videos.find(v => v.videoId === h.videoId);
+            if (video) {
+                // Get progress for this video
+                const progress = getVideoProgress(video.videoId, userChurchId);
+                return { ...video, progress };
+            }
+            return null;
+        })
         .filter(Boolean);
     
+    // Start hero rotation timer
+    setTimeout(() => startHeroRotation(userChurchId), 100);
+    
     return `
-    <div class="videos-page">
+    <div class="videos-page" data-church-id="${userChurchId}" data-videos='${JSON.stringify(videos.map(v => ({ videoId: v.videoId, title: v.title, playlistId: v.playlistId })))}'>
         <!-- Hero Section -->
-        <div class="videos-hero">
-            <div class="videos-hero-bg" style="background-image:url('https://img.youtube.com/vi/${featuredVideo.videoId}/maxresdefault.jpg')"></div>
+        <div class="videos-hero" id="videosHero">
+            <div class="videos-hero-bg" id="heroBackground" style="background-image:url('https://img.youtube.com/vi/${featuredVideo.videoId}/maxresdefault.jpg')"></div>
             <div class="videos-hero-gradient-side"></div>
             <div class="videos-hero-gradient-bottom"></div>
             
@@ -9137,14 +9149,14 @@ function renderChurchVideosPage() {
                     <span class="videos-hero-church-name">${cachedChurch?.name || 'Church'}</span>
                 </div>
                 
-                <h1 class="videos-hero-title">${featuredVideo.title}</h1>
+                <h1 class="videos-hero-title" id="heroTitle">${featuredVideo.title}</h1>
                 
-                <p class="videos-hero-meta">
+                <p class="videos-hero-meta" id="heroMeta">
                     ${allPlaylists.find(p => p.id === featuredVideo.playlistId)?.name || 'Video'}
                 </p>
                 
                 <div class="videos-hero-buttons">
-                    <button class="videos-play-btn" onclick="playAndTrackVideo('${featuredVideo.videoId}', '${(featuredVideo.title || '').replace(/'/g, "\\'")}', '${userChurchId}')">
+                    <button class="videos-play-btn" id="heroPlayBtn" onclick="playAndTrackVideo('${featuredVideo.videoId}', '${(featuredVideo.title || '').replace(/'/g, "\\'")}', '${userChurchId}')">
                         ▶ Play
                     </button>
                     <button class="videos-back-btn" onclick="goBack()">
@@ -9171,11 +9183,22 @@ function renderChurchVideosPage() {
             <div class="video-row" data-playlist="continue">
                 <h3 class="video-row-title">Continue Watching</h3>
                 <div class="video-row-scroll">
-                    ${continueWatchingVideos.map(v => `
-                        <div class="video-thumb" onclick="playAndTrackVideo('${v.videoId}', '${(v.title || '').replace(/'/g, "\\'")}', '${userChurchId}')">
+                    ${continueWatchingVideos.map(v => {
+                        const progressPercent = v.progress ? Math.min((v.progress.time / (v.progress.duration || 1)) * 100, 95) : 0;
+                        return `
+                        <div class="video-thumb" onclick="playAndTrackVideo('${v.videoId}', '${(v.title || '').replace(/'/g, "\\'")}', '${userChurchId}')" style="position:relative">
                             <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" alt="${v.title || ''}">
+                            ${progressPercent > 0 ? `
+                            <div style="position:absolute;bottom:0;left:0;right:0;height:4px;background:rgba(0,0,0,0.5)">
+                                <div style="height:100%;width:${progressPercent}%;background:#e50914"></div>
+                            </div>
+                            <div style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.8);padding:2px 6px;border-radius:3px;font-size:0.7rem;color:white">
+                                ${formatVideoTime(v.progress.time)} left
+                            </div>
+                            ` : ''}
                         </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
             </div>
             ` : ''}
@@ -9329,6 +9352,87 @@ function getSeasonalColors(branding) {
         secondary: branding?.secondaryColor || '#22c55e'
     };
 }
+
+// Hero video rotation
+let heroRotationInterval = null;
+let currentHeroIndex = 0;
+
+function startHeroRotation(churchId) {
+    // Clear any existing interval
+    if (heroRotationInterval) {
+        clearInterval(heroRotationInterval);
+    }
+    
+    const videosPage = document.querySelector('.videos-page');
+    if (!videosPage) return;
+    
+    try {
+        const videosData = JSON.parse(videosPage.dataset.videos || '[]');
+        if (videosData.length <= 1) return;
+        
+        const cachedChurch = churchCache[churchId];
+        const allPlaylists = (cachedChurch?.ytPlaylists || []).filter(p => p.enabled !== false && p.name);
+        
+        // Rotate every 30 seconds
+        heroRotationInterval = setInterval(() => {
+            // Only rotate if still on videos page
+            if (State.current.activeNav !== 'church-videos') {
+                clearInterval(heroRotationInterval);
+                return;
+            }
+            
+            // Pick next random video (different from current)
+            let newIndex;
+            do {
+                newIndex = Math.floor(Math.random() * videosData.length);
+            } while (newIndex === currentHeroIndex && videosData.length > 1);
+            
+            currentHeroIndex = newIndex;
+            const newVideo = videosData[newIndex];
+            
+            // Animate the transition
+            const heroBg = document.getElementById('heroBackground');
+            const heroTitle = document.getElementById('heroTitle');
+            const heroMeta = document.getElementById('heroMeta');
+            const heroPlayBtn = document.getElementById('heroPlayBtn');
+            
+            if (heroBg && heroTitle) {
+                // Fade out
+                heroBg.style.transition = 'opacity 0.5s';
+                heroBg.style.opacity = '0';
+                
+                setTimeout(() => {
+                    // Update content
+                    heroBg.style.backgroundImage = `url('https://img.youtube.com/vi/${newVideo.videoId}/maxresdefault.jpg')`;
+                    heroTitle.textContent = newVideo.title;
+                    
+                    const playlistName = allPlaylists.find(p => p.id === newVideo.playlistId)?.name || 'Video';
+                    if (heroMeta) heroMeta.textContent = playlistName;
+                    
+                    if (heroPlayBtn) {
+                        heroPlayBtn.onclick = () => playAndTrackVideo(newVideo.videoId, newVideo.title, churchId);
+                    }
+                    
+                    // Fade in
+                    heroBg.style.opacity = '1';
+                }, 500);
+            }
+        }, 30000); // 30 seconds
+        
+    } catch (e) {
+        console.error('Hero rotation error:', e);
+    }
+}
+
+// Clean up rotation when navigating away
+const originalNavigate = navigate;
+navigate = function(nav) {
+    if (nav !== 'church-videos' && heroRotationInterval) {
+        clearInterval(heroRotationInterval);
+        heroRotationInterval = null;
+    }
+    originalNavigate(nav);
+};
 
 // Play YouTube video in modal with resume support
 function playYouTubeVideo(videoId, title, churchId = null, startTime = 0) {
