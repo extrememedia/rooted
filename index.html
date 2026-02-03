@@ -609,6 +609,337 @@ input, textarea, select { font-family: inherit; }
         -webkit-line-clamp: 2;
     }
 }
+
+/* ========== MY CHURCH PAGE - MOBILE RESPONSIVE ========== */
+.my-church-page {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.my-church-header {
+    position: relative;
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    margin-bottom: var(--space-lg);
+}
+.my-church-header-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+}
+.my-church-header-gradient {
+    position: absolute;
+    inset: 0;
+}
+.my-church-header-content {
+    position: relative;
+    padding: var(--space-2xl);
+    color: white;
+}
+.my-church-header-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+}
+.my-church-logo {
+    width: 70px;
+    height: 70px;
+    border-radius: var(--radius-lg);
+    object-fit: contain;
+    background: white;
+    padding: 6px;
+    flex-shrink: 0;
+}
+.my-church-logo-placeholder {
+    width: 70px;
+    height: 70px;
+    background: rgba(255,255,255,0.2);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+.my-church-info {
+    flex: 1;
+    min-width: 0;
+}
+.my-church-name {
+    margin: 0 0 var(--space-xs);
+    font-size: 1.5rem;
+}
+.my-church-address {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 0.9rem;
+}
+.my-church-header-actions {
+    display: flex;
+    gap: var(--space-xs);
+}
+
+/* Church Switcher */
+.my-church-switcher {
+    display: flex;
+    gap: var(--space-sm);
+    overflow-x: auto;
+    padding: var(--space-xs) 0;
+    margin-bottom: var(--space-lg);
+    -webkit-overflow-scrolling: touch;
+}
+.my-church-switcher::-webkit-scrollbar {
+    display: none;
+}
+.church-switch-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Check-in Banner */
+.checkin-banner {
+    margin-bottom: var(--space-lg);
+    border: none;
+    color: white;
+}
+.checkin-banner-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+}
+.checkin-banner-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    flex: 1;
+    min-width: 0;
+}
+.checkin-banner-icon {
+    width: 50px;
+    height: 50px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+.checkin-banner-text strong {
+    display: block;
+    font-size: 1.1rem;
+}
+.checkin-banner-text span {
+    font-size: 0.85rem;
+    opacity: 0.9;
+}
+
+/* Videos Card */
+.videos-card {
+    margin-bottom: var(--space-lg);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.videos-card:hover {
+    transform: translateY(-2px);
+}
+.videos-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.videos-card-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+.videos-card-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #ef4444, #f97316);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    flex-shrink: 0;
+}
+.videos-card-thumbs {
+    display: flex;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+    overflow: hidden;
+}
+.videos-card-thumb {
+    width: 80px;
+    height: 45px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.videos-card-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Quick Links Grid */
+.quick-links-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: var(--space-sm);
+    margin-bottom: var(--space-lg);
+}
+.quick-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--space-md);
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s;
+}
+.quick-link:hover {
+    transform: scale(1.05);
+}
+.quick-link-icon {
+    font-size: 1.5rem;
+    margin-bottom: var(--space-xs);
+}
+.quick-link-label {
+    font-size: 0.8rem;
+}
+
+/* ========== MY CHURCH MOBILE ========== */
+@media (max-width: 768px) {
+    .my-church-page {
+        padding: 0;
+    }
+    .my-church-header {
+        border-radius: var(--radius-lg);
+        margin-bottom: var(--space-md);
+    }
+    .my-church-header-content {
+        padding: var(--space-lg);
+    }
+    .my-church-header-row {
+        gap: var(--space-md);
+    }
+    .my-church-logo,
+    .my-church-logo-placeholder {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+    }
+    .my-church-name {
+        font-size: 1.2rem;
+    }
+    .my-church-address {
+        font-size: 0.8rem;
+    }
+    
+    /* Check-in Banner Mobile */
+    .checkin-banner-content {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-md);
+    }
+    .checkin-banner-left {
+        gap: var(--space-sm);
+    }
+    .checkin-banner-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+    }
+    .checkin-banner-text strong {
+        font-size: 1rem;
+    }
+    .checkin-banner-text span {
+        font-size: 0.8rem;
+    }
+    .checkin-banner .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    /* Videos Card Mobile */
+    .videos-card-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+    }
+    .videos-card h3 {
+        font-size: 1rem;
+    }
+    .videos-card-thumbs {
+        gap: var(--space-xs);
+    }
+    .videos-card-thumb {
+        width: 60px;
+        height: 34px;
+    }
+    
+    /* Quick Links Mobile */
+    .quick-links-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--space-xs);
+    }
+    .quick-link {
+        padding: var(--space-sm);
+    }
+    .quick-link-icon {
+        font-size: 1.3rem;
+    }
+    .quick-link-label {
+        font-size: 0.7rem;
+    }
+    
+    /* Cards on mobile */
+    .my-church-page .card {
+        border-radius: var(--radius-md);
+        margin-bottom: var(--space-md);
+    }
+}
+
+@media (max-width: 480px) {
+    .my-church-header-content {
+        padding: var(--space-md);
+    }
+    .my-church-header-row {
+        flex-wrap: wrap;
+    }
+    .my-church-logo,
+    .my-church-logo-placeholder {
+        width: 45px;
+        height: 45px;
+    }
+    .my-church-info {
+        flex: 1 1 calc(100% - 120px);
+    }
+    .my-church-name {
+        font-size: 1.1rem;
+    }
+    .my-church-header-actions {
+        position: absolute;
+        top: var(--space-md);
+        right: var(--space-md);
+    }
+    
+    .quick-links-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
     </style>
 </head>
 <body data-theme="dark">
@@ -7562,27 +7893,27 @@ function renderMyChurchContent(church, userChurches, activeChurchId) {
     const colors = getSeasonalColors(branding);
     
     return `
-    <div class="fade-up" style="max-width:800px;margin:0 auto">
+    <div class="fade-up my-church-page">
         <!-- Church Header with Branding -->
-        <div style="position:relative;border-radius:var(--radius-xl);overflow:hidden;margin-bottom:var(--space-lg)">
+        <div class="my-church-header">
             ${branding.headerImage ? `
-                <div style="position:absolute;inset:0;background:url('${branding.headerImage}') center/cover"></div>
-                <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(0,0,0,0.8),rgba(0,0,0,0.3))"></div>
+                <div class="my-church-header-bg" style="background-image:url('${branding.headerImage}')"></div>
+                <div class="my-church-header-gradient" style="background:linear-gradient(to right,rgba(0,0,0,0.8),rgba(0,0,0,0.3))"></div>
             ` : `
-                <div style="position:absolute;inset:0;background:linear-gradient(135deg,${colors.primary},${colors.secondary})"></div>
+                <div class="my-church-header-gradient" style="background:linear-gradient(135deg,${colors.primary},${colors.secondary})"></div>
             `}
-            <div style="position:relative;padding:var(--space-2xl);color:white">
-                <div style="display:flex;align-items:center;gap:var(--space-lg)">
+            <div class="my-church-header-content">
+                <div class="my-church-header-row">
                     ${branding.logo ? `
-                        <img src="${branding.logo}" alt="" style="width:70px;height:70px;border-radius:var(--radius-lg);object-fit:contain;background:white;padding:6px;flex-shrink:0">
+                        <img src="${branding.logo}" alt="" class="my-church-logo">
                     ` : `
-                        <div style="width:70px;height:70px;background:rgba(255,255,255,0.2);border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;font-size:2rem;flex-shrink:0">⛪</div>
+                        <div class="my-church-logo-placeholder">⛪</div>
                     `}
-                    <div style="flex:1">
-                        <h2 style="margin:0 0 var(--space-xs);font-size:1.5rem">${church?.name || 'Church'}</h2>
-                        <p style="margin:0;opacity:0.9;font-size:0.9rem">${church?.address || ''}</p>
+                    <div class="my-church-info">
+                        <h2 class="my-church-name">${church?.name || 'Church'}</h2>
+                        <p class="my-church-address">${church?.address || ''}</p>
                     </div>
-                    <div style="display:flex;gap:var(--space-xs)">
+                    <div class="my-church-header-actions">
                         <button class="btn btn-ghost" onclick="refreshMyChurch()" style="color:white;opacity:0.8">🔄</button>
                         <button class="btn btn-ghost" onclick="showManageChurchModal('${activeChurchId}')" style="color:white;opacity:0.8">⚙️</button>
                     </div>
@@ -7592,30 +7923,30 @@ function renderMyChurchContent(church, userChurches, activeChurchId) {
         
         <!-- Church Switcher -->
         ${userChurches.length > 1 || userChurches.length < 5 ? `
-        <div style="display:flex;gap:var(--space-sm);overflow-x:auto;padding:var(--space-xs) 0;margin-bottom:var(--space-lg)">
+        <div class="my-church-switcher">
             ${userChurches.map(cId => {
                 const c = getChurchData(cId);
                 const isActive = cId === activeChurchId;
                 return `
-                <div style="display:flex;align-items:center;gap:var(--space-sm);padding:var(--space-sm) var(--space-md);background:${isActive ? `linear-gradient(135deg,${colors.primary},${colors.secondary})` : 'var(--hover-bg)'};border-radius:var(--radius-md);cursor:pointer;white-space:nowrap;${isActive ? 'color:white' : ''}" onclick="switchChurch('${cId}')">
+                <div class="church-switch-btn" style="background:${isActive ? `linear-gradient(135deg,${colors.primary},${colors.secondary})` : 'var(--hover-bg)'};${isActive ? 'color:white' : ''}" onclick="switchChurch('${cId}')">
                     <span>⛪</span>
                     <span style="font-weight:${isActive ? '600' : '400'}">${c?.name || 'Unknown'}</span>
                     ${isActive ? '<span>✓</span>' : ''}
                 </div>`;
             }).join('')}
-            ${userChurches.length < 5 ? `<button class="btn btn-ghost" onclick="showChurchSearch()" style="white-space:nowrap">+ Add</button>` : ''}
+            ${userChurches.length < 5 ? `<button class="btn btn-ghost" onclick="showChurchSearch()" style="white-space:nowrap;flex-shrink:0">+ Add</button>` : ''}
         </div>
         ` : ''}
         
         <!-- Check-in Status Banner -->
         ${isNearby ? `
-        <div class="card" style="margin-bottom:var(--space-lg);background:linear-gradient(135deg,${isCheckedIn ? '#22c55e' : '#f59e0b'},${isCheckedIn ? '#16a34a' : '#ea580c'});color:white;border:none">
-            <div style="display:flex;align-items:center;justify-content:space-between">
-                <div style="display:flex;align-items:center;gap:var(--space-md)">
-                    <div style="width:50px;height:50px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem">${isCheckedIn ? '✓' : '📍'}</div>
-                    <div>
-                        <strong style="display:block;font-size:1.1rem">${isCheckedIn ? 'You\'re Checked In!' : 'You\'re at ' + (church?.name || 'church')}</strong>
-                        <span style="font-size:0.85rem;opacity:0.9">${isCheckedIn ? 'Welcome! Access your on-site resources below.' : 'Tap to check in and access exclusive content'}</span>
+        <div class="card checkin-banner" style="background:linear-gradient(135deg,${isCheckedIn ? '#22c55e' : '#f59e0b'},${isCheckedIn ? '#16a34a' : '#ea580c'})">
+            <div class="checkin-banner-content">
+                <div class="checkin-banner-left">
+                    <div class="checkin-banner-icon">${isCheckedIn ? '✓' : '📍'}</div>
+                    <div class="checkin-banner-text">
+                        <strong>${isCheckedIn ? 'You\'re Checked In!' : 'You\'re at ' + (church?.name || 'church')}</strong>
+                        <span>${isCheckedIn ? 'Welcome! Access your on-site resources below.' : 'Tap to check in and access exclusive content'}</span>
                     </div>
                 </div>
                 ${!isCheckedIn ? `<button class="btn" onclick="checkInToChurch('${activeChurchId}')" style="background:white;color:#f59e0b;font-weight:600">✓ Check In</button>` : ''}
@@ -7636,7 +7967,7 @@ function renderMyChurchContent(church, userChurches, activeChurchId) {
         <!-- On-Site Resources (only visible when checked in) -->
         ${isCheckedIn && church?.checkInResources?.length ? `
         <div class="card" style="margin-bottom:var(--space-lg);border:2px solid #22c55e">
-            <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-md)">
+            <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-md);flex-wrap:wrap">
                 <span style="background:#22c55e;color:white;padding:4px 10px;border-radius:20px;font-size:0.8rem">📍 On-Site Only</span>
                 <h3 style="margin:0">Resources Available Now</h3>
             </div>
@@ -7655,10 +7986,10 @@ function renderMyChurchContent(church, userChurches, activeChurchId) {
         
         <!-- Videos Card - Link to Videos Page -->
         ${videos.length ? `
-        <div class="card" style="margin-bottom:var(--space-lg);cursor:pointer;transition:transform 0.2s" onclick="navigate('church-videos')" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-            <div style="display:flex;align-items:center;justify-content:space-between">
-                <div style="display:flex;align-items:center;gap:var(--space-md)">
-                    <div style="width:60px;height:60px;background:linear-gradient(135deg,#ef4444,#f97316);border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;font-size:1.8rem">🎬</div>
+        <div class="card videos-card" onclick="navigate('church-videos')">
+            <div class="videos-card-header">
+                <div class="videos-card-left">
+                    <div class="videos-card-icon">🎬</div>
                     <div>
                         <h3 style="margin:0">Videos</h3>
                         <p style="color:var(--text-secondary);margin:var(--space-xs) 0 0;font-size:0.9rem">${videos.length} videos available</p>
@@ -7667,13 +7998,13 @@ function renderMyChurchContent(church, userChurches, activeChurchId) {
                 <span style="font-size:1.5rem;color:var(--text-tertiary)">→</span>
             </div>
             <!-- Preview thumbnails -->
-            <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-md);overflow:hidden">
+            <div class="videos-card-thumbs">
                 ${videos.slice(0, 4).map(v => `
-                    <div style="width:80px;height:45px;border-radius:var(--radius-sm);overflow:hidden;flex-shrink:0">
-                        <img src="https://img.youtube.com/vi/${v.videoId}/default.jpg" alt="" style="width:100%;height:100%;object-fit:cover">
+                    <div class="videos-card-thumb">
+                        <img src="https://img.youtube.com/vi/${v.videoId}/default.jpg" alt="">
                     </div>
                 `).join('')}
-                ${videos.length > 4 ? `<div style="width:80px;height:45px;border-radius:var(--radius-sm);background:var(--hover-bg);display:flex;align-items:center;justify-content:center;font-size:0.8rem;color:var(--text-secondary)">+${videos.length - 4} more</div>` : ''}
+                ${videos.length > 4 ? `<div class="videos-card-thumb" style="background:var(--hover-bg);display:flex;align-items:center;justify-content:center;font-size:0.75rem;color:var(--text-secondary)">+${videos.length - 4}</div>` : ''}
             </div>
         </div>
         ` : ''}
@@ -7682,7 +8013,7 @@ function renderMyChurchContent(church, userChurches, activeChurchId) {
         ${church?.posts?.length ? `
         <div class="card" style="margin-bottom:var(--space-lg)">
             <h3 style="margin-bottom:var(--space-lg)">📋 Church Feed</h3>
-            <div style="display:grid;gap:var(--space-lg)">
+            <div style="display:grid;gap:var(--space-md)">
                 ${church.posts.slice(0, 10).map(p => `
                     <div style="background:var(--hover-bg);border-radius:var(--radius-lg);overflow:hidden">
                         ${p.imageUrl ? `<img src="${p.imageUrl}" alt="" style="width:100%;max-height:250px;object-fit:cover">` : ''}
@@ -7690,12 +8021,12 @@ function renderMyChurchContent(church, userChurches, activeChurchId) {
                             <div style="position:relative;cursor:pointer" onclick="playYouTubeVideo('${p.videoId}', '${(p.title || 'Video').replace(/'/g, "\\'")}')">
                                 <img src="https://img.youtube.com/vi/${p.videoId}/mqdefault.jpg" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover">
                                 <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3)">
-                                    <div style="width:60px;height:60px;background:rgba(255,255,255,0.95);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem">▶️</div>
+                                    <div style="width:50px;height:50px;background:rgba(255,255,255,0.95);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem">▶️</div>
                                 </div>
                             </div>
                         ` : ''}
                         <div style="padding:var(--space-md)">
-                            <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-sm)">
+                            <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-sm);flex-wrap:wrap">
                                 <span style="font-size:0.7rem;padding:2px 8px;background:${p.type === 'announcement' ? colors.primary : '#666'};color:white;border-radius:10px">
                                     ${p.type === 'announcement' ? '📢 Announcement' : p.type === 'video' ? '🎬 Video' : p.type === 'image' ? '🖼️ Photo' : '📝 Post'}
                                 </span>
@@ -7715,7 +8046,7 @@ function renderMyChurchContent(church, userChurches, activeChurchId) {
             <h3 style="margin-bottom:var(--space-md)">📢 Announcements</h3>
             ${church.announcements.map(a => `
                 <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);border-left:4px solid ${colors.primary}">
-                    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:var(--space-xs)">
+                    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:var(--space-xs);flex-wrap:wrap;gap:var(--space-xs)">
                         <strong>${a.title}</strong>
                         <span style="font-size:0.8rem;color:var(--text-tertiary)">${a.date}</span>
                     </div>
@@ -7730,8 +8061,8 @@ function renderMyChurchContent(church, userChurches, activeChurchId) {
         <div class="card" style="margin-bottom:var(--space-lg)">
             <h3 style="margin-bottom:var(--space-md)">📄 Resources</h3>
             ${church.resources.map(r => `
-                <a href="${r.url}" target="_blank" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);text-decoration:none;color:inherit;transition:background 0.2s" onmouseover="this.style.background='var(--card-bg)'" onmouseout="this.style.background='var(--hover-bg)'">
-                    <div style="width:45px;height:45px;background:linear-gradient(135deg,#ef4444,#f97316);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">📄</div>
+                <a href="${r.url}" target="_blank" style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm);text-decoration:none;color:inherit">
+                    <div style="width:40px;height:40px;background:linear-gradient(135deg,#ef4444,#f97316);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📄</div>
                     <div style="flex:1;min-width:0">
                         <strong style="display:block">${r.title}</strong>
                         <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">${r.type?.toUpperCase() || 'FILE'} • ${r.date}</p>
@@ -7743,24 +8074,24 @@ function renderMyChurchContent(church, userChurches, activeChurchId) {
         ` : ''}
         
         <!-- Quick Links -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:var(--space-sm);margin-bottom:var(--space-lg)">
-            ${social.facebook ? `<a href="${social.facebook}" target="_blank" style="display:flex;flex-direction:column;align-items:center;padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-lg);text-decoration:none;color:inherit;transition:transform 0.2s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"><span style="font-size:1.5rem;margin-bottom:var(--space-xs)">📘</span><span style="font-size:0.8rem">Facebook</span></a>` : ''}
-            ${social.instagram ? `<a href="${social.instagram}" target="_blank" style="display:flex;flex-direction:column;align-items:center;padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-lg);text-decoration:none;color:inherit;transition:transform 0.2s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"><span style="font-size:1.5rem;margin-bottom:var(--space-xs)">📸</span><span style="font-size:0.8rem">Instagram</span></a>` : ''}
-            ${social.youtube ? `<a href="${social.youtube}" target="_blank" style="display:flex;flex-direction:column;align-items:center;padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-lg);text-decoration:none;color:inherit;transition:transform 0.2s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"><span style="font-size:1.5rem;margin-bottom:var(--space-xs)">🎥</span><span style="font-size:0.8rem">YouTube</span></a>` : ''}
-            ${church?.website ? `<a href="${church.website}" target="_blank" style="display:flex;flex-direction:column;align-items:center;padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-lg);text-decoration:none;color:inherit;transition:transform 0.2s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"><span style="font-size:1.5rem;margin-bottom:var(--space-xs)">🌐</span><span style="font-size:0.8rem">Website</span></a>` : ''}
+        <div class="quick-links-grid">
+            ${social.facebook ? `<a href="${social.facebook}" target="_blank" class="quick-link"><span class="quick-link-icon">📘</span><span class="quick-link-label">Facebook</span></a>` : ''}
+            ${social.instagram ? `<a href="${social.instagram}" target="_blank" class="quick-link"><span class="quick-link-icon">📸</span><span class="quick-link-label">Instagram</span></a>` : ''}
+            ${social.youtube ? `<a href="${social.youtube}" target="_blank" class="quick-link"><span class="quick-link-icon">🎥</span><span class="quick-link-label">YouTube</span></a>` : ''}
+            ${church?.website ? `<a href="${church.website}" target="_blank" class="quick-link"><span class="quick-link-icon">🌐</span><span class="quick-link-label">Website</span></a>` : ''}
         </div>
         
         <!-- Contact Info -->
         <div class="card" style="margin-bottom:var(--space-lg)">
             <h3 style="margin-bottom:var(--space-md)">📍 Contact</h3>
-            ${church?.address ? `<p style="color:var(--text-secondary);margin:0 0 var(--space-xs)">📍 ${church.address}</p>` : ''}
-            ${church?.phone ? `<p style="color:var(--text-secondary);margin:0 0 var(--space-xs)">📞 ${church.phone}</p>` : ''}
-            ${church?.website ? `<p style="color:var(--text-secondary);margin:0"><a href="${church.website}" target="_blank" style="color:${colors.primary}">🌐 ${church.website}</a></p>` : ''}
+            ${church?.address ? `<p style="color:var(--text-secondary);margin:0 0 var(--space-xs);font-size:0.9rem">📍 ${church.address}</p>` : ''}
+            ${church?.phone ? `<p style="color:var(--text-secondary);margin:0 0 var(--space-xs);font-size:0.9rem">📞 ${church.phone}</p>` : ''}
+            ${church?.website ? `<p style="color:var(--text-secondary);margin:0;font-size:0.9rem"><a href="${church.website}" target="_blank" style="color:${colors.primary}">🌐 ${church.website}</a></p>` : ''}
         </div>
         
         <!-- Footer with branding -->
         ${branding.footerImage ? `
-        <div style="border-radius:var(--radius-lg);overflow:hidden;height:100px;background:url('${branding.footerImage}') center/cover"></div>
+        <div style="border-radius:var(--radius-lg);overflow:hidden;height:80px;background:url('${branding.footerImage}') center/cover"></div>
         ` : ''}
     </div>`;
 }
