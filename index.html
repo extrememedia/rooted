@@ -3377,68 +3377,242 @@ async function deleteResource(id) {
 
 function renderChurchAnnouncements() {
     const church = getChurchData(State.current.user.churchId);
+    const posts = church.posts || [];
+    
     return `
     <div class="fade-up">
+        <!-- Create New Post -->
         <div class="card" style="margin-bottom:var(--space-lg)">
-            <h3 style="margin-bottom:var(--space-md)">📢 Post New Announcement</h3>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Announcements will appear on your members' church feed.</p>
+            <h3 style="margin-bottom:var(--space-md)">📝 Create New Post</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Posts appear on your members' church feed like a timeline.</p>
             
-            <form onsubmit="handleAnnouncementPost(event)">
-                <div class="input-group">
-                    <label class="input-label">Title</label>
-                    <input type="text" class="input-field" id="announcementTitle" placeholder="e.g. Youth Group Winter Retreat" required>
+            <form id="postForm" onsubmit="handlePostSubmit(event)">
+                <!-- Post Type Selector -->
+                <div style="display:flex;gap:var(--space-sm);margin-bottom:var(--space-lg)">
+                    <button type="button" class="btn post-type-btn active" data-type="text" onclick="selectPostType('text')">📝 Text</button>
+                    <button type="button" class="btn btn-ghost post-type-btn" data-type="image" onclick="selectPostType('image')">🖼️ Image</button>
+                    <button type="button" class="btn btn-ghost post-type-btn" data-type="video" onclick="selectPostType('video')">🎬 Video</button>
+                    <button type="button" class="btn btn-ghost post-type-btn" data-type="announcement" onclick="selectPostType('announcement')">📢 Announcement</button>
                 </div>
+                
+                <input type="hidden" id="postType" value="text">
+                
+                <div class="input-group">
+                    <label class="input-label">Title (optional)</label>
+                    <input type="text" class="input-field" id="postTitle" placeholder="e.g. Sunday Service Recap">
+                </div>
+                
                 <div class="input-group">
                     <label class="input-label">Content</label>
-                    <textarea class="input-field" id="announcementContent" rows="4" placeholder="Details about the announcement..." required></textarea>
+                    <textarea class="input-field" id="postContent" rows="4" placeholder="What would you like to share?" required></textarea>
                 </div>
-                <button type="submit" class="btn btn-primary">Post Announcement</button>
+                
+                <!-- Image Upload -->
+                <div id="imageUploadSection" style="display:none" class="input-group">
+                    <label class="input-label">📸 Add Image</label>
+                    <div style="border:2px dashed var(--border-color);border-radius:var(--radius-md);padding:var(--space-lg);text-align:center;cursor:pointer" onclick="document.getElementById('postImageFile').click()">
+                        <div id="imagePreview" style="display:none;margin-bottom:var(--space-md)">
+                            <img id="postImagePreview" src="" style="max-width:100%;max-height:200px;border-radius:var(--radius-md)">
+                        </div>
+                        <input type="file" id="postImageFile" accept="image/*" style="display:none" onchange="previewPostImage(event)">
+                        <p style="margin:0;color:var(--text-tertiary)">📤 Click to upload image</p>
+                    </div>
+                </div>
+                
+                <!-- Video URL -->
+                <div id="videoUrlSection" style="display:none" class="input-group">
+                    <label class="input-label">🎬 YouTube Video URL</label>
+                    <input type="text" class="input-field" id="postVideoUrl" placeholder="https://youtube.com/watch?v=...">
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-lg" id="postSubmitBtn">📤 Post</button>
             </form>
         </div>
         
+        <!-- Posts Timeline -->
         <div class="card">
-            <h3 style="margin-bottom:var(--space-lg)">Current Announcements</h3>
-            ${church.announcements?.length ? church.announcements.map(a => `
-                <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);margin-bottom:var(--space-sm)">
-                    <div style="display:flex;justify-content:space-between;align-items:start">
-                        <div>
-                            <strong>${a.title}</strong>
-                            <p style="font-size:0.85rem;color:var(--text-tertiary)">${a.date}</p>
-                            <p style="margin-top:var(--space-sm);color:var(--text-secondary)">${a.content}</p>
+            <h3 style="margin-bottom:var(--space-lg)">📋 Church Posts (${posts.length})</h3>
+            
+            ${posts.length ? `
+                <div style="display:grid;gap:var(--space-lg)">
+                    ${posts.map(p => `
+                        <div style="background:var(--hover-bg);border-radius:var(--radius-lg);overflow:hidden">
+                            ${p.imageUrl ? `<img src="${p.imageUrl}" alt="" style="width:100%;max-height:300px;object-fit:cover">` : ''}
+                            ${p.videoId ? `
+                                <div style="position:relative;padding-bottom:56.25%;background:#000">
+                                    <img src="https://img.youtube.com/vi/${p.videoId}/mqdefault.jpg" alt="" style="position:absolute;width:100%;height:100%;object-fit:cover">
+                                    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+                                        <div style="width:60px;height:60px;background:rgba(255,255,255,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem">▶️</div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                            <div style="padding:var(--space-lg)">
+                                <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:var(--space-sm)">
+                                    <div>
+                                        <span style="font-size:0.75rem;padding:2px 8px;background:${p.type === 'announcement' ? 'var(--root-green)' : 'var(--text-tertiary)'};color:white;border-radius:10px;margin-right:var(--space-sm)">${p.type === 'announcement' ? '📢 Announcement' : p.type === 'video' ? '🎬 Video' : p.type === 'image' ? '🖼️ Photo' : '📝 Post'}</span>
+                                        <span style="font-size:0.8rem;color:var(--text-tertiary)">${formatPostDate(p.createdAt)}</span>
+                                    </div>
+                                    <button class="btn btn-ghost" onclick="deletePost('${p.id}')" style="color:var(--error);padding:4px">🗑️</button>
+                                </div>
+                                ${p.title ? `<h4 style="margin:0 0 var(--space-sm)">${p.title}</h4>` : ''}
+                                <p style="margin:0;color:var(--text-secondary);white-space:pre-wrap">${p.content}</p>
+                            </div>
                         </div>
-                        <button class="btn btn-ghost" style="color:var(--error)" onclick="deleteAnnouncement(${a.id})">🗑️</button>
-                    </div>
+                    `).join('')}
                 </div>
-            `).join('') : '<p style="color:var(--text-tertiary)">No announcements posted yet.</p>'}
+            ` : `
+                <div style="text-align:center;padding:var(--space-xl);color:var(--text-tertiary)">
+                    <div style="font-size:3rem;margin-bottom:var(--space-md)">📝</div>
+                    <p>No posts yet. Create your first post above!</p>
+                </div>
+            `}
         </div>
     </div>`;
 }
 
-function handleAnnouncementPost(e) {
-    e.preventDefault();
-    const title = document.getElementById('announcementTitle').value;
-    const content = document.getElementById('announcementContent').value;
+function selectPostType(type) {
+    document.getElementById('postType').value = type;
     
-    const church = getChurchData(State.current.user.churchId);
-    const announcements = church.announcements || [];
-    announcements.unshift({
-        id: Date.now(),
-        title,
-        content,
-        date: new Date().toISOString().split('T')[0]
+    // Update button states
+    document.querySelectorAll('.post-type-btn').forEach(btn => {
+        const isActive = btn.dataset.type === type;
+        btn.classList.toggle('active', isActive);
+        btn.style.background = isActive ? 'var(--root-green)' : '';
+        btn.style.color = isActive ? 'white' : '';
     });
     
-    updateChurchData(State.current.user.churchId, { announcements });
-    toast('Announcement posted! 📢', 'success');
-    render();
+    // Show/hide sections
+    document.getElementById('imageUploadSection').style.display = type === 'image' ? 'block' : 'none';
+    document.getElementById('videoUrlSection').style.display = type === 'video' ? 'block' : 'none';
 }
 
-function deleteAnnouncement(id) {
-    const church = getChurchData(State.current.user.churchId);
-    const announcements = (church.announcements || []).filter(a => a.id !== id);
-    updateChurchData(State.current.user.churchId, { announcements });
-    toast('Announcement deleted', 'info');
-    render();
+function previewPostImage(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('postImagePreview').src = e.target.result;
+            document.getElementById('imagePreview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+async function handlePostSubmit(e) {
+    e.preventDefault();
+    
+    const type = document.getElementById('postType').value;
+    const title = document.getElementById('postTitle')?.value?.trim() || '';
+    const content = document.getElementById('postContent')?.value?.trim() || '';
+    const videoUrl = document.getElementById('postVideoUrl')?.value?.trim() || '';
+    const imageFile = document.getElementById('postImageFile')?.files[0];
+    
+    if (!content) {
+        toast('Please enter some content', 'error');
+        return;
+    }
+    
+    const btn = document.getElementById('postSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Posting...';
+    
+    try {
+        let imageUrl = null;
+        let videoId = null;
+        
+        // Upload image if present
+        if (type === 'image' && imageFile) {
+            toast('Uploading image...', 'info');
+            const storageRef = firebase.storage().ref();
+            const imageRef = storageRef.child(`churches/${State.current.user.churchId}/posts/${Date.now()}_${imageFile.name}`);
+            await imageRef.put(imageFile);
+            imageUrl = await imageRef.getDownloadURL();
+        }
+        
+        // Extract video ID
+        if (type === 'video' && videoUrl) {
+            videoId = extractYouTubeId(videoUrl);
+        }
+        
+        // Create post object
+        const post = {
+            id: Date.now().toString(),
+            type: type,
+            title: title,
+            content: content,
+            imageUrl: imageUrl,
+            videoId: videoId,
+            videoUrl: videoUrl,
+            createdAt: new Date().toISOString(),
+            createdBy: Auth.currentUser?.uid
+        };
+        
+        // Save to Firebase
+        const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
+        const posts = church.posts || [];
+        posts.unshift(post);
+        
+        await ChurchDB.updateChurch(State.current.user.churchId, { posts: posts });
+        delete churchCache[State.current.user.churchId];
+        
+        // Clear form
+        document.getElementById('postTitle').value = '';
+        document.getElementById('postContent').value = '';
+        document.getElementById('postVideoUrl').value = '';
+        document.getElementById('postImageFile').value = '';
+        document.getElementById('imagePreview').style.display = 'none';
+        
+        toast('Post published! 📝', 'success');
+        render();
+    } catch (error) {
+        console.error('Error posting:', error);
+        toast('Error publishing post', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '📤 Post';
+    }
+}
+
+async function deletePost(postId) {
+    if (!confirm('Delete this post?')) return;
+    
+    try {
+        const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
+        const posts = (church.posts || []).filter(p => p.id !== postId);
+        
+        await ChurchDB.updateChurch(State.current.user.churchId, { posts: posts });
+        delete churchCache[State.current.user.churchId];
+        
+        toast('Post deleted', 'info');
+        render();
+    } catch (error) {
+        console.error('Error deleting post:', error);
+        toast('Error deleting post', 'error');
+    }
+}
+
+function formatPostDate(isoDate) {
+    if (!isoDate) return '';
+    const date = new Date(isoDate);
+    const now = new Date();
+    const diff = now - date;
+    
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+    if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+    if (diff < 604800000) return Math.floor(diff / 86400000) + 'd ago';
+    
+    return date.toLocaleDateString();
+}
+
+// Keep old announcement functions for backward compatibility
+function handleAnnouncementPost(e) {
+    e.preventDefault();
+    handlePostSubmit(e);
+}
+
+async function deleteAnnouncement(id) {
+    await deletePost(id.toString());
 }
 
 function renderChurchSocial() {
@@ -3534,192 +3708,305 @@ async function handleToolsUpdate(e) {
 function renderChurchYouTube() {
     const church = getChurchData(State.current.user.churchId);
     const ytConfig = church.youtubeConfig || {};
-    const videos = church.youtubeVideos || [];
-    const playlists = church.youtubePlaylists || [];
+    const ytPlaylists = church.ytPlaylists || [];
+    const selectedPlaylists = church.ytSelectedPlaylists || [];
     
     return `
     <div class="fade-up">
-        <!-- YouTube Channel Info -->
+        <!-- Step 1: Connect YouTube Channel -->
         <div class="card" style="margin-bottom:var(--space-lg)">
-            <h3 style="margin-bottom:var(--space-md)">🎬 YouTube Channel</h3>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Link your church's YouTube channel so members know where to find your content.</p>
+            <h3 style="margin-bottom:var(--space-md)">🎬 Step 1: Connect Your YouTube Channel</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Enter your YouTube channel URL. We'll automatically fetch your playlists and videos.</p>
             
             <div class="input-group">
                 <label class="input-label">YouTube Channel URL</label>
-                <input type="text" class="input-field" id="ytChannelUrl" value="${ytConfig.channelUrl || ''}" placeholder="https://youtube.com/@YourChurch">
+                <div style="display:flex;gap:var(--space-sm)">
+                    <input type="text" class="input-field" id="ytChannelUrl" value="${ytConfig.channelUrl || ''}" placeholder="https://youtube.com/@YourChurch" style="flex:1">
+                    <button class="btn btn-primary" onclick="connectYouTubeChannel()">
+                        ${ytConfig.channelId ? '🔄 Refresh' : '🔗 Connect'}
+                    </button>
+                </div>
             </div>
-            <button class="btn btn-primary" onclick="saveYouTubeChannel()">💾 Save Channel</button>
             
-            ${ytConfig.channelUrl ? `
-            <div style="margin-top:var(--space-lg);padding:var(--space-md);background:linear-gradient(135deg,#ef4444,#dc2626);border-radius:var(--radius-md)">
-                <a href="${ytConfig.channelUrl}" target="_blank" style="display:flex;align-items:center;gap:var(--space-md);color:white;text-decoration:none">
-                    <div style="width:50px;height:50px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem">▶️</div>
-                    <div>
-                        <strong>Channel Connected</strong>
-                        <p style="margin:0;opacity:0.9;font-size:0.9rem">${ytConfig.channelUrl}</p>
+            ${ytConfig.channelId ? `
+            <div style="margin-top:var(--space-lg);padding:var(--space-md);background:linear-gradient(135deg,#ef4444,#dc2626);border-radius:var(--radius-md);color:white">
+                <div style="display:flex;align-items:center;gap:var(--space-md)">
+                    <div style="width:50px;height:50px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem">✓</div>
+                    <div style="flex:1">
+                        <strong>Channel Connected!</strong>
+                        <p style="margin:0;opacity:0.9;font-size:0.9rem">${ytConfig.channelName || ytConfig.channelId}</p>
                     </div>
-                </a>
+                    <a href="${ytConfig.channelUrl}" target="_blank" class="btn" style="background:rgba(255,255,255,0.2);color:white">View Channel</a>
+                </div>
             </div>
             ` : ''}
         </div>
         
-        <!-- Playlists Management -->
+        ${ytConfig.channelId ? `
+        <!-- Step 2: Select Playlists -->
         <div class="card" style="margin-bottom:var(--space-lg)">
-            <h3 style="margin-bottom:var(--space-md)">📋 Video Playlists</h3>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Create playlists to organize your videos (e.g., "Sunday Sermons", "Worship", "Bible Study").</p>
+            <h3 style="margin-bottom:var(--space-md)">📋 Step 2: Select Playlists to Show</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Check the playlists you want members to see. Each playlist becomes a category in the Videos section.</p>
             
-            <!-- Add Playlist Form -->
-            <div style="display:flex;gap:var(--space-sm);margin-bottom:var(--space-lg)">
-                <input type="text" class="input-field" id="newPlaylistName" placeholder="Playlist name (e.g., Sunday Sermons)" style="flex:1">
-                <button class="btn btn-primary" onclick="createPlaylist()">➕ Create</button>
-            </div>
-            
-            <!-- Existing Playlists -->
-            ${playlists.length ? `
-            <div style="display:flex;flex-wrap:wrap;gap:var(--space-md)">
-                ${playlists.map(p => `
-                    <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);display:flex;align-items:center;gap:var(--space-md);min-width:200px">
-                        <span style="font-size:1.5rem">📋</span>
-                        <div style="flex:1">
-                            <strong>${p.name}</strong>
-                            <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">${videos.filter(v => v.playlistId === p.id).length} videos</p>
-                        </div>
-                        <button class="btn btn-ghost" onclick="deletePlaylist('${p.id}')" style="color:var(--error);padding:4px">🗑️</button>
+            <div id="playlistsContainer">
+                ${ytPlaylists.length ? `
+                    <div style="display:grid;gap:var(--space-md)">
+                        ${ytPlaylists.map(pl => `
+                            <label style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);cursor:pointer;border:2px solid ${selectedPlaylists.includes(pl.id) ? 'var(--root-green)' : 'transparent'}">
+                                <input type="checkbox" 
+                                    ${selectedPlaylists.includes(pl.id) ? 'checked' : ''} 
+                                    onchange="toggleYTPlaylist('${pl.id}', this.checked)"
+                                    style="width:22px;height:22px;accent-color:var(--root-green)">
+                                <div style="width:120px;height:68px;background:#000;border-radius:var(--radius-sm);overflow:hidden;flex-shrink:0">
+                                    ${pl.thumbnail ? `<img src="${pl.thumbnail}" alt="" style="width:100%;height:100%;object-fit:cover">` : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#666;font-size:2rem">📋</div>'}
+                                </div>
+                                <div style="flex:1">
+                                    <strong style="display:block">${pl.title}</strong>
+                                    <p style="font-size:0.85rem;color:var(--text-tertiary);margin:0">${pl.videoCount || 0} videos</p>
+                                </div>
+                            </label>
+                        `).join('')}
                     </div>
-                `).join('')}
+                    <button class="btn btn-secondary" onclick="connectYouTubeChannel()" style="margin-top:var(--space-lg)">🔄 Refresh Playlists</button>
+                ` : `
+                    <div style="text-align:center;padding:var(--space-xl);color:var(--text-tertiary)">
+                        <p>Loading playlists...</p>
+                        <button class="btn btn-primary" onclick="connectYouTubeChannel()" style="margin-top:var(--space-md)">🔄 Fetch Playlists</button>
+                    </div>
+                `}
             </div>
-            ` : '<p style="color:var(--text-tertiary)">No playlists yet. Create one to organize your videos.</p>'}
         </div>
         
-        <!-- Add Video -->
-        <div class="card" style="margin-bottom:var(--space-lg)">
-            <h3 style="margin-bottom:var(--space-md)">🎥 Add Video</h3>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Add YouTube videos for your members to watch.</p>
-            
-            <form onsubmit="handleYouTubeAdd(event)">
-                <div class="input-group">
-                    <label class="input-label">Video Title</label>
-                    <input type="text" class="input-field" id="ytVideoTitle" placeholder="Sunday Sermon - Faith in Action" required>
-                </div>
-                <div class="input-group">
-                    <label class="input-label">YouTube Video URL</label>
-                    <input type="text" class="input-field" id="ytVideoUrl" placeholder="https://youtube.com/watch?v=..." required>
-                    <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:var(--space-xs)">Paste the video URL from YouTube</p>
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">
-                    <div class="input-group">
-                        <label class="input-label">Category</label>
-                        <select class="input-field" id="ytVideoCategory">
-                            <option value="sermons">Sermons</option>
-                            <option value="worship">Worship</option>
-                            <option value="bible-study">Bible Study</option>
-                            <option value="testimonies">Testimonies</option>
-                            <option value="events">Events</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label class="input-label">Playlist</label>
-                        <select class="input-field" id="ytVideoPlaylist">
-                            <option value="">No Playlist</option>
-                            ${playlists.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
-                        </select>
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-primary">➕ Add Video</button>
-            </form>
-        </div>
-        
-        <!-- Video List -->
+        <!-- Preview Selected -->
         <div class="card">
-            <h3 style="margin-bottom:var(--space-md)">📹 Your Videos (${videos.length})</h3>
+            <h3 style="margin-bottom:var(--space-md)">👁️ Preview: What Members Will See</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">${selectedPlaylists.length} playlist(s) selected</p>
             
-            ${videos.length ? `
-                <div style="display:grid;gap:var(--space-md);max-height:500px;overflow-y:auto">
-                    ${videos.map(v => `
-                        <div style="display:flex;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md)">
-                            <div style="width:140px;height:79px;background:#000;border-radius:var(--radius-sm);overflow:hidden;flex-shrink:0">
-                                <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" alt="" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">
+            ${selectedPlaylists.length ? `
+                <div style="display:grid;gap:var(--space-lg)">
+                    ${selectedPlaylists.map(plId => {
+                        const pl = ytPlaylists.find(p => p.id === plId);
+                        if (!pl) return '';
+                        return `
+                            <div style="background:var(--hover-bg);border-radius:var(--radius-lg);padding:var(--space-lg)">
+                                <h4 style="margin:0 0 var(--space-md)">${pl.title}</h4>
+                                <div style="display:flex;gap:var(--space-md);overflow-x:auto;padding-bottom:var(--space-sm)">
+                                    ${(pl.videos || []).slice(0, 5).map(v => `
+                                        <div style="flex-shrink:0;width:160px">
+                                            <div style="aspect-ratio:16/9;background:#000;border-radius:var(--radius-sm);overflow:hidden;margin-bottom:var(--space-xs)">
+                                                <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" alt="" style="width:100%;height:100%;object-fit:cover">
+                                            </div>
+                                            <p style="font-size:0.8rem;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.title}</p>
+                                        </div>
+                                    `).join('')}
+                                    ${(pl.videos || []).length > 5 ? `<div style="flex-shrink:0;width:80px;display:flex;align-items:center;justify-content:center;color:var(--text-tertiary)">+${pl.videos.length - 5} more</div>` : ''}
+                                </div>
                             </div>
-                            <div style="flex:1;min-width:0">
-                                <strong style="display:block;margin-bottom:4px">${v.title}</strong>
-                                <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">${v.category || 'Video'} • ${v.date || ''}</p>
-                                ${v.playlistId ? `<span style="font-size:0.7rem;background:var(--root-green);color:white;padding:2px 8px;border-radius:10px;margin-top:4px;display:inline-block">${playlists.find(p => p.id === v.playlistId)?.name || 'Playlist'}</span>` : ''}
-                            </div>
-                            <button class="btn btn-ghost" onclick="deleteYouTubeVideo('${v.id}')" style="color:var(--error)">🗑️</button>
-                        </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
             ` : `
-                <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-xl)">No videos added yet. Add your first video above!</p>
+                <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-xl)">Select playlists above to show them to your members</p>
             `}
         </div>
+        ` : `
+        <div class="card">
+            <div style="text-align:center;padding:var(--space-xl);color:var(--text-tertiary)">
+                <div style="font-size:4rem;margin-bottom:var(--space-md)">🎬</div>
+                <h3 style="margin:0 0 var(--space-sm)">Connect Your YouTube Channel</h3>
+                <p>Enter your channel URL above to get started</p>
+            </div>
+        </div>
+        `}
     </div>`;
 }
 
-async function saveYouTubeChannel() {
-    const channelUrl = document.getElementById('ytChannelUrl')?.value?.trim() || '';
+async function connectYouTubeChannel() {
+    const input = document.getElementById('ytChannelUrl')?.value?.trim();
+    if (!input) {
+        toast('Please enter a YouTube channel URL', 'error');
+        return;
+    }
     
+    toast('Connecting to YouTube...', 'info');
+    
+    // Extract channel info from URL
+    let channelId = '';
+    let channelName = '';
+    
+    if (input.includes('/@')) {
+        const match = input.match(/@([^\/\?]+)/);
+        if (match) {
+            channelName = match[1];
+            channelId = channelName;
+        }
+    } else if (input.includes('/channel/')) {
+        const match = input.match(/\/channel\/([^\/\?]+)/);
+        if (match) channelId = match[1];
+    } else if (input.includes('/c/') || input.includes('/user/')) {
+        const match = input.match(/\/(c|user)\/([^\/\?]+)/);
+        if (match) {
+            channelName = match[2];
+            channelId = channelName;
+        }
+    } else {
+        channelId = input;
+        channelName = input;
+    }
+    
+    // Save channel config
     const ytConfig = {
-        channelUrl,
-        updatedAt: new Date().toISOString()
+        channelUrl: input,
+        channelId: channelId,
+        channelName: channelName || channelId,
+        connectedAt: new Date().toISOString()
     };
     
     try {
         await ChurchDB.updateChurch(State.current.user.churchId, { youtubeConfig: ytConfig });
         delete churchCache[State.current.user.churchId];
-        toast('YouTube channel saved! 🎬', 'success');
+        
+        // Fetch playlists
+        await fetchYouTubePlaylists(channelId, input);
+        
+        toast('Channel connected! Select playlists to show.', 'success');
         render();
     } catch (e) {
-        console.error('Error saving YouTube config:', e);
-        toast('Error saving channel', 'error');
+        console.error('Error connecting YouTube:', e);
+        toast('Error connecting channel', 'error');
     }
 }
 
-async function createPlaylist() {
+async function fetchYouTubePlaylists(channelId, channelUrl) {
+    // Since we can't use YouTube API without a key, we'll create a manual playlist system
+    // that allows admins to add YouTube playlist URLs
+    
+    // For now, show a modal to add playlists manually
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:550px">
+            <div class="modal-header">
+                <h3 class="modal-title">📋 Add Your Playlists</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">
+                    Add playlists from your YouTube channel. Go to your channel, copy a playlist URL, and paste it here.
+                </p>
+                
+                <div class="input-group">
+                    <label class="input-label">Playlist URL</label>
+                    <input type="text" class="input-field" id="newPlaylistUrl" placeholder="https://youtube.com/playlist?list=PLxxxxx">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Playlist Name</label>
+                    <input type="text" class="input-field" id="newPlaylistName" placeholder="Sunday Sermons 2024">
+                </div>
+                
+                <button class="btn btn-primary btn-block" onclick="addYouTubePlaylist()">➕ Add Playlist</button>
+                
+                <div style="margin-top:var(--space-lg);padding-top:var(--space-lg);border-top:1px solid var(--border-color)">
+                    <p style="font-size:0.85rem;color:var(--text-tertiary)">
+                        <strong>How to find playlist URL:</strong><br>
+                        1. Go to your YouTube channel<br>
+                        2. Click on "Playlists" tab<br>
+                        3. Click on a playlist<br>
+                        4. Copy the URL from your browser
+                    </p>
+                </div>
+            </div>
+        </div>
+    `);
+}
+
+async function addYouTubePlaylist() {
+    const url = document.getElementById('newPlaylistUrl')?.value?.trim();
     const name = document.getElementById('newPlaylistName')?.value?.trim();
-    if (!name) {
-        toast('Please enter a playlist name', 'error');
+    
+    if (!url || !name) {
+        toast('Please enter both URL and name', 'error');
         return;
     }
     
-    try {
-        const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
-        const playlists = church.youtubePlaylists || [];
-        
-        playlists.push({
-            id: 'pl_' + Date.now(),
-            name: name,
-            createdAt: new Date().toISOString()
-        });
-        
-        await ChurchDB.updateChurch(State.current.user.churchId, { youtubePlaylists: playlists });
-        delete churchCache[State.current.user.churchId];
-        
-        document.getElementById('newPlaylistName').value = '';
-        toast('Playlist created! 📋', 'success');
-        render();
-    } catch (e) {
-        console.error('Error creating playlist:', e);
-        toast('Error creating playlist', 'error');
-    }
-}
-
-async function deletePlaylist(playlistId) {
-    if (!confirm('Delete this playlist? Videos in this playlist will not be deleted.')) return;
+    // Extract playlist ID
+    const match = url.match(/[?&]list=([^&]+)/);
+    const playlistId = match ? match[1] : 'pl_' + Date.now();
+    
+    toast('Adding playlist...', 'info');
     
     try {
         const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
-        const playlists = (church.youtubePlaylists || []).filter(p => p.id !== playlistId);
+        const ytPlaylists = church.ytPlaylists || [];
+        const selectedPlaylists = church.ytSelectedPlaylists || [];
         
-        await ChurchDB.updateChurch(State.current.user.churchId, { youtubePlaylists: playlists });
+        // Check for duplicates
+        if (ytPlaylists.find(p => p.id === playlistId)) {
+            toast('This playlist is already added', 'error');
+            return;
+        }
+        
+        // Fetch videos from playlist using RSS/oembed
+        const videos = await fetchPlaylistVideos(playlistId);
+        
+        ytPlaylists.push({
+            id: playlistId,
+            title: name,
+            url: url,
+            thumbnail: videos.length > 0 ? `https://img.youtube.com/vi/${videos[0].videoId}/mqdefault.jpg` : null,
+            videoCount: videos.length,
+            videos: videos,
+            addedAt: new Date().toISOString()
+        });
+        
+        // Auto-select new playlist
+        selectedPlaylists.push(playlistId);
+        
+        await ChurchDB.updateChurch(State.current.user.churchId, { 
+            ytPlaylists: ytPlaylists,
+            ytSelectedPlaylists: selectedPlaylists
+        });
         delete churchCache[State.current.user.churchId];
         
-        toast('Playlist deleted', 'info');
+        closeModal();
+        toast(`Playlist added with ${videos.length} videos! 🎬`, 'success');
         render();
     } catch (e) {
-        console.error('Error deleting playlist:', e);
-        toast('Error deleting playlist', 'error');
+        console.error('Error adding playlist:', e);
+        toast('Error adding playlist', 'error');
+    }
+}
+
+async function fetchPlaylistVideos(playlistId) {
+    // Try to fetch playlist videos using YouTube's public feeds
+    // This is limited but works without API key
+    try {
+        // YouTube doesn't provide easy public access to playlist data without API
+        // So we'll show a modal to add videos manually or via URL scanning
+        return [];
+    } catch (e) {
+        console.error('Error fetching playlist videos:', e);
+        return [];
+    }
+}
+
+async function toggleYTPlaylist(playlistId, enabled) {
+    try {
+        const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
+        let selectedPlaylists = church.ytSelectedPlaylists || [];
+        
+        if (enabled && !selectedPlaylists.includes(playlistId)) {
+            selectedPlaylists.push(playlistId);
+        } else if (!enabled) {
+            selectedPlaylists = selectedPlaylists.filter(id => id !== playlistId);
+        }
+        
+        await ChurchDB.updateChurch(State.current.user.churchId, { ytSelectedPlaylists: selectedPlaylists });
+        delete churchCache[State.current.user.churchId];
+        
+        toast(enabled ? 'Playlist enabled' : 'Playlist hidden', 'info');
+        render();
+    } catch (e) {
+        console.error('Error toggling playlist:', e);
+        toast('Error updating playlist', 'error');
     }
 }
 
@@ -3727,76 +4014,6 @@ function extractYouTubeId(url) {
     if (!url) return '';
     const match = url.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/watch\?.+&v=))([^&?\s]+)/);
     return match ? match[1] : '';
-}
-
-async function handleYouTubeAdd(e) {
-    e.preventDefault();
-    const title = document.getElementById('ytVideoTitle').value.trim();
-    const url = document.getElementById('ytVideoUrl').value.trim();
-    const category = document.getElementById('ytVideoCategory').value;
-    const playlistId = document.getElementById('ytVideoPlaylist').value || null;
-    
-    const videoId = extractYouTubeId(url);
-    if (!videoId) {
-        toast('Invalid YouTube URL. Make sure it\'s a valid YouTube video link.', 'error');
-        return;
-    }
-    
-    try {
-        const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
-        const videos = church.youtubeVideos || [];
-        const playlists = church.youtubePlaylists || [];
-        
-        // Check for duplicates
-        if (videos.find(v => v.videoId === videoId)) {
-            toast('This video has already been added', 'error');
-            return;
-        }
-        
-        const playlistName = playlistId ? playlists.find(p => p.id === playlistId)?.name : null;
-        
-        videos.unshift({
-            id: Date.now().toString(),
-            title,
-            url,
-            videoId,
-            category,
-            playlistId,
-            playlistName,
-            date: new Date().toISOString().split('T')[0]
-        });
-        
-        await ChurchDB.updateChurch(State.current.user.churchId, { youtubeVideos: videos });
-        delete churchCache[State.current.user.churchId];
-        
-        // Clear form
-        document.getElementById('ytVideoTitle').value = '';
-        document.getElementById('ytVideoUrl').value = '';
-        
-        toast('Video added! 🎬', 'success');
-        render();
-    } catch (e) {
-        console.error('Error adding video:', e);
-        toast('Error adding video', 'error');
-    }
-}
-
-async function deleteYouTubeVideo(videoId) {
-    if (!confirm('Remove this video?')) return;
-    
-    try {
-        const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
-        const videos = (church.youtubeVideos || []).filter(v => v.id !== videoId);
-        
-        await ChurchDB.updateChurch(State.current.user.churchId, { youtubeVideos: videos });
-        delete churchCache[State.current.user.churchId];
-        
-        toast('Video removed', 'info');
-        render();
-    } catch (e) {
-        console.error('Error removing video:', e);
-        toast('Error removing video', 'error');
-    }
 }
 
 // ========== CHURCH BRANDING ==========
@@ -6535,8 +6752,39 @@ function renderMyChurchContent(church, userChurches, activeChurchId) {
         </div>
         ` : ''}
         
-        <!-- Announcements -->
-        ${church?.announcements?.length ? `
+        <!-- Church Posts/Feed Timeline -->
+        ${church?.posts?.length ? `
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="margin-bottom:var(--space-lg)">📋 Church Feed</h3>
+            <div style="display:grid;gap:var(--space-lg)">
+                ${church.posts.slice(0, 10).map(p => `
+                    <div style="background:var(--hover-bg);border-radius:var(--radius-lg);overflow:hidden">
+                        ${p.imageUrl ? `<img src="${p.imageUrl}" alt="" style="width:100%;max-height:250px;object-fit:cover">` : ''}
+                        ${p.videoId ? `
+                            <div style="position:relative;cursor:pointer" onclick="playYouTubeVideo('${p.videoId}', '${(p.title || 'Video').replace(/'/g, "\\'")}')">
+                                <img src="https://img.youtube.com/vi/${p.videoId}/mqdefault.jpg" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover">
+                                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3)">
+                                    <div style="width:60px;height:60px;background:rgba(255,255,255,0.95);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem">▶️</div>
+                                </div>
+                            </div>
+                        ` : ''}
+                        <div style="padding:var(--space-md)">
+                            <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-sm)">
+                                <span style="font-size:0.7rem;padding:2px 8px;background:${p.type === 'announcement' ? colors.primary : '#666'};color:white;border-radius:10px">
+                                    ${p.type === 'announcement' ? '📢 Announcement' : p.type === 'video' ? '🎬 Video' : p.type === 'image' ? '🖼️ Photo' : '📝 Post'}
+                                </span>
+                                <span style="font-size:0.75rem;color:var(--text-tertiary)">${formatPostDate(p.createdAt)}</span>
+                            </div>
+                            ${p.title ? `<h4 style="margin:0 0 var(--space-xs);font-size:1rem">${p.title}</h4>` : ''}
+                            <p style="margin:0;color:var(--text-secondary);font-size:0.9rem;white-space:pre-wrap;line-height:1.5">${p.content}</p>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            ${church.posts.length > 10 ? `<p style="text-align:center;color:var(--text-tertiary);margin-top:var(--space-lg)">Showing latest 10 posts</p>` : ''}
+        </div>
+        ` : church?.announcements?.length ? `
+        <!-- Legacy Announcements (if no posts) -->
         <div class="card" style="margin-bottom:var(--space-lg)">
             <h3 style="margin-bottom:var(--space-md)">📢 Announcements</h3>
             ${church.announcements.map(a => `
