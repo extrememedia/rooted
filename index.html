@@ -424,12 +424,14 @@ input, textarea, select { font-family: inherit; }
 }
 .video-row {
     margin-bottom: 32px;
+    overflow: visible;
 }
 .video-row-title {
     font-size: 1.4rem;
     font-weight: 600;
     margin: 0 0 12px;
     color: white;
+    padding-left: 0;
 }
 .video-row-scroll {
     display: flex;
@@ -536,16 +538,19 @@ input, textarea, select { font-family: inherit; }
     }
     .video-row {
         margin-bottom: 24px;
-        overflow: hidden;
+        overflow: visible;
     }
     .video-row-title {
         font-size: 1.1rem;
         margin-bottom: 10px;
+        padding-left: 0;
     }
     .video-row-scroll {
         gap: 8px;
-        margin: 0 -16px;
-        padding: 0 16px;
+        margin-left: -16px;
+        margin-right: -16px;
+        padding-left: 16px;
+        padding-right: 16px;
     }
     
     /* Larger thumbnails on mobile - 200px */
@@ -593,8 +598,10 @@ input, textarea, select { font-family: inherit; }
         padding: 12px;
     }
     .video-row-scroll {
-        margin: 0 -12px;
-        padding: 0 12px;
+        margin-left: -12px;
+        margin-right: -12px;
+        padding-left: 12px;
+        padding-right: 12px;
     }
     
     /* 170px thumbnails on phones */
@@ -1262,10 +1269,74 @@ const TOOLS = {
 const State = {
     current: { screen: 'loading', user: null, activeNav: 'dashboard', sidebarOpen: false, accountType: 'user', userChurch: null, signupStep: 1, churchSearchResults: [] },
     listeners: [],
-    set(updates) { this.current = { ...this.current, ...updates }; this.notify(); },
+    set(updates) { 
+        this.current = { ...this.current, ...updates }; 
+        this.persistNavState();
+        this.notify(); 
+    },
     subscribe(fn) { this.listeners.push(fn); },
-    notify() { this.listeners.forEach(fn => fn(this.current)); }
+    notify() { this.listeners.forEach(fn => fn(this.current)); },
+    
+    // Persist navigation state to localStorage and URL
+    persistNavState() {
+        const { screen, activeNav, accountType } = this.current;
+        if (screen === 'app' && activeNav) {
+            localStorage.setItem('rooted_nav_state', JSON.stringify({
+                screen,
+                activeNav,
+                accountType,
+                timestamp: Date.now()
+            }));
+            // Update URL hash for back button support
+            if (window.history && window.history.replaceState) {
+                const hash = `#${activeNav}`;
+                if (window.location.hash !== hash) {
+                    window.history.pushState({ nav: activeNav }, '', hash);
+                }
+            }
+        }
+    },
+    
+    // Restore navigation state from localStorage or URL
+    restoreNavState() {
+        // First check URL hash
+        const hash = window.location.hash.slice(1);
+        if (hash && ['dashboard', 'my-church', 'church-videos', 'tools', 'progress', 'profile', 'settings', 
+                     'church-dashboard', 'church-members', 'church-resources', 'church-checkin-resources',
+                     'church-announcements', 'church-youtube', 'church-social', 'church-branding',
+                     'church-membership', 'church-location', 'church-tools'].includes(hash)) {
+            return { activeNav: hash };
+        }
+        
+        // Fall back to localStorage
+        try {
+            const saved = localStorage.getItem('rooted_nav_state');
+            if (saved) {
+                const state = JSON.parse(saved);
+                // Only restore if less than 24 hours old
+                if (Date.now() - state.timestamp < 24 * 60 * 60 * 1000) {
+                    return { activeNav: state.activeNav, accountType: state.accountType };
+                }
+            }
+        } catch (e) {}
+        return null;
+    }
 };
+
+// Handle browser back/forward buttons
+window.addEventListener('popstate', (event) => {
+    if (event.state && event.state.nav) {
+        State.set({ activeNav: event.state.nav });
+        render();
+    } else {
+        // Check URL hash
+        const hash = window.location.hash.slice(1);
+        if (hash) {
+            State.set({ activeNav: hash });
+            render();
+        }
+    }
+});
 
 // ========== CHURCH DATABASE (Cloud-Based) ==========
 // Church admin accounts stored in Firestore
@@ -6764,27 +6835,111 @@ function handleNoteImageSelect(event) {
         return;
     }
     
+    // Show loading
+    const container = document.getElementById('noteImagesPreview');
+    if (container) {
+        container.innerHTML += `<div id="imageUploadLoading" style="width:80px;height:80px;border-radius:var(--radius-md);background:var(--hover-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0"><div class="loading-spinner" style="width:24px;height:24px"></div></div>`;
+    }
+    
+    let processed = 0;
+    const total = files.length;
+    
     Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const imageData = e.target.result;
-            
+        // Check file type
+        if (!file.type.startsWith('image/')) {
+            toast('Please select an image file', 'error');
+            processed++;
+            if (processed >= total) removeUploadLoading();
+            return;
+        }
+        
+        // Check file size - warn if over 5MB
+        if (file.size > 5 * 1024 * 1024) {
+            toast('Large image - compressing...', 'info');
+        }
+        
+        // Use compression for large images
+        compressImage(file, 1200, 0.8).then(compressedData => {
             // Check if this image would exceed storage
-            if (!canAddData(imageData.length)) {
+            if (!canAddData(compressedData.length)) {
                 toast('Not enough storage for this image', 'error');
+                processed++;
+                if (processed >= total) removeUploadLoading();
                 return;
             }
             
             tempNoteImages.push({
-                data: imageData,
+                data: compressedData,
                 name: file.name,
                 addedAt: new Date().toISOString()
             });
-            renderNoteImagePreviews();
             
-            // Check and warn after adding
-            checkStorageAndWarn();
+            processed++;
+            if (processed >= total) {
+                removeUploadLoading();
+                renderNoteImagePreviews();
+                checkStorageAndWarn();
+            }
+        }).catch(err => {
+            console.error('Image processing error:', err);
+            toast('Error processing image', 'error');
+            processed++;
+            if (processed >= total) removeUploadLoading();
+        });
+    });
+    
+    // Clear input so same file can be selected again
+    event.target.value = '';
+}
+
+function removeUploadLoading() {
+    const loading = document.getElementById('imageUploadLoading');
+    if (loading) loading.remove();
+}
+
+// Compress image to reduce storage usage
+function compressImage(file, maxWidth, quality) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        
+        reader.onload = function(e) {
+            const img = new Image();
+            
+            img.onerror = () => reject(new Error('Failed to load image'));
+            
+            img.onload = function() {
+                try {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    // Scale down if larger than maxWidth
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Convert to JPEG for better compression (unless it's a PNG with transparency)
+                    const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+                    const compressed = canvas.toDataURL(outputType, quality);
+                    
+                    resolve(compressed);
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            
+            img.src = e.target.result;
         };
+        
         reader.readAsDataURL(file);
     });
 }
@@ -8796,9 +8951,53 @@ function addToWatchHistory(videoId, title, churchId) {
     }
 }
 
+// Save video progress when user stops watching
+function saveVideoProgress(videoId, churchId, currentTime, duration) {
+    try {
+        const progress = JSON.parse(localStorage.getItem('rooted_video_progress') || '{}');
+        if (!progress[churchId]) progress[churchId] = {};
+        
+        // Only save if watched more than 10 seconds and not near the end
+        if (currentTime > 10 && currentTime < duration - 30) {
+            progress[churchId][videoId] = {
+                time: Math.floor(currentTime),
+                duration: Math.floor(duration),
+                savedAt: Date.now()
+            };
+        } else if (currentTime >= duration - 30) {
+            // Near the end, remove progress (completed)
+            delete progress[churchId][videoId];
+        }
+        
+        localStorage.setItem('rooted_video_progress', JSON.stringify(progress));
+    } catch (e) {
+        console.error('Error saving video progress:', e);
+    }
+}
+
+// Get saved progress for a video
+function getVideoProgress(videoId, churchId) {
+    try {
+        const progress = JSON.parse(localStorage.getItem('rooted_video_progress') || '{}');
+        const videoProgress = progress[churchId]?.[videoId];
+        
+        // Only return if saved within last 30 days
+        if (videoProgress && Date.now() - videoProgress.savedAt < 30 * 24 * 60 * 60 * 1000) {
+            return videoProgress;
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// Track current playing video for saving progress
+let currentPlayingVideo = null;
+
 function playAndTrackVideo(videoId, title, churchId) {
     addToWatchHistory(videoId, title, churchId);
-    playYouTubeVideo(videoId, title);
+    const progress = getVideoProgress(videoId, churchId);
+    playYouTubeVideo(videoId, title, churchId, progress?.time || 0);
 }
 
 // Filter videos function
@@ -8837,21 +9036,93 @@ function getSeasonalColors(branding) {
     };
 }
 
-// Play YouTube video in modal
-function playYouTubeVideo(videoId, title) {
+// Play YouTube video in modal with resume support
+function playYouTubeVideo(videoId, title, churchId = null, startTime = 0) {
+    currentPlayingVideo = { videoId, title, churchId };
+    
+    // Build embed URL with start time
+    let embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1`;
+    if (startTime > 0) {
+        embedUrl += `&start=${startTime}`;
+    }
+    
     showModal(`
         <div class="modal" onclick="event.stopPropagation()" style="max-width:800px;width:95%">
             <div class="modal-header">
                 <h3 class="modal-title">${title}</h3>
-                <button class="modal-close" onclick="closeModal()">✕</button>
+                <button class="modal-close" onclick="handleVideoClose()">✕</button>
             </div>
             <div class="modal-body" style="padding:0">
+                ${startTime > 0 ? `<div style="background:var(--root-green);color:white;padding:8px 16px;font-size:0.85rem">▶️ Resuming from ${formatVideoTime(startTime)}</div>` : ''}
                 <div style="position:relative;padding-bottom:56.25%;height:0">
-                    <iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0" allow="autoplay;encrypted-media" allowfullscreen></iframe>
+                    <iframe id="ytPlayer" src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0" allow="autoplay;encrypted-media" allowfullscreen></iframe>
                 </div>
             </div>
         </div>
     `);
+    
+    // Try to track progress using YouTube API
+    initYouTubeProgressTracking(videoId, churchId);
+}
+
+// Format seconds to mm:ss
+function formatVideoTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// Handle video close - save progress
+function handleVideoClose() {
+    // Try to get current time from iframe (may not work due to cross-origin)
+    const iframe = document.getElementById('ytPlayer');
+    if (iframe && currentPlayingVideo?.churchId) {
+        // Use a polling approach or postMessage to get current time
+        // For now, we'll save progress when they manually save
+    }
+    currentPlayingVideo = null;
+    closeModal();
+}
+
+// Initialize YouTube progress tracking
+function initYouTubeProgressTracking(videoId, churchId) {
+    if (!churchId) return;
+    
+    // Poll for progress using postMessage (works with some limitations)
+    let progressInterval = setInterval(() => {
+        const iframe = document.getElementById('ytPlayer');
+        if (!iframe || !document.querySelector('.modal')) {
+            clearInterval(progressInterval);
+            return;
+        }
+        
+        // Try to get time via YouTube API (if player is ready)
+        try {
+            iframe.contentWindow.postMessage('{"event":"command","func":"getCurrentTime","args":""}', '*');
+        } catch (e) {}
+    }, 5000);
+    
+    // Listen for messages from YouTube
+    const messageHandler = (event) => {
+        if (event.origin !== 'https://www.youtube.com') return;
+        try {
+            const data = JSON.parse(event.data);
+            if (data.info && typeof data.info.currentTime === 'number' && typeof data.info.duration === 'number') {
+                saveVideoProgress(videoId, churchId, data.info.currentTime, data.info.duration);
+            }
+        } catch (e) {}
+    };
+    
+    window.addEventListener('message', messageHandler);
+    
+    // Cleanup when modal closes
+    const checkModal = setInterval(() => {
+        if (!document.querySelector('.modal')) {
+            clearInterval(progressInterval);
+            clearInterval(checkModal);
+            window.removeEventListener('message', messageHandler);
+        }
+    }, 1000);
 }
 
 // Refresh church data from Firebase
@@ -9299,7 +9570,10 @@ async function init() {
     
     initFirebase();
     State.subscribe(render);
-    const savedNav = localStorage.getItem('rooted_nav');
+    
+    // Restore navigation state from localStorage/URL
+    const restoredState = State.restoreNavState();
+    const savedNav = restoredState?.activeNav || localStorage.getItem('rooted_nav');
     
     // Check URL hash for superadmin access
     if (window.location.hash === '#superadmin' || window.location.hash === '#/superadmin') {
@@ -9316,11 +9590,21 @@ async function init() {
             // Load church data to verify session is still valid
             const church = await ChurchDB.getChurch(session.churchId);
             if (church) {
+                // Determine nav - prefer restored state for church admin
+                let activeNav = savedNav || 'church-dashboard';
+                // Make sure it's a valid church admin nav
+                const validChurchNavs = ['church-dashboard', 'church-members', 'church-resources', 
+                    'church-checkin-resources', 'church-announcements', 'church-youtube', 
+                    'church-social', 'church-branding', 'church-membership', 'church-location', 'church-tools'];
+                if (!validChurchNavs.includes(activeNav)) {
+                    activeNav = 'church-dashboard';
+                }
+                
                 State.set({ 
                     screen: 'app', 
                     accountType: 'church',
                     user: { name: church.name, email: 'admin@' + session.churchId, churchId: session.churchId, adminUsername: session.username },
-                    activeNav: savedNav || 'church-dashboard'
+                    activeNav: activeNav
                 });
                 localStorage.removeItem('rooted_nav');
                 return;
@@ -9340,7 +9624,14 @@ async function init() {
         // CRITICAL: Load user's church connections
         await loadUserChurchData();
         
-        const activeNav = savedNav || 'dashboard';
+        // Determine nav - prefer restored state for regular user
+        let activeNav = savedNav || 'dashboard';
+        // Make sure it's a valid user nav
+        const validUserNavs = ['dashboard', 'my-church', 'church-videos', 'tools', 'progress', 'profile', 'settings'];
+        if (!validUserNavs.includes(activeNav)) {
+            activeNav = 'dashboard';
+        }
+        
         localStorage.removeItem('rooted_nav');
         State.set({ screen: 'app', user, activeNav });
     } else {
