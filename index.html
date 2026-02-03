@@ -322,8 +322,9 @@ input, textarea, select { font-family: inherit; }
     height: 40px;
     border-radius: 8px;
     object-fit: contain;
-    background: white;
-    padding: 4px;
+    background: rgba(0,0,0,0.6);
+    padding: 6px;
+    box-sizing: border-box;
 }
 .videos-hero-logo-placeholder {
     width: 40px;
@@ -640,9 +641,10 @@ input, textarea, select { font-family: inherit; }
     height: 70px;
     border-radius: var(--radius-lg);
     object-fit: contain;
-    background: white;
-    padding: 6px;
+    background: rgba(0,0,0,0.6);
+    padding: 8px;
     flex-shrink: 0;
+    box-sizing: border-box;
 }
 .my-church-logo-placeholder {
     width: 70px;
@@ -5631,29 +5633,56 @@ function renderMembersList(container, members) {
         return;
     }
     
-    container.innerHTML = members.map(member => `
-        <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md)">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-                <div style="display:flex;align-items:center;gap:var(--space-md)">
-                    <div style="width:45px;height:45px;border-radius:50%;background:linear-gradient(135deg,var(--root-green),var(--leaf-green));display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:1.1rem">
-                        ${member.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                        <strong>${member.name}</strong>
-                        ${member.isMember ? '<span style="background:var(--root-green);color:white;font-size:0.65rem;padding:2px 6px;border-radius:10px;margin-left:var(--space-sm)">Member</span>' : ''}
-                        <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">${member.email}</p>
-                        ${member.phone ? `<p style="font-size:0.75rem;color:var(--text-tertiary);margin:0">📞 ${member.phone}</p>` : ''}
-                    </div>
-                </div>
-                <div style="text-align:right">
-                    <p style="font-size:0.75rem;color:var(--text-tertiary);margin:0">Joined ${new Date(member.joinedAt).toLocaleDateString()}</p>
-                    <button class="btn btn-ghost" onclick="showMemberCheckIns('${member.id}', '${member.name.replace(/'/g, "\\'")}')" style="font-size:0.75rem;padding:var(--space-xs) var(--space-sm);margin-top:var(--space-xs)">
-                        📊 Check-ins
-                    </button>
-                </div>
-            </div>
+    container.innerHTML = `
+        <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:0.9rem">
+                <thead>
+                    <tr style="background:var(--hover-bg);text-align:left">
+                        <th style="padding:12px 16px;font-weight:600;white-space:nowrap">Name</th>
+                        <th style="padding:12px 16px;font-weight:600;white-space:nowrap">Email</th>
+                        <th style="padding:12px 16px;font-weight:600;white-space:nowrap">Phone</th>
+                        <th style="padding:12px 16px;font-weight:600;white-space:nowrap">Address</th>
+                        <th style="padding:12px 16px;font-weight:600;white-space:nowrap">Joined</th>
+                        <th style="padding:12px 16px;font-weight:600;white-space:nowrap">Status</th>
+                        <th style="padding:12px 16px;font-weight:600;white-space:nowrap">Check-ins</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${members.map((member, i) => `
+                        <tr style="border-bottom:1px solid var(--border-color);${i % 2 === 0 ? '' : 'background:var(--hover-bg);opacity:0.7'}">
+                            <td style="padding:12px 16px;white-space:nowrap">
+                                <div style="display:flex;align-items:center;gap:10px">
+                                    <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--root-green),var(--leaf-green));display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:0.85rem;flex-shrink:0">
+                                        ${member.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <strong>${member.lastName ? member.lastName + ', ' + member.firstName : member.name}</strong>
+                                    </div>
+                                </div>
+                            </td>
+                            <td style="padding:12px 16px;color:var(--text-secondary)">${member.email || '-'}</td>
+                            <td style="padding:12px 16px;color:var(--text-secondary);white-space:nowrap">${member.phone || '-'}</td>
+                            <td style="padding:12px 16px;color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis">${member.address || '-'}</td>
+                            <td style="padding:12px 16px;color:var(--text-tertiary);white-space:nowrap">${new Date(member.joinedAt).toLocaleDateString()}</td>
+                            <td style="padding:12px 16px">
+                                ${member.isMember 
+                                    ? '<span style="background:var(--root-green);color:white;font-size:0.7rem;padding:3px 8px;border-radius:10px">Member</span>' 
+                                    : '<span style="background:var(--hover-bg);color:var(--text-tertiary);font-size:0.7rem;padding:3px 8px;border-radius:10px">User</span>'}
+                            </td>
+                            <td style="padding:12px 16px;text-align:center">
+                                <button class="btn btn-ghost" onclick="showMemberCheckIns('${member.id}', '${member.name.replace(/'/g, "\\'")}')" style="font-size:0.75rem;padding:4px 10px">
+                                    ${member.checkInCount || 0}
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
         </div>
-    `).join('');
+        <p style="color:var(--text-tertiary);font-size:0.8rem;margin-top:var(--space-md);text-align:right">
+            Showing ${members.length} ${members.length === 1 ? 'user' : 'users'}
+        </p>
+    `;
 }
 
 async function loadChurchMembers(churchId) {
@@ -5689,12 +5718,21 @@ async function loadChurchMembers(churchId) {
                 const checkInHistory = userData.checkInHistory || [];
                 const churchCheckIns = checkInHistory.filter(c => c.churchId === churchId);
                 
+                // Parse name into first/last
+                const fullName = userData.name || userData.displayName || 'Unknown User';
+                const nameParts = fullName.trim().split(' ');
+                const firstName = nameParts[0] || '';
+                const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+                
                 return {
                     id: doc.id,
                     ...memberData,
-                    name: userData.name || userData.displayName || 'Unknown User',
-                    email: userData.email || 'No email',
+                    name: fullName,
+                    firstName: firstName,
+                    lastName: lastName,
+                    email: userData.email || '',
                     phone: userData.phone || '',
+                    address: userData.address || '',
                     isMember: userData.isMember || false,
                     checkInCount: churchCheckIns.length
                 };
@@ -5703,8 +5741,11 @@ async function loadChurchMembers(churchId) {
                     id: doc.id,
                     ...memberData,
                     name: 'Unknown User',
-                    email: 'No email',
+                    firstName: 'Unknown',
+                    lastName: '',
+                    email: '',
                     phone: '',
+                    address: '',
                     isMember: false,
                     checkInCount: 0
                 };
@@ -5712,6 +5753,13 @@ async function loadChurchMembers(churchId) {
         });
         
         const members = await Promise.all(memberPromises);
+        
+        // Sort by last name, then first name
+        members.sort((a, b) => {
+            const lastCompare = (a.lastName || '').localeCompare(b.lastName || '');
+            if (lastCompare !== 0) return lastCompare;
+            return (a.firstName || '').localeCompare(b.firstName || '');
+        });
         
         // Store for filtering
         allMembersData = members;
