@@ -6915,18 +6915,6 @@ function filterVideosByPlaylist(playlistId) {
         card.style.display = (!playlistId || card.dataset.videoPlaylist === playlistId) ? '' : 'none';
     });
 }
-                            </div>
-                        </div>
-                        <div style="padding:var(--space-sm)">
-                            <h4 style="margin:0;font-size:0.85rem;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${v.title}</h4>
-                            <p style="font-size:0.75rem;color:var(--text-tertiary);margin:var(--space-xs) 0 0">${v.date}</p>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    </div>`;
-}
 
 // Get seasonal colors based on church branding
 function getSeasonalColors(branding) {
@@ -6963,13 +6951,6 @@ function playYouTubeVideo(videoId, title) {
             </div>
         </div>
     `);
-}
-
-// Filter videos by playlist
-function filterVideosByPlaylist() {
-    const playlistId = document.getElementById('playlistFilter')?.value;
-    // Re-render with filter applied
-    render();
 }
 
 // Refresh church data from Firebase
