@@ -6105,9 +6105,14 @@ function renderApp() {
         </div>
         <nav class="sidebar-nav">
             <div class="nav-section">
-                <div class="nav-section-title">Main</div>
                 <div class="nav-item ${activeNav === 'dashboard' ? 'active' : ''}" onclick="navigate('dashboard')">
                     <span class="nav-item-icon">🏠</span> Dashboard
+                </div>
+                <div class="nav-item ${activeNav === 'my-church' ? 'active' : ''}" onclick="navigate('my-church')">
+                    <span class="nav-item-icon">⛪</span> Church Feed
+                </div>
+                <div class="nav-item ${activeNav === 'church-videos' ? 'active' : ''}" onclick="navigate('church-videos')">
+                    <span class="nav-item-icon">🎬</span> Videos
                 </div>
                 <div class="nav-item ${activeNav === 'tools' ? 'active' : ''}" onclick="navigate('tools')">
                     <span class="nav-item-icon">🧰</span> Growth Tools
@@ -6115,23 +6120,11 @@ function renderApp() {
                 <div class="nav-item ${activeNav === 'progress' ? 'active' : ''}" onclick="navigate('progress')">
                     <span class="nav-item-icon">📈</span> My Progress
                 </div>
-            </div>
-            <div class="nav-section">
-                <div class="nav-section-title">Account</div>
                 <div class="nav-item ${activeNav === 'profile' ? 'active' : ''}" onclick="navigate('profile')">
                     <span class="nav-item-icon">👤</span> Profile
                 </div>
                 <div class="nav-item ${activeNav === 'settings' ? 'active' : ''}" onclick="navigate('settings')">
                     <span class="nav-item-icon">⚙️</span> Settings
-                </div>
-            </div>
-            <div class="nav-section">
-                <div class="nav-section-title">My Church</div>
-                <div class="nav-item ${activeNav === 'my-church' ? 'active' : ''}" onclick="navigate('my-church')">
-                    <span class="nav-item-icon">⛪</span> Church Feed
-                </div>
-                <div class="nav-item ${activeNav === 'church-videos' ? 'active' : ''}" onclick="navigate('church-videos')">
-                    <span class="nav-item-icon">🎬</span> Videos
                 </div>
             </div>
         </nav>
