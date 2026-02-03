@@ -6385,23 +6385,6 @@ function renderDashboard() {
         </div>
         
         <div style="max-width:800px;margin:0 auto">
-            <!-- Clock Widget - Compact -->
-            <div style="display:flex;align-items:center;justify-content:center;gap:var(--space-lg);padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-lg);margin-bottom:var(--space-lg);flex-wrap:wrap">
-                <div style="text-align:center">
-                    <p style="font-size:0.7rem;color:var(--text-tertiary);margin:0;text-transform:uppercase;letter-spacing:0.05em">Current Time</p>
-                    <p id="currentClock" style="font-size:1.8rem;font-weight:700;font-family:'SF Mono',Monaco,monospace;margin:0;color:var(--text-primary)">--:--</p>
-                </div>
-                <div style="width:1px;height:40px;background:var(--border-color)"></div>
-                <div style="text-align:center">
-                    <p style="font-size:0.7rem;color:var(--text-tertiary);margin:0;text-transform:uppercase;letter-spacing:0.05em">Study Timer</p>
-                    <div style="display:flex;align-items:center;gap:var(--space-sm)">
-                        <p id="studyTimer" style="font-size:1.8rem;font-weight:700;font-family:'SF Mono',Monaco,monospace;margin:0;color:var(--root-green)">00:00</p>
-                        <button class="btn btn-ghost" onclick="toggleStudyTimer()" id="timerToggleBtn" style="padding:6px;font-size:1rem">▶️</button>
-                        <button class="btn btn-ghost" onclick="resetStudyTimer()" style="padding:6px;font-size:1rem">🔄</button>
-                    </div>
-                </div>
-            </div>
-            
             <!-- Check-In Card -->
             ${userChurch ? `
             <div style="background:linear-gradient(135deg,${isCheckedIn ? '#22c55e' : '#3b82f6'},${isCheckedIn ? '#16a34a' : '#1d4ed8'});color:white;border-radius:var(--radius-lg);padding:var(--space-lg);margin-bottom:var(--space-lg)">
@@ -7126,59 +7109,6 @@ function saveToNotes(content, source) {
 }
 
 // Clock and Timer functionality
-let studyTimerInterval = null;
-let studyTimerSeconds = 0;
-let studyTimerRunning = false;
-
-function updateClock() {
-    const clockEl = document.getElementById('currentClock');
-    if (clockEl) {
-        const now = new Date();
-        clockEl.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    }
-}
-
-function updateStudyTimerDisplay() {
-    const timerEl = document.getElementById('studyTimer');
-    if (timerEl) {
-        const hours = Math.floor(studyTimerSeconds / 3600);
-        const mins = Math.floor((studyTimerSeconds % 3600) / 60);
-        const secs = studyTimerSeconds % 60;
-        timerEl.textContent = `${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-    }
-}
-
-function toggleStudyTimer() {
-    const btn = document.getElementById('timerToggleBtn');
-    if (studyTimerRunning) {
-        // Pause
-        clearInterval(studyTimerInterval);
-        studyTimerRunning = false;
-        if (btn) btn.textContent = '▶️';
-    } else {
-        // Start
-        studyTimerInterval = setInterval(() => {
-            studyTimerSeconds++;
-            updateStudyTimerDisplay();
-        }, 1000);
-        studyTimerRunning = true;
-        if (btn) btn.textContent = '⏸️';
-    }
-}
-
-function resetStudyTimer() {
-    clearInterval(studyTimerInterval);
-    studyTimerRunning = false;
-    studyTimerSeconds = 0;
-    updateStudyTimerDisplay();
-    const btn = document.getElementById('timerToggleBtn');
-    if (btn) btn.textContent = '▶️';
-}
-
-// Start clock updates
-setInterval(updateClock, 1000);
-setTimeout(updateClock, 100);
-
 function renderTools() {
     // Get user's church and enabled tools
     const userChurchId = Auth.currentUser ? getUserChurch(Auth.currentUser.uid) : null;
