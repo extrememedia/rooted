@@ -2158,6 +2158,11 @@ function render() {
             setTimeout(initQuiz, 50);
             break;
     }
+    
+    // Update storage display if on settings page
+    if (screen === 'app' && State.current.nav === 'settings') {
+        setTimeout(updateStorageDisplay, 100);
+    }
 }
 
 function renderWelcome() {
@@ -6427,6 +6432,251 @@ function renderDashboard() {
     </div>`;
 }
 
+// ========== STORAGE MANAGEMENT ==========
+const USER_STORAGE_LIMIT_MB = 50; // 50 MB per user
+const USER_STORAGE_LIMIT_BYTES = USER_STORAGE_LIMIT_MB * 1024 * 1024;
+const STORAGE_WARNING_THRESHOLD = 0.75; // Warn at 75%
+
+function calculateStorageUsed() {
+    let totalBytes = 0;
+    
+    // Calculate notes storage (including images)
+    const notes = JSON.parse(localStorage.getItem('rooted_notes') || '[]');
+    notes.forEach(note => {
+        // Text content
+        totalBytes += new Blob([note.title || '']).size;
+        totalBytes += new Blob([note.content || '']).size;
+        totalBytes += new Blob([note.source || '']).size;
+        totalBytes += new Blob([note.date || '']).size;
+        
+        // Images (base64 data)
+        if (note.images && note.images.length) {
+            note.images.forEach(img => {
+                if (img.data) {
+                    // Base64 string size
+                    totalBytes += img.data.length;
+                }
+            });
+        }
+    });
+    
+    // Calculate tool history storage
+    const toolHistory = JSON.parse(localStorage.getItem('rooted_tool_history') || '[]');
+    totalBytes += new Blob([JSON.stringify(toolHistory)]).size;
+    
+    // Calculate user prefs storage
+    const userPrefs = JSON.parse(localStorage.getItem('rooted_user_prefs') || '{}');
+    totalBytes += new Blob([JSON.stringify(userPrefs)]).size;
+    
+    // Calculate tool results storage
+    const toolResults = JSON.parse(localStorage.getItem('rooted_tool_results') || '{}');
+    totalBytes += new Blob([JSON.stringify(toolResults)]).size;
+    
+    return totalBytes;
+}
+
+function getStorageUsagePercent() {
+    const used = calculateStorageUsed();
+    return (used / USER_STORAGE_LIMIT_BYTES) * 100;
+}
+
+function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+function updateStorageDisplay() {
+    const used = calculateStorageUsed();
+    const percent = (used / USER_STORAGE_LIMIT_BYTES) * 100;
+    
+    const textEl = document.getElementById('storageUsageText');
+    const barEl = document.getElementById('storageUsageBar');
+    
+    if (textEl) {
+        textEl.textContent = `${formatBytes(used)} / ${USER_STORAGE_LIMIT_MB} MB (${percent.toFixed(1)}%)`;
+    }
+    
+    if (barEl) {
+        barEl.style.width = Math.min(percent, 100) + '%';
+        
+        // Color based on usage
+        if (percent >= 100) {
+            barEl.style.background = 'var(--error)';
+        } else if (percent >= STORAGE_WARNING_THRESHOLD * 100) {
+            barEl.style.background = 'var(--warning, #f59e0b)';
+        } else {
+            barEl.style.background = 'var(--root-green)';
+        }
+    }
+}
+
+function checkStorageAndWarn() {
+    const percent = getStorageUsagePercent();
+    
+    if (percent >= 100) {
+        showStorageFullModal();
+        return false; // Storage full
+    } else if (percent >= STORAGE_WARNING_THRESHOLD * 100) {
+        // Show warning if not already shown in this session
+        const warned = sessionStorage.getItem('storage_warning_shown');
+        if (!warned) {
+            showStorageWarningModal(percent);
+            sessionStorage.setItem('storage_warning_shown', 'true');
+        }
+    }
+    return true; // OK to proceed
+}
+
+function canAddData(additionalBytes) {
+    const currentUsed = calculateStorageUsed();
+    const newTotal = currentUsed + additionalBytes;
+    return newTotal <= USER_STORAGE_LIMIT_BYTES;
+}
+
+function showStorageWarningModal(percent) {
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:400px">
+            <div class="modal-header" style="background:linear-gradient(135deg,#f59e0b,#fbbf24);color:white">
+                <h3 class="modal-title">⚠️ Storage Warning</h3>
+                <button class="modal-close" onclick="closeModal()" style="color:white">✕</button>
+            </div>
+            <div class="modal-body" style="text-align:center">
+                <div style="font-size:3rem;margin-bottom:var(--space-md)">📦</div>
+                <p style="font-size:1.1rem;font-weight:600;margin-bottom:var(--space-sm)">You're running low on storage</p>
+                <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">
+                    You've used <strong>${percent.toFixed(1)}%</strong> of your ${USER_STORAGE_LIMIT_MB} MB storage limit.
+                </p>
+                <div style="height:8px;background:var(--hover-bg);border-radius:4px;overflow:hidden;margin-bottom:var(--space-lg)">
+                    <div style="height:100%;width:${percent}%;background:#f59e0b"></div>
+                </div>
+                <p style="font-size:0.85rem;color:var(--text-tertiary);margin-bottom:var(--space-lg)">
+                    Consider deleting old notes or images to free up space.
+                </p>
+                <div style="display:flex;gap:var(--space-sm)">
+                    <button class="btn btn-secondary" onclick="closeModal();navigate('settings')" style="flex:1">Manage Storage</button>
+                    <button class="btn btn-primary" onclick="closeModal()" style="flex:1">Got It</button>
+                </div>
+            </div>
+        </div>
+    `);
+}
+
+function showStorageFullModal() {
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:400px">
+            <div class="modal-header" style="background:linear-gradient(135deg,#ef4444,#dc2626);color:white">
+                <h3 class="modal-title">🚫 Storage Full</h3>
+                <button class="modal-close" onclick="closeModal()" style="color:white">✕</button>
+            </div>
+            <div class="modal-body" style="text-align:center">
+                <div style="font-size:3rem;margin-bottom:var(--space-md)">📦❌</div>
+                <p style="font-size:1.1rem;font-weight:600;margin-bottom:var(--space-sm)">Storage limit reached</p>
+                <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">
+                    You've used all ${USER_STORAGE_LIMIT_MB} MB of your storage. Delete files to add new content.
+                </p>
+                <div style="height:8px;background:var(--hover-bg);border-radius:4px;overflow:hidden;margin-bottom:var(--space-lg)">
+                    <div style="height:100%;width:100%;background:var(--error)"></div>
+                </div>
+                <button class="btn btn-primary btn-block" onclick="closeModal();navigate('settings')">Manage Storage</button>
+            </div>
+        </div>
+    `);
+}
+
+function showStorageDetails() {
+    const notes = JSON.parse(localStorage.getItem('rooted_notes') || '[]');
+    const toolHistory = JSON.parse(localStorage.getItem('rooted_tool_history') || '[]');
+    const toolResults = JSON.parse(localStorage.getItem('rooted_tool_results') || '{}');
+    
+    // Calculate individual sizes
+    let notesTextSize = 0;
+    let notesImageSize = 0;
+    let notesImageCount = 0;
+    
+    notes.forEach(note => {
+        notesTextSize += new Blob([note.title || '', note.content || '', note.source || '', note.date || '']).size;
+        if (note.images) {
+            note.images.forEach(img => {
+                if (img.data) {
+                    notesImageSize += img.data.length;
+                    notesImageCount++;
+                }
+            });
+        }
+    });
+    
+    const historySize = new Blob([JSON.stringify(toolHistory)]).size;
+    const resultsSize = new Blob([JSON.stringify(toolResults)]).size;
+    const totalUsed = calculateStorageUsed();
+    const percent = (totalUsed / USER_STORAGE_LIMIT_BYTES) * 100;
+    
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:450px">
+            <div class="modal-header">
+                <h3 class="modal-title">📊 Storage Details</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <!-- Usage Bar -->
+                <div style="margin-bottom:var(--space-lg)">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:var(--space-xs)">
+                        <span style="font-weight:500">${formatBytes(totalUsed)} used</span>
+                        <span style="color:var(--text-tertiary)">${formatBytes(USER_STORAGE_LIMIT_BYTES - totalUsed)} free</span>
+                    </div>
+                    <div style="height:12px;background:var(--hover-bg);border-radius:6px;overflow:hidden">
+                        <div style="height:100%;width:${percent}%;background:${percent >= 100 ? 'var(--error)' : percent >= 75 ? '#f59e0b' : 'var(--root-green)'}"></div>
+                    </div>
+                </div>
+                
+                <!-- Breakdown -->
+                <div style="display:grid;gap:var(--space-md)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md)">
+                        <div style="display:flex;align-items:center;gap:var(--space-sm)">
+                            <span>📝</span>
+                            <span>Notes Text (${notes.length} notes)</span>
+                        </div>
+                        <strong>${formatBytes(notesTextSize)}</strong>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md)">
+                        <div style="display:flex;align-items:center;gap:var(--space-sm)">
+                            <span>📷</span>
+                            <span>Note Images (${notesImageCount} images)</span>
+                        </div>
+                        <strong>${formatBytes(notesImageSize)}</strong>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md)">
+                        <div style="display:flex;align-items:center;gap:var(--space-sm)">
+                            <span>🕐</span>
+                            <span>Tool History</span>
+                        </div>
+                        <strong>${formatBytes(historySize)}</strong>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md)">
+                        <div style="display:flex;align-items:center;gap:var(--space-sm)">
+                            <span>📊</span>
+                            <span>Tool Results</span>
+                        </div>
+                        <strong>${formatBytes(resultsSize)}</strong>
+                    </div>
+                </div>
+                
+                ${notesImageCount > 0 ? `
+                <div style="margin-top:var(--space-lg);padding-top:var(--space-lg);border-top:1px solid var(--border-color)">
+                    <p style="font-size:0.85rem;color:var(--text-tertiary);margin-bottom:var(--space-sm)">💡 Tip: Images use the most storage. Delete old note images to free up space.</p>
+                    <button class="btn btn-secondary btn-block" onclick="closeModal();showNotesModal()">Manage Notes</button>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `);
+}
+
+// Update storage display when settings page is rendered
+function initStorageDisplay() {
+    setTimeout(updateStorageDisplay, 100);
+}
+
 // ========== NOTES SYSTEM ==========
 function showNotesModal() {
     const notes = JSON.parse(localStorage.getItem('rooted_notes') || '[]');
@@ -6507,15 +6757,33 @@ function handleNoteImageSelect(event) {
     const files = event.target.files;
     if (!files.length) return;
     
+    // Check storage before adding
+    if (!checkStorageAndWarn()) {
+        toast('Storage full - delete files first', 'error');
+        event.target.value = '';
+        return;
+    }
+    
     Array.from(files).forEach(file => {
         const reader = new FileReader();
         reader.onload = function(e) {
+            const imageData = e.target.result;
+            
+            // Check if this image would exceed storage
+            if (!canAddData(imageData.length)) {
+                toast('Not enough storage for this image', 'error');
+                return;
+            }
+            
             tempNoteImages.push({
-                data: e.target.result,
+                data: imageData,
                 name: file.name,
                 addedAt: new Date().toISOString()
             });
             renderNoteImagePreviews();
+            
+            // Check and warn after adding
+            checkStorageAndWarn();
         };
         reader.readAsDataURL(file);
     });
@@ -7620,9 +7888,27 @@ function renderSettings() {
         </div>
         
         <div class="card" style="margin-bottom:var(--space-lg)">
-            <h3 style="margin-bottom:var(--space-lg)">📦 Data</h3>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Your data is ${firebaseInitialized ? 'synced to the cloud' : 'stored locally on this device'}.</p>
-            <button class="btn btn-secondary" onclick="exportUserData()">📥 Export My Data</button>
+            <h3 style="margin-bottom:var(--space-lg)">📦 Data & Storage</h3>
+            
+            <!-- Storage Usage -->
+            <div style="margin-bottom:var(--space-lg);padding-bottom:var(--space-lg);border-bottom:1px solid var(--border-color)">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm)">
+                    <p style="font-weight:500;margin:0">Storage Used</p>
+                    <span id="storageUsageText" style="font-size:0.85rem;color:var(--text-secondary)">Calculating...</span>
+                </div>
+                <div style="height:8px;background:var(--hover-bg);border-radius:4px;overflow:hidden;margin-bottom:var(--space-sm)">
+                    <div id="storageUsageBar" style="height:100%;width:0%;background:var(--root-green);transition:width 0.3s,background 0.3s"></div>
+                </div>
+                <p style="font-size:0.75rem;color:var(--text-tertiary);margin:0">
+                    Limit: ${USER_STORAGE_LIMIT_MB} MB per user • Used for notes and images
+                </p>
+            </div>
+            
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">Your data is ${firebaseInitialized ? 'synced to the cloud' : 'stored locally on this device'}.</p>
+            <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap">
+                <button class="btn btn-secondary" onclick="exportUserData()">📥 Export My Data</button>
+                <button class="btn btn-ghost" onclick="showStorageDetails()">📊 Storage Details</button>
+            </div>
         </div>
         
         <div class="card" style="border-color:var(--error)">
