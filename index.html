@@ -612,9 +612,10 @@ input, textarea, select { font-family: inherit; }
 
 .my-church-header {
     position: relative;
-    border-radius: var(--radius-xl);
+    border-radius: 0;
     overflow: hidden;
-    margin-bottom: var(--space-lg);
+    margin: 0 calc(-1 * var(--space-md)) var(--space-lg);
+    width: calc(100% + var(--space-md) * 2);
 }
 .my-church-header-bg {
     position: absolute;
@@ -4139,6 +4140,14 @@ async function deleteResource(id) {
 function renderChurchAnnouncements() {
     const church = getChurchData(State.current.user.churchId);
     const posts = church.posts || [];
+    const pinnedPostId = church.pinnedPostId || null;
+    
+    // Sort posts with pinned at top
+    const sortedPosts = [...posts].sort((a, b) => {
+        if (a.id === pinnedPostId) return -1;
+        if (b.id === pinnedPostId) return 1;
+        return new Date(b.createdAt) - new Date(a.createdAt);
+    });
     
     return `
     <div class="fade-up">
@@ -4149,7 +4158,7 @@ function renderChurchAnnouncements() {
             
             <form id="postForm" onsubmit="handlePostSubmit(event)">
                 <!-- Post Type Selector -->
-                <div style="display:flex;gap:var(--space-sm);margin-bottom:var(--space-lg)">
+                <div style="display:flex;gap:var(--space-sm);margin-bottom:var(--space-lg);flex-wrap:wrap">
                     <button type="button" class="btn post-type-btn active" data-type="text" onclick="selectPostType('text')">📝 Text</button>
                     <button type="button" class="btn btn-ghost post-type-btn" data-type="image" onclick="selectPostType('image')">🖼️ Image</button>
                     <button type="button" class="btn btn-ghost post-type-btn" data-type="video" onclick="selectPostType('video')">🎬 Video</button>
@@ -4194,10 +4203,11 @@ function renderChurchAnnouncements() {
         <div class="card">
             <h3 style="margin-bottom:var(--space-lg)">📋 Church Posts (${posts.length})</h3>
             
-            ${posts.length ? `
+            ${sortedPosts.length ? `
                 <div style="display:grid;gap:var(--space-lg)">
-                    ${posts.map(p => `
-                        <div style="background:var(--hover-bg);border-radius:var(--radius-lg);overflow:hidden">
+                    ${sortedPosts.map(p => `
+                        <div style="background:var(--hover-bg);border-radius:var(--radius-lg);overflow:hidden;${p.id === pinnedPostId ? 'border:2px solid var(--root-green)' : ''}">
+                            ${p.id === pinnedPostId ? '<div style="background:var(--root-green);color:white;padding:6px 12px;font-size:0.75rem;font-weight:600">📌 PINNED POST</div>' : ''}
                             ${p.imageUrl ? `<img src="${p.imageUrl}" alt="" style="width:100%;max-height:300px;object-fit:cover">` : ''}
                             ${p.videoId ? `
                                 <div style="position:relative;padding-bottom:56.25%;background:#000">
@@ -4208,12 +4218,17 @@ function renderChurchAnnouncements() {
                                 </div>
                             ` : ''}
                             <div style="padding:var(--space-lg)">
-                                <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:var(--space-sm)">
+                                <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:var(--space-sm);flex-wrap:wrap;gap:var(--space-sm)">
                                     <div>
                                         <span style="font-size:0.75rem;padding:2px 8px;background:${p.type === 'announcement' ? 'var(--root-green)' : 'var(--text-tertiary)'};color:white;border-radius:10px;margin-right:var(--space-sm)">${p.type === 'announcement' ? '📢 Announcement' : p.type === 'video' ? '🎬 Video' : p.type === 'image' ? '🖼️ Photo' : '📝 Post'}</span>
                                         <span style="font-size:0.8rem;color:var(--text-tertiary)">${formatPostDate(p.createdAt)}</span>
                                     </div>
-                                    <button class="btn btn-ghost" onclick="deletePost('${p.id}')" style="color:var(--error);padding:4px">🗑️</button>
+                                    <div style="display:flex;gap:var(--space-xs)">
+                                        <button class="btn btn-ghost" onclick="togglePinPost('${p.id}')" style="padding:4px 8px;${p.id === pinnedPostId ? 'color:var(--root-green)' : ''}" title="${p.id === pinnedPostId ? 'Unpin post' : 'Pin to top'}">
+                                            ${p.id === pinnedPostId ? '📌' : '📍'}
+                                        </button>
+                                        <button class="btn btn-ghost" onclick="deletePost('${p.id}')" style="color:var(--error);padding:4px 8px" title="Delete post">🗑️</button>
+                                    </div>
                                 </div>
                                 ${p.title ? `<h4 style="margin:0 0 var(--space-sm)">${p.title}</h4>` : ''}
                                 <p style="margin:0;color:var(--text-secondary);white-space:pre-wrap">${p.content}</p>
@@ -4386,7 +4401,13 @@ async function deletePost(postId) {
         const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
         const posts = (church.posts || []).filter(p => p.id !== postId);
         
-        await ChurchDB.updateChurch(State.current.user.churchId, { posts: posts });
+        // Also unpin if this was the pinned post
+        const updates = { posts: posts };
+        if (church.pinnedPostId === postId) {
+            updates.pinnedPostId = null;
+        }
+        
+        await ChurchDB.updateChurch(State.current.user.churchId, updates);
         delete churchCache[State.current.user.churchId];
         
         toast('Post deleted', 'info');
@@ -4394,6 +4415,25 @@ async function deletePost(postId) {
     } catch (error) {
         console.error('Error deleting post:', error);
         toast('Error deleting post', 'error');
+    }
+}
+
+async function togglePinPost(postId) {
+    try {
+        const church = await ChurchDB.getChurchFresh(State.current.user.churchId);
+        const currentPinned = church.pinnedPostId;
+        
+        // Toggle: if already pinned, unpin; otherwise pin this one
+        const newPinnedId = currentPinned === postId ? null : postId;
+        
+        await ChurchDB.updateChurch(State.current.user.churchId, { pinnedPostId: newPinnedId });
+        delete churchCache[State.current.user.churchId];
+        
+        toast(newPinnedId ? 'Post pinned to top! 📌' : 'Post unpinned', 'success');
+        render();
+    } catch (error) {
+        console.error('Error pinning post:', error);
+        toast('Error updating pin status', 'error');
     }
 }
 
@@ -6258,141 +6298,131 @@ function renderDashboard() {
     const isNearby = userChurchId ? isWithinGeofence(userChurchId) : false;
     
     return `
-    <div class="fade-up" style="max-width:800px;margin:0 auto">
-        <div class="welcome-banner" style="position:relative;overflow:hidden">
-            ${userChurch?.headerImage ? `<div style="position:absolute;inset:0;background:url('${userChurch.headerImage}') center/cover;opacity:0.3"></div>` : ''}
-            <div style="position:relative;z-index:1">
-                <h2 class="welcome-title">Welcome${user?.name ? ', ' + user.name.split(' ')[0] : ''}! 🌱</h2>
-                <p class="welcome-subtitle">Continue growing in your faith journey. Your progress is saved automatically.</p>
+    <div class="fade-up">
+        <!-- Full Bleed Welcome Header -->
+        <div style="background:linear-gradient(135deg,var(--root-green),var(--leaf-green));margin:-16px -16px var(--space-lg);padding:var(--space-xl) var(--space-lg);color:white;position:relative;overflow:hidden">
+            ${userChurch?.branding?.headerImage ? `<div style="position:absolute;inset:0;background:url('${userChurch.branding.headerImage}') center/cover;opacity:0.2"></div>` : ''}
+            <div style="position:relative;z-index:1;max-width:800px;margin:0 auto">
+                <h2 style="margin:0 0 var(--space-xs);font-size:1.6rem;font-weight:600">Welcome${user?.displayName || user?.name ? ', ' + (user.displayName || user.name).split(' ')[0] : ''}! 🌱</h2>
+                <p style="margin:0;opacity:0.9;font-size:0.95rem">Continue growing in your faith journey</p>
             </div>
         </div>
         
-        <!-- Check-In Card -->
-        ${userChurch ? `
-        <div class="card" style="margin:var(--space-lg) 0;background:linear-gradient(135deg,${isCheckedIn ? '#22c55e' : '#3b82f6'},${isCheckedIn ? '#16a34a' : '#1d4ed8'});color:white;border:none">
-            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-md)">
-                <div style="display:flex;align-items:center;gap:var(--space-md)">
-                    <div style="width:50px;height:50px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem">
-                        ${isCheckedIn ? '✓' : '📍'}
-                    </div>
-                    <div>
-                        <strong style="display:block;font-size:1.1rem">${isCheckedIn ? 'Checked In Today!' : userChurch.name || 'Your Church'}</strong>
-                        <span style="font-size:0.85rem;opacity:0.9">
-                            ${isCheckedIn ? 'Great to see you! Keep growing.' : isNearby ? 'You\'re nearby - check in!' : 'Check in to track your attendance'}
-                        </span>
+        <div style="max-width:800px;margin:0 auto">
+            <!-- Clock Widget - Compact -->
+            <div style="display:flex;align-items:center;justify-content:center;gap:var(--space-lg);padding:var(--space-md);background:var(--card-bg);border-radius:var(--radius-lg);margin-bottom:var(--space-lg);flex-wrap:wrap">
+                <div style="text-align:center">
+                    <p style="font-size:0.7rem;color:var(--text-tertiary);margin:0;text-transform:uppercase;letter-spacing:0.05em">Current Time</p>
+                    <p id="currentClock" style="font-size:1.8rem;font-weight:700;font-family:'SF Mono',Monaco,monospace;margin:0;color:var(--text-primary)">--:--</p>
+                </div>
+                <div style="width:1px;height:40px;background:var(--border-color)"></div>
+                <div style="text-align:center">
+                    <p style="font-size:0.7rem;color:var(--text-tertiary);margin:0;text-transform:uppercase;letter-spacing:0.05em">Study Timer</p>
+                    <div style="display:flex;align-items:center;gap:var(--space-sm)">
+                        <p id="studyTimer" style="font-size:1.8rem;font-weight:700;font-family:'SF Mono',Monaco,monospace;margin:0;color:var(--root-green)">00:00</p>
+                        <button class="btn btn-ghost" onclick="toggleStudyTimer()" id="timerToggleBtn" style="padding:6px;font-size:1rem">▶️</button>
+                        <button class="btn btn-ghost" onclick="resetStudyTimer()" style="padding:6px;font-size:1rem">🔄</button>
                     </div>
                 </div>
-                ${!isCheckedIn ? `
-                <button class="btn" onclick="checkInOnline('${userChurchId}')" style="background:white;color:#3b82f6;font-weight:600">
-                    ${isNearby ? '📍 Check In' : '🌐 Online Check-In'}
-                </button>
+            </div>
+            
+            <!-- Check-In Card -->
+            ${userChurch ? `
+            <div style="background:linear-gradient(135deg,${isCheckedIn ? '#22c55e' : '#3b82f6'},${isCheckedIn ? '#16a34a' : '#1d4ed8'});color:white;border-radius:var(--radius-lg);padding:var(--space-lg);margin-bottom:var(--space-lg)">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-md)">
+                    <div style="display:flex;align-items:center;gap:var(--space-md)">
+                        <div style="width:45px;height:45px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.3rem">
+                            ${isCheckedIn ? '✓' : '📍'}
+                        </div>
+                        <div>
+                            <strong style="display:block;font-size:1rem">${isCheckedIn ? 'Checked In Today!' : userChurch.name || 'Your Church'}</strong>
+                            <span style="font-size:0.8rem;opacity:0.9">
+                                ${isCheckedIn ? 'Great to see you!' : isNearby ? 'You\'re nearby - tap to check in' : 'Track your attendance'}
+                            </span>
+                        </div>
+                    </div>
+                    ${!isCheckedIn ? `
+                    <button class="btn" onclick="checkInOnline('${userChurchId}')" style="background:white;color:#3b82f6;font-weight:600;padding:10px 20px">
+                        ${isNearby ? '📍 Check In' : '🌐 Check In'}
+                    </button>
+                    ` : ''}
+                </div>
+            </div>
+            ` : ''}
+            
+            <!-- Quick Actions Grid -->
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-md);margin-bottom:var(--space-lg)">
+                <div style="background:var(--card-bg);border-radius:var(--radius-lg);padding:var(--space-lg);text-align:center;cursor:pointer" onclick="navigate('tools')">
+                    <div style="font-size:2rem;margin-bottom:var(--space-sm)">🧰</div>
+                    <p style="font-weight:600;margin:0;font-size:0.9rem">Growth Tools</p>
+                    <p style="font-size:0.75rem;color:var(--text-tertiary);margin:4px 0 0">${Object.values(TOOLS).filter(t => t.status === 'active').length} available</p>
+                </div>
+                <div style="background:var(--card-bg);border-radius:var(--radius-lg);padding:var(--space-lg);text-align:center;cursor:pointer" onclick="navigate('progress')">
+                    <div style="font-size:2rem;margin-bottom:var(--space-sm)">📈</div>
+                    <p style="font-weight:600;margin:0;font-size:0.9rem">My Progress</p>
+                    <p style="font-size:0.75rem;color:var(--text-tertiary);margin:4px 0 0">Track journey</p>
+                </div>
+                <div style="background:var(--card-bg);border-radius:var(--radius-lg);padding:var(--space-lg);text-align:center;cursor:pointer" onclick="showNotesModal()">
+                    <div style="font-size:2rem;margin-bottom:var(--space-sm)">📝</div>
+                    <p style="font-weight:600;margin:0;font-size:0.9rem">My Notes</p>
+                    <p style="font-size:0.75rem;color:var(--text-tertiary);margin:4px 0 0">${notes.length} saved</p>
+                </div>
+            </div>
+            
+            <!-- Recent Tool History -->
+            ${toolHistory.length > 0 ? `
+            <div class="card" style="margin-bottom:var(--space-lg)">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
+                    <h3 style="margin:0;font-size:1rem">🕐 Recent Activity</h3>
+                    <button class="btn btn-ghost btn-sm" onclick="navigate('progress')">View All →</button>
+                </div>
+                <div style="display:flex;gap:var(--space-sm);overflow-x:auto;padding:var(--space-xs) 0">
+                    ${toolHistory.slice(0, 5).map(h => {
+                        const tool = TOOLS[h.toolId];
+                        return `
+                        <div style="flex-shrink:0;width:120px;padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);cursor:pointer;text-align:center" onclick="${h.hasResults ? `viewToolResults('${h.toolId}', '${h.sessionId}')` : `openTool('${h.toolId}')`}">
+                            <div style="font-size:1.5rem;margin-bottom:var(--space-xs)">${tool?.icon || '🛠️'}</div>
+                            <p style="font-size:0.8rem;font-weight:500;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tool?.name || h.toolId}</p>
+                            <p style="font-size:0.65rem;color:var(--text-tertiary);margin:2px 0 0">${h.date}</p>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+            ` : ''}
+            
+            <!-- Quick Notes Preview -->
+            <div class="card" style="margin-bottom:var(--space-lg)">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
+                    <h3 style="margin:0;font-size:1rem">📝 My Notes</h3>
+                    <button class="btn btn-primary btn-sm" onclick="showAddNoteModal()">+ Add</button>
+                </div>
+                ${notes.length > 0 ? `
+                    <div style="display:grid;gap:var(--space-sm)">
+                        ${notes.slice(0, 3).map((note, i) => `
+                            <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);cursor:pointer" onclick="showNoteDetail(${i})">
+                                <div style="display:flex;justify-content:space-between;align-items:start;gap:var(--space-sm)">
+                                    <strong style="font-size:0.9rem">${note.title || 'Untitled Note'}</strong>
+                                    <span style="font-size:0.65rem;color:var(--text-tertiary);white-space:nowrap">${note.date}</span>
+                                </div>
+                                <p style="font-size:0.8rem;color:var(--text-secondary);margin:var(--space-xs) 0 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${note.content}</p>
+                                ${note.images?.length ? `<span style="font-size:0.65rem;color:var(--root-green);margin-top:4px;display:inline-block">📷 ${note.images.length} image${note.images.length > 1 ? 's' : ''}</span>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                    ${notes.length > 3 ? `<button class="btn btn-ghost btn-block" onclick="showNotesModal()" style="margin-top:var(--space-md);font-size:0.85rem">View All ${notes.length} Notes →</button>` : ''}
                 ` : `
-                <div style="text-align:right">
-                    <span style="font-size:1.5rem">🎉</span>
-                </div>
+                    <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-lg);font-size:0.9rem">No notes yet. Save insights from your studies!</p>
                 `}
             </div>
-        </div>
-        ` : ''}
-        
-        <!-- Clock & Timer Widget -->
-        <div class="card" style="margin-bottom:var(--space-lg);padding:var(--space-md)">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--space-md)">
-                <!-- Current Time -->
-                <div style="display:flex;align-items:center;gap:var(--space-md)">
-                    <div style="width:50px;height:50px;background:linear-gradient(135deg,#3b82f6,#60a5fa);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.5rem">🕐</div>
-                    <div>
-                        <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0">Current Time</p>
-                        <p id="currentClock" style="font-size:1.4rem;font-weight:600;font-family:monospace;margin:0">--:--:--</p>
-                    </div>
-                </div>
-                
-                <!-- Study Timer -->
-                <div style="display:flex;align-items:center;gap:var(--space-md)">
-                    <div>
-                        <p style="font-size:0.8rem;color:var(--text-tertiary);margin:0;text-align:right">Study Timer</p>
-                        <p id="studyTimer" style="font-size:1.4rem;font-weight:600;font-family:monospace;margin:0;color:var(--root-green)">00:00:00</p>
-                    </div>
-                    <div style="display:flex;gap:var(--space-xs)">
-                        <button class="btn btn-ghost" onclick="toggleStudyTimer()" id="timerToggleBtn" style="padding:var(--space-sm);font-size:1.2rem" title="Start/Pause">▶️</button>
-                        <button class="btn btn-ghost" onclick="resetStudyTimer()" style="padding:var(--space-sm);font-size:1.2rem" title="Reset">🔄</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="stat-grid" style="margin-bottom:var(--space-xl)">
-            <div class="stat-card" onclick="navigate('tools')" style="cursor:pointer">
-                <div class="stat-label">Tools Available</div>
-                <div class="stat-value">${Object.values(TOOLS).filter(t => t.status === 'active').length}</div>
-            </div>
-            <div class="stat-card" onclick="navigate('progress')" style="cursor:pointer">
-                <div class="stat-label">My Progress</div>
-                <div class="stat-value" style="font-size:1.5rem">📈</div>
-            </div>
-            <div class="stat-card" onclick="showNotesModal()" style="cursor:pointer">
-                <div class="stat-label">My Notes</div>
-                <div class="stat-value">${notes.length}</div>
-            </div>
-        </div>
-        
-        <!-- Recent Tool History -->
-        ${toolHistory.length > 0 ? `
-        <div class="card" style="margin-bottom:var(--space-lg)">
+            
+            <!-- Start Growing -->
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
-                <h3 style="margin:0;display:flex;align-items:center;gap:var(--space-sm)">
-                    <span>🕐</span> Recent Activity
-                </h3>
-                <button class="btn btn-ghost btn-sm" onclick="navigate('progress')">View All →</button>
+                <h3 style="margin:0;font-size:1rem">🌱 Start Growing</h3>
+                <button class="btn btn-ghost btn-sm" onclick="navigate('tools')">View All →</button>
             </div>
-            <div style="display:flex;gap:var(--space-md);overflow-x:auto;padding:var(--space-sm) 0">
-                ${toolHistory.slice(0, 5).map(h => {
-                    const tool = TOOLS[h.toolId];
-                    return `
-                    <div style="flex-shrink:0;width:140px;padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-lg);cursor:pointer;text-align:center" onclick="${h.hasResults ? `viewToolResults('${h.toolId}', '${h.sessionId}')` : `openTool('${h.toolId}')`}">
-                        <div style="font-size:2rem;margin-bottom:var(--space-sm)">${tool?.icon || '🛠️'}</div>
-                        <p style="font-size:0.85rem;font-weight:500;margin:0">${tool?.name || h.toolId}</p>
-                        <p style="font-size:0.7rem;color:var(--text-tertiary);margin:var(--space-xs) 0 0">${h.date}</p>
-                        ${h.hasResults ? '<span style="font-size:0.65rem;background:var(--root-green);color:white;padding:2px 6px;border-radius:10px">View Results</span>' : ''}
-                    </div>`;
-                }).join('')}
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:var(--space-md)">
+                ${Object.values(TOOLS).filter(t => t.status === 'active').slice(0, 2).map(t => renderToolCard(t)).join('')}
             </div>
-        </div>
-        ` : ''}
-        
-        <!-- Quick Notes Preview -->
-        <div class="card" style="margin-bottom:var(--space-lg)">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
-                <h3 style="margin:0;display:flex;align-items:center;gap:var(--space-sm)">
-                    <span>📝</span> My Notes
-                </h3>
-                <button class="btn btn-primary btn-sm" onclick="showAddNoteModal()">+ Add Note</button>
-            </div>
-            ${notes.length > 0 ? `
-                <div style="display:grid;gap:var(--space-sm)">
-                    ${notes.slice(0, 3).map((note, i) => `
-                        <div style="padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);cursor:pointer" onclick="showNoteDetail(${i})">
-                            <div style="display:flex;justify-content:space-between;align-items:start">
-                                <strong style="font-size:0.95rem">${note.title || 'Untitled Note'}</strong>
-                                <span style="font-size:0.7rem;color:var(--text-tertiary)">${note.date}</span>
-                            </div>
-                            <p style="font-size:0.85rem;color:var(--text-secondary);margin:var(--space-xs) 0 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${note.content}</p>
-                            ${note.source ? `<span style="font-size:0.7rem;color:var(--root-green);display:block;margin-top:var(--space-xs)">From: ${note.source}</span>` : ''}
-                        </div>
-                    `).join('')}
-                </div>
-                ${notes.length > 3 ? `<button class="btn btn-ghost btn-block" onclick="showNotesModal()" style="margin-top:var(--space-md)">View All ${notes.length} Notes →</button>` : ''}
-            ` : `
-                <p style="color:var(--text-tertiary);text-align:center;padding:var(--space-lg)">No notes yet. Save insights from your Bible studies and tools!</p>
-            `}
-        </div>
-        
-        <div class="section-header">
-            <h3 class="section-title">Start Growing</h3>
-            <button class="btn btn-ghost btn-sm" onclick="navigate('tools')">View All →</button>
-        </div>
-        <div class="grid grid-2">
-            ${Object.values(TOOLS).filter(t => t.status === 'active').slice(0, 2).map(t => renderToolCard(t)).join('')}
         </div>
     </div>`;
 }
@@ -6434,7 +6464,11 @@ function showNotesModal() {
     `);
 }
 
+// Track temporary note images before save
+let tempNoteImages = [];
+
 function showAddNoteModal(prefillContent = '', prefillSource = '') {
+    tempNoteImages = [];
     showModal(`
         <div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
             <div class="modal-header">
@@ -6448,8 +6482,20 @@ function showAddNoteModal(prefillContent = '', prefillSource = '') {
                 </div>
                 <div class="input-group">
                     <label class="input-label">Content</label>
-                    <textarea class="input-field" id="noteContent" rows="6" placeholder="Write your note...">${prefillContent}</textarea>
+                    <textarea class="input-field" id="noteContent" rows="5" placeholder="Write your note...">${prefillContent}</textarea>
                 </div>
+                
+                <!-- Image Upload Section -->
+                <div class="input-group">
+                    <label class="input-label">📷 Images (optional)</label>
+                    <div id="noteImagesPreview" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:var(--space-sm)"></div>
+                    <div style="border:2px dashed var(--border-color);border-radius:var(--radius-md);padding:var(--space-md);text-align:center;cursor:pointer" onclick="document.getElementById('noteImageInput').click()">
+                        <input type="file" id="noteImageInput" accept="image/*" multiple style="display:none" onchange="handleNoteImageSelect(event)">
+                        <p style="margin:0;color:var(--text-tertiary);font-size:0.9rem">📤 Click to add images</p>
+                        <p style="margin:4px 0 0;color:var(--text-tertiary);font-size:0.75rem">Great for handwritten notes!</p>
+                    </div>
+                </div>
+                
                 ${prefillSource ? `<input type="hidden" id="noteSource" value="${prefillSource}">` : ''}
                 <button class="btn btn-primary btn-block" onclick="saveNote()">💾 Save Note</button>
             </div>
@@ -6457,21 +6503,61 @@ function showAddNoteModal(prefillContent = '', prefillSource = '') {
     `);
 }
 
+function handleNoteImageSelect(event) {
+    const files = event.target.files;
+    if (!files.length) return;
+    
+    Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            tempNoteImages.push({
+                data: e.target.result,
+                name: file.name,
+                addedAt: new Date().toISOString()
+            });
+            renderNoteImagePreviews();
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function renderNoteImagePreviews() {
+    const container = document.getElementById('noteImagesPreview');
+    if (!container) return;
+    
+    container.innerHTML = tempNoteImages.map((img, i) => `
+        <div style="position:relative;width:80px;height:80px;border-radius:var(--radius-md);overflow:hidden;flex-shrink:0">
+            <img src="${img.data}" alt="" style="width:100%;height:100%;object-fit:cover">
+            <button onclick="removeNoteImage(${i})" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.7);color:white;border:none;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+        </div>
+    `).join('');
+}
+
+function removeNoteImage(index) {
+    tempNoteImages.splice(index, 1);
+    renderNoteImagePreviews();
+}
+
 function saveNote(editIndex = null) {
     const title = document.getElementById('noteTitle')?.value?.trim() || '';
     const content = document.getElementById('noteContent')?.value?.trim() || '';
     const source = document.getElementById('noteSource')?.value || '';
     
-    if (!content) {
-        toast('Please enter some content', 'error');
+    if (!content && !tempNoteImages.length) {
+        toast('Please enter some content or add an image', 'error');
         return;
     }
     
     const notes = JSON.parse(localStorage.getItem('rooted_notes') || '[]');
+    
+    // Get existing images if editing
+    const existingImages = editIndex !== null ? (notes[editIndex]?.images || []) : [];
+    
     const note = {
         title,
         content,
         source,
+        images: [...existingImages, ...tempNoteImages],
         date: new Date().toLocaleDateString()
     };
     
@@ -6482,6 +6568,7 @@ function saveNote(editIndex = null) {
     }
     
     localStorage.setItem('rooted_notes', JSON.stringify(notes));
+    tempNoteImages = [];
     closeModal();
     toast('Note saved! 📝', 'success');
     render();
@@ -6490,6 +6577,7 @@ function saveNote(editIndex = null) {
 function editNote(index) {
     const notes = JSON.parse(localStorage.getItem('rooted_notes') || '[]');
     const note = notes[index];
+    tempNoteImages = [];
     
     showModal(`
         <div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
@@ -6504,11 +6592,56 @@ function editNote(index) {
                 </div>
                 <div class="input-group">
                     <label class="input-label">Content</label>
-                    <textarea class="input-field" id="noteContent" rows="6">${note.content}</textarea>
+                    <textarea class="input-field" id="noteContent" rows="5">${note.content}</textarea>
                 </div>
+                
+                <!-- Existing Images -->
+                ${note.images?.length ? `
+                <div class="input-group">
+                    <label class="input-label">📷 Current Images</label>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        ${note.images.map((img, i) => `
+                            <div style="position:relative;width:80px;height:80px;border-radius:var(--radius-md);overflow:hidden;cursor:pointer" onclick="viewNoteImage('${img.data.replace(/'/g, "\\'")}')">
+                                <img src="${img.data}" alt="" style="width:100%;height:100%;object-fit:cover">
+                                <button onclick="event.stopPropagation();removeExistingNoteImage(${index},${i})" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(239,68,68,0.9);color:white;border:none;font-size:12px;cursor:pointer">✕</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+                
+                <!-- Add More Images -->
+                <div class="input-group">
+                    <label class="input-label">📷 Add More Images</label>
+                    <div id="noteImagesPreview" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:var(--space-sm)"></div>
+                    <div style="border:2px dashed var(--border-color);border-radius:var(--radius-md);padding:var(--space-md);text-align:center;cursor:pointer" onclick="document.getElementById('noteImageInput').click()">
+                        <input type="file" id="noteImageInput" accept="image/*" multiple style="display:none" onchange="handleNoteImageSelect(event)">
+                        <p style="margin:0;color:var(--text-tertiary);font-size:0.85rem">📤 Click to add images</p>
+                    </div>
+                </div>
+                
                 <input type="hidden" id="noteSource" value="${note.source || ''}">
                 <button class="btn btn-primary btn-block" onclick="saveNote(${index})">💾 Save Changes</button>
             </div>
+        </div>
+    `);
+}
+
+function removeExistingNoteImage(noteIndex, imageIndex) {
+    if (!confirm('Remove this image?')) return;
+    
+    const notes = JSON.parse(localStorage.getItem('rooted_notes') || '[]');
+    if (notes[noteIndex]?.images) {
+        notes[noteIndex].images.splice(imageIndex, 1);
+        localStorage.setItem('rooted_notes', JSON.stringify(notes));
+        editNote(noteIndex); // Re-render the edit modal
+    }
+}
+
+function viewNoteImage(imageSrc) {
+    showModal(`
+        <div class="modal" onclick="closeModal()" style="max-width:90vw;max-height:90vh;padding:0;background:transparent">
+            <img src="${imageSrc}" alt="" style="max-width:100%;max-height:90vh;object-fit:contain;border-radius:var(--radius-lg)">
         </div>
     `);
 }
@@ -6535,8 +6668,23 @@ function showNoteDetail(index) {
                 <button class="modal-close" onclick="closeModal()">✕</button>
             </div>
             <div class="modal-body">
-                <p style="white-space:pre-wrap;line-height:1.6">${note.content}</p>
-                <div style="display:flex;justify-content:space-between;margin-top:var(--space-lg);padding-top:var(--space-md);border-top:1px solid var(--border-color)">
+                ${note.content ? `<p style="white-space:pre-wrap;line-height:1.6;margin-bottom:var(--space-md)">${note.content}</p>` : ''}
+                
+                <!-- Image Gallery -->
+                ${note.images?.length ? `
+                <div style="margin-bottom:var(--space-md)">
+                    <p style="font-size:0.8rem;color:var(--text-tertiary);margin-bottom:var(--space-sm)">📷 ${note.images.length} image${note.images.length > 1 ? 's' : ''}</p>
+                    <div style="display:flex;gap:8px;overflow-x:auto;padding:var(--space-xs) 0">
+                        ${note.images.map(img => `
+                            <div style="flex-shrink:0;width:120px;height:120px;border-radius:var(--radius-md);overflow:hidden;cursor:pointer" onclick="viewNoteImage('${img.data.replace(/'/g, "\\'")}')">
+                                <img src="${img.data}" alt="" style="width:100%;height:100%;object-fit:cover">
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+                
+                <div style="display:flex;justify-content:space-between;padding-top:var(--space-md);border-top:1px solid var(--border-color)">
                     ${note.source ? `<span style="font-size:0.85rem;color:var(--root-green)">From: ${note.source}</span>` : '<span></span>'}
                     <span style="font-size:0.85rem;color:var(--text-tertiary)">${note.date}</span>
                 </div>
@@ -8093,8 +8241,16 @@ function renderMyChurchContent(church, userChurches, activeChurchId) {
         <div class="card" style="margin-bottom:var(--space-lg)">
             <h3 style="margin-bottom:var(--space-lg)">📋 Church Feed</h3>
             <div style="display:grid;gap:var(--space-md)">
-                ${church.posts.slice(0, 10).map(p => `
-                    <div style="background:var(--hover-bg);border-radius:var(--radius-lg);overflow:hidden">
+                ${(() => {
+                    const pinnedId = church.pinnedPostId;
+                    const sortedPosts = [...church.posts].sort((a, b) => {
+                        if (a.id === pinnedId) return -1;
+                        if (b.id === pinnedId) return 1;
+                        return new Date(b.createdAt) - new Date(a.createdAt);
+                    });
+                    return sortedPosts.slice(0, 10).map(p => `
+                    <div style="background:var(--hover-bg);border-radius:var(--radius-lg);overflow:hidden;${p.id === pinnedId ? 'border:2px solid ' + colors.primary : ''}">
+                        ${p.id === pinnedId ? `<div style="background:${colors.primary};color:white;padding:6px 12px;font-size:0.7rem;font-weight:600">📌 PINNED</div>` : ''}
                         ${p.imageUrl ? `<img src="${p.imageUrl}" alt="" style="width:100%;max-height:250px;object-fit:cover">` : ''}
                         ${p.videoId ? `
                             <div style="position:relative;cursor:pointer" onclick="playYouTubeVideo('${p.videoId}', '${(p.title || 'Video').replace(/'/g, "\\'")}')">
@@ -8115,7 +8271,8 @@ function renderMyChurchContent(church, userChurches, activeChurchId) {
                             <p style="margin:0;color:var(--text-secondary);font-size:0.9rem;white-space:pre-wrap;line-height:1.5">${p.content}</p>
                         </div>
                     </div>
-                `).join('')}
+                `).join('');
+                })()}
             </div>
             ${church.posts.length > 10 ? `<p style="text-align:center;color:var(--text-tertiary);margin-top:var(--space-lg)">Showing latest 10 posts</p>` : ''}
         </div>
