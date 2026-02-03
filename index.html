@@ -3798,59 +3798,6 @@ async function deleteYouTubeVideo(videoId) {
         toast('Error removing video', 'error');
     }
 }
-            
-            <div id="manualVideoForm" style="display:none">
-                <form onsubmit="handleYouTubeAdd(event)">
-                    <div class="input-group">
-                        <label class="input-label">Video Title</label>
-                        <input type="text" class="input-field" id="ytVideoTitle" placeholder="Sunday Sermon - Faith in Action" required>
-                    </div>
-                    <div class="input-group">
-                        <label class="input-label">YouTube Video URL</label>
-                        <input type="text" class="input-field" id="ytVideoUrl" placeholder="https://youtube.com/watch?v=..." required>
-                    </div>
-                    <div class="input-group">
-                        <label class="input-label">Category</label>
-                        <select class="input-field" id="ytVideoCategory">
-                            <option value="sermons">Sermons</option>
-                            <option value="worship">Worship</option>
-                            <option value="bible-study">Bible Study</option>
-                            <option value="testimonies">Testimonies</option>
-                            <option value="events">Events</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-primary">➕ Add Video</button>
-                </form>
-            </div>
-        </div>
-        
-        <!-- Current Videos Preview -->
-        <div class="card">
-            <h3 style="margin-bottom:var(--space-md)">📹 Videos Showing to Members (${videos.length})</h3>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">These videos are currently visible in your church's video library.</p>
-            
-            ${videos.length ? `
-                <div style="display:grid;gap:var(--space-md);max-height:400px;overflow-y:auto">
-                    ${videos.slice(0, 20).map(v => `
-                        <div style="display:flex;gap:var(--space-md);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md)">
-                            <div style="width:120px;height:68px;background:#000;border-radius:var(--radius-sm);overflow:hidden;flex-shrink:0">
-                                <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" alt="" style="width:100%;height:100%;object-fit:cover">
-                            </div>
-                            <div style="flex:1;min-width:0">
-                                <strong style="display:block;font-size:0.9rem;margin-bottom:2px">${v.title}</strong>
-                                <p style="font-size:0.75rem;color:var(--text-tertiary);margin:0">${v.category || 'Video'} • ${v.date || ''}</p>
-                                ${v.playlistName ? `<span style="font-size:0.7rem;background:var(--root-green);color:white;padding:2px 6px;border-radius:8px;margin-top:4px;display:inline-block">${v.playlistName}</span>` : ''}
-                            </div>
-                            <button class="btn btn-ghost" onclick="deleteYouTubeVideo('${v.id}')" style="color:var(--error);padding:var(--space-xs)">🗑️</button>
-                        </div>
-                    `).join('')}
-                </div>
-                ${videos.length > 20 ? `<p style="text-align:center;color:var(--text-tertiary);margin-top:var(--space-md)">Showing 20 of ${videos.length} videos</p>` : ''}
-            ` : '<p style="color:var(--text-tertiary);text-align:center;padding:var(--space-xl)">No videos yet. Connect your YouTube channel or add videos manually.</p>'}
-        </div>
-    </div>`;
-}
 
 // ========== CHURCH BRANDING ==========
 function renderChurchBranding() {
