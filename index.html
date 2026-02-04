@@ -7712,6 +7712,16 @@ function hasCheckedIn(member) {
     return (member.checkInCount || 0) > 0;
 }
 
+// Categorize person for display purposes
+function getMemberCategory(member) {
+    // Member = admin confirmed
+    if (member.isMember) return 'member';
+    // Attendee = has at least one check-in (online or in-person) but not a member
+    if ((member.checkInCount || 0) > 0) return 'attendee';
+    // User = connected but no check-ins yet
+    return 'user';
+}
+
 function applyMemberFilters() {
     let filtered = [...allMembersData];
     
