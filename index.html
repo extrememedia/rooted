@@ -1967,6 +1967,19 @@ async function updateChurchData(churchId, updates) {
     await ChurchDB.updateChurch(churchId, updates);
 }
 
+// Helper to refresh church cache after updates
+async function refreshChurchCache(churchId) {
+    if (!churchId) return;
+    try {
+        const freshChurch = await ChurchDB.getChurch(churchId);
+        if (freshChurch) {
+            churchCache[churchId] = freshChurch;
+        }
+    } catch (e) {
+        console.error('Error refreshing church cache:', e);
+    }
+}
+
 async function createNewChurch(churchData) {
     const churchId = churchData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
     await ChurchDB.createChurch(churchId, {
@@ -4787,9 +4800,9 @@ async function handleToolsUpdate(e) {
     
     try {
         await ChurchDB.updateChurch(State.current.user.churchId, { enabledTools });
-        // Clear cache to ensure fresh data
-        delete churchCache[State.current.user.churchId];
+        await refreshChurchCache(State.current.user.churchId);
         toast('Tool settings updated! 🧰', 'success');
+        render();
     } catch (error) {
         console.error('Error saving tools:', error);
         toast('Error saving tool settings', 'error');
@@ -4964,7 +4977,13 @@ function getEnabledStudies() {
 
 // Toggle study enabled status
 async function toggleStudyEnabled(studyId) {
-    const church = getChurchData(State.current.user?.churchId);
+    const churchId = State.current.user?.churchId;
+    if (!churchId) {
+        toast('Error: No church found', 'error');
+        return;
+    }
+    
+    const church = getChurchData(churchId);
     let enabledStudies = church?.enabledStudies || [];
     
     if (enabledStudies.includes(studyId)) {
@@ -4976,8 +4995,12 @@ async function toggleStudyEnabled(studyId) {
     }
     
     try {
-        await ChurchDB.updateChurch(State.current.user.churchId, { enabledStudies });
-        delete churchCache[State.current.user.churchId];
+        await ChurchDB.updateChurch(churchId, { enabledStudies });
+        // Refresh cache with fresh data before render
+        const freshChurch = await ChurchDB.getChurch(churchId);
+        if (freshChurch) {
+            churchCache[churchId] = freshChurch;
+        }
         render();
     } catch (e) {
         console.error('Error updating studies:', e);
@@ -10365,7 +10388,7 @@ async function init() {
                 // Make sure it's a valid church admin nav
                 const validChurchNavs = ['church-dashboard', 'church-members', 'church-resources', 
                     'church-checkin-resources', 'church-announcements', 'church-youtube', 
-                    'church-social', 'church-branding', 'church-membership', 'church-location', 'church-tools'];
+                    'church-social', 'church-branding', 'church-membership', 'church-location', 'church-tools', 'church-fso'];
                 if (!validChurchNavs.includes(activeNav)) {
                     activeNav = 'church-dashboard';
                 }
