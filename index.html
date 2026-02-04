@@ -4960,6 +4960,89 @@ const ROOTED_STUDIES = [
     }
 ];
 
+// Partner Resource Libraries - Curated PDFs and resources from each partner
+const PARTNER_RESOURCE_LIBRARIES = {
+    'navigators': {
+        id: 'navigators',
+        name: 'The Navigators',
+        logo: 'https://www.navigators.org/wp-content/themes/theme-developer/images/Navs-logo.svg',
+        color: '#0d9488',
+        description: 'Scripture memory, discipleship tools, and Bible study resources',
+        categories: ['Scripture Memory', 'Discipleship', 'Bible Study', 'Evangelism'],
+        resources: [
+            { id: 'nav-1', title: 'Topical Memory System - Series A', type: 'pdf', category: 'Scripture Memory', description: '60 verses on key topics for new believers', url: 'https://www.navigators.org/resource/topical-memory-system/', preview: 'Memory cards covering salvation, assurance, and Christian living' },
+            { id: 'nav-2', title: 'Design for Discipleship - Book 1', type: 'pdf', category: 'Discipleship', description: 'Your Life in Christ - foundations study', url: 'https://www.navigators.org/resource/design-for-discipleship/', preview: '7 lessons on beginning your walk with Christ' },
+            { id: 'nav-3', title: 'Design for Discipleship - Book 2', type: 'pdf', category: 'Discipleship', description: 'The Spirit-Filled Follower of Jesus', url: 'https://www.navigators.org/resource/design-for-discipleship/', preview: 'Understanding the Holy Spirit\'s role in your life' },
+            { id: 'nav-4', title: 'The Bridge Illustration', type: 'pdf', category: 'Evangelism', description: 'Simple gospel presentation tool', url: 'https://www.navigators.org/resource/the-bridge-to-life/', preview: 'Visual tool for sharing the gospel clearly' },
+            { id: 'nav-5', title: 'Wheel Illustration', type: 'pdf', category: 'Discipleship', description: 'Christ-centered living diagram', url: 'https://www.navigators.org/resource/the-wheel/', preview: 'Visual model for balanced Christian life' },
+            { id: 'nav-6', title: 'Hand Illustration', type: 'pdf', category: 'Bible Study', description: '5 methods to grip the Word', url: 'https://www.navigators.org/resource/the-word-hand/', preview: 'Hear, Read, Study, Memorize, Meditate' }
+        ]
+    },
+    'bible-project': {
+        id: 'bible-project',
+        name: 'Bible Project',
+        logo: 'https://bibleproject.com/favicon.ico',
+        color: '#16a34a',
+        description: 'Visual theology, book overviews, and biblical themes',
+        categories: ['Book Overviews', 'Word Studies', 'Themes', 'Reading Plans'],
+        resources: [
+            { id: 'bp-1', title: 'How to Read the Bible: Literary Styles', type: 'pdf', category: 'Themes', description: 'Understanding biblical genres', url: 'https://bibleproject.com/guides/', preview: 'Narrative, Poetry, Prophecy, Wisdom, and more' },
+            { id: 'bp-2', title: 'Genesis Overview Study Guide', type: 'pdf', category: 'Book Overviews', description: 'Visual guide to Genesis', url: 'https://bibleproject.com/guides/book-of-genesis/', preview: 'Creation, Fall, Promise, and Patriarchs' },
+            { id: 'bp-3', title: 'Gospel of John Study Guide', type: 'pdf', category: 'Book Overviews', description: 'Deep dive into John\'s Gospel', url: 'https://bibleproject.com/guides/book-of-john/', preview: 'Signs, Symbols, and Eternal Life' },
+            { id: 'bp-4', title: 'The Messiah Theme Guide', type: 'pdf', category: 'Themes', description: 'Tracing Jesus through Scripture', url: 'https://bibleproject.com/guides/', preview: 'From Genesis to Revelation' },
+            { id: 'bp-5', title: 'Spiritual Beings Study', type: 'pdf', category: 'Themes', description: 'Angels, demons, and the divine council', url: 'https://bibleproject.com/guides/', preview: 'Understanding the spiritual realm biblically' },
+            { id: 'bp-6', title: 'Romans Reading Plan', type: 'pdf', category: 'Reading Plans', description: '8-week journey through Romans', url: 'https://bibleproject.com/guides/book-of-romans/', preview: 'Paul\'s masterpiece on salvation' }
+        ]
+    },
+    'alpha-course': {
+        id: 'alpha-course',
+        name: 'Alpha Course',
+        logo: 'https://www.alpha.org/favicon.ico',
+        color: '#7c3aed',
+        description: 'Evangelism and new believer resources',
+        categories: ['Discussion Guides', 'Leader Resources', 'Youth Alpha'],
+        resources: [
+            { id: 'alpha-1', title: 'Alpha Session 1: Is There More to Life?', type: 'pdf', category: 'Discussion Guides', description: 'Opening session discussion guide', url: 'https://www.alpha.org/resources/', preview: 'Exploring life\'s biggest questions' },
+            { id: 'alpha-2', title: 'Alpha Session 2: Who Is Jesus?', type: 'pdf', category: 'Discussion Guides', description: 'Examining the evidence for Christ', url: 'https://www.alpha.org/resources/', preview: 'Historical and biblical evidence' },
+            { id: 'alpha-3', title: 'Alpha Session 3: Why Did Jesus Die?', type: 'pdf', category: 'Discussion Guides', description: 'Understanding the cross', url: 'https://www.alpha.org/resources/', preview: 'The meaning of the crucifixion' },
+            { id: 'alpha-4', title: 'Alpha Host Training Guide', type: 'pdf', category: 'Leader Resources', description: 'How to lead Alpha discussions', url: 'https://www.alpha.org/resources/', preview: 'Creating welcoming environments' },
+            { id: 'alpha-5', title: 'Youth Alpha Adaptation Guide', type: 'pdf', category: 'Youth Alpha', description: 'Running Alpha for teenagers', url: 'https://www.alpha.org/resources/', preview: 'Engaging young people with faith' }
+        ]
+    },
+    'lifeway': {
+        id: 'lifeway',
+        name: 'Lifeway',
+        logo: 'https://www.lifeway.com/favicon.ico',
+        color: '#0891b2',
+        description: 'Bible studies and church resources',
+        categories: ['Bible Studies', 'Leader Guides', 'Devotionals'],
+        resources: [
+            { id: 'lw-1', title: 'Experiencing God - Week 1', type: 'pdf', category: 'Bible Studies', description: 'Knowing and doing God\'s will', url: 'https://www.lifeway.com/en/articles/free-church-resources', preview: 'Henry Blackaby\'s classic study' },
+            { id: 'lw-2', title: 'Disciples Path - Step 1', type: 'pdf', category: 'Bible Studies', description: 'First steps for new believers', url: 'https://www.lifeway.com/en/articles/free-church-resources', preview: 'Foundational truths for faith' },
+            { id: 'lw-3', title: 'Bible Study Methods Guide', type: 'pdf', category: 'Leader Guides', description: 'How to study Scripture effectively', url: 'https://www.lifeway.com/en/articles/free-church-resources', preview: 'Observation, Interpretation, Application' },
+            { id: 'lw-4', title: '7 Daily Devotional Templates', type: 'pdf', category: 'Devotionals', description: 'Printable quiet time guides', url: 'https://www.lifeway.com/en/articles/free-church-resources', preview: 'Structured time with God' }
+        ]
+    },
+    'renovare': {
+        id: 'renovare',
+        name: 'Renovaré',
+        logo: 'https://renovare.org/favicon.ico',
+        color: '#ca8a04',
+        description: 'Spiritual formation and classical disciplines',
+        categories: ['Spiritual Disciplines', 'Prayer', 'Contemplation'],
+        resources: [
+            { id: 'ren-1', title: 'Lectio Divina Guide', type: 'pdf', category: 'Prayer', description: 'Sacred reading practice', url: 'https://www.renovare.org/resources', preview: 'Ancient method of praying Scripture' },
+            { id: 'ren-2', title: 'Rule of Life Template', type: 'pdf', category: 'Spiritual Disciplines', description: 'Creating a personal rhythm', url: 'https://www.renovare.org/resources', preview: 'Structuring spiritual practices' },
+            { id: 'ren-3', title: 'Examen Prayer Guide', type: 'pdf', category: 'Prayer', description: 'Daily reflection practice', url: 'https://www.renovare.org/resources', preview: 'Ignatian evening prayer' },
+            { id: 'ren-4', title: 'Fasting Guidelines', type: 'pdf', category: 'Spiritual Disciplines', description: 'Biblical approach to fasting', url: 'https://www.renovare.org/resources', preview: 'Types, purposes, and practices' },
+            { id: 'ren-5', title: 'Silence & Solitude Retreat Plan', type: 'pdf', category: 'Contemplation', description: 'Personal retreat guide', url: 'https://www.renovare.org/resources', preview: 'Half-day to full-day formats' }
+        ]
+    }
+};
+
+// Days of the week for scheduling
+const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 // Get saved FSO favorites from localStorage
 function getFSOFavorites() {
     try {
@@ -5026,6 +5109,11 @@ function toggleFSOFavorite(resourceId) {
 }
 
 function renderChurchFSO() {
+    // Check if viewing a specific partner's resources
+    if (currentPartnerView) {
+        return renderPartnerResourcePage(currentPartnerView);
+    }
+    
     const favorites = getFSOFavorites();
     const enabledStudies = getEnabledStudies();
     
@@ -5075,6 +5163,7 @@ function renderChurchFSO() {
                             </div>
                             <div style="display:flex;gap:8px">
                                 <button class="btn btn-ghost btn-sm" onclick="window.open('${study.file}','_blank')" style="flex:1">👁 Preview</button>
+                                ${isEnabled ? `<button class="btn btn-ghost btn-sm" onclick="showStudyScheduleModal('${study.id}')" style="flex:1">📅 Schedule</button>` : ''}
                                 <button class="btn ${isEnabled ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="toggleStudyEnabled('${study.id}')" style="flex:1">
                                     ${isEnabled ? '✓ Enabled' : '+ Enable'}
                                 </button>
@@ -5091,38 +5180,40 @@ function renderChurchFSO() {
             <span style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--bg-primary);padding:0 16px;color:var(--text-tertiary);font-size:0.85rem">External Resources</span>
         </div>
         
-        <!-- External Resources Section -->
+        <!-- Partner Resource Libraries Section -->
         <div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
                 <div>
-                    <h2 style="margin:0 0 4px;display:flex;align-items:center;gap:8px">🔗 Partner Resources</h2>
-                    <p style="margin:0;color:var(--text-secondary);font-size:0.9rem">Curated discipleship content from trusted Christian organizations</p>
+                    <h2 style="margin:0 0 4px;display:flex;align-items:center;gap:8px">🔗 Partner Resource Libraries</h2>
+                    <p style="margin:0;color:var(--text-secondary);font-size:0.9rem">Browse PDFs and downloads from trusted Christian organizations</p>
                 </div>
-                <div style="display:flex;gap:8px">
-                    <input type="text" class="input-field" id="fsoSearch" placeholder="Search..." oninput="filterFSOResources()" style="margin:0;width:180px;padding:8px 12px">
-                    <button class="btn btn-secondary fso-filter-btn ${favorites.length ? '' : 'active'}" onclick="filterFSOCategory('all')" data-category="all">All</button>
-                    <button class="btn btn-secondary fso-filter-btn" onclick="filterFSOCategory('favorites')" data-category="favorites">⭐ ${favorites.length}</button>
+                <div style="background:var(--hover-bg);padding:6px 12px;border-radius:8px;font-size:0.85rem;color:var(--text-secondary)">
+                    ${getChurchResourcePlaylist(State.current.user?.churchId).length} in playlist
                 </div>
             </div>
             
-            <div style="display:grid;gap:12px">
-                ${FSO_RESOURCES.discipleship.resources.map(resource => {
-                    const isFavorite = favorites.includes(resource.id);
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+                ${Object.values(PARTNER_RESOURCE_LIBRARIES).map(partner => {
+                    const playlist = getChurchResourcePlaylist(State.current.user?.churchId);
+                    const inPlaylist = playlist.filter(r => r.partnerId === partner.id).length;
                     return `
-                    <div class="card fso-resource-card" data-resource-id="${resource.id}" style="padding:16px;border-left:4px solid ${resource.color}">
-                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
-                            <div style="flex:1;min-width:250px">
-                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-                                    <h4 style="margin:0;font-size:1rem">${resource.name}</h4>
-                                    ${isFavorite ? '<span style="color:#f59e0b">⭐</span>' : ''}
+                    <div class="card" style="padding:0;overflow:hidden;cursor:pointer;transition:all 0.2s" onclick="openPartnerResources('${partner.id}')">
+                        <div style="height:8px;background:${partner.color}"></div>
+                        <div style="padding:20px">
+                            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+                                <div style="width:48px;height:48px;background:${partner.color}15;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.5rem">📚</div>
+                                <div style="flex:1">
+                                    <h4 style="margin:0 0 2px">${partner.name}</h4>
+                                    <span style="font-size:0.8rem;color:var(--text-tertiary)">${partner.resources.length} resources</span>
                                 </div>
-                                <span style="display:inline-block;background:${resource.color}15;color:${resource.color};padding:2px 8px;border-radius:10px;font-size:0.7rem;margin-bottom:8px">${resource.stream}</span>
-                                <p style="margin:0;color:var(--text-secondary);font-size:0.85rem"><strong>Best for:</strong> ${resource.bestFor}</p>
                             </div>
-                            <div style="display:flex;gap:8px;align-items:center">
-                                <button class="btn btn-ghost btn-sm" onclick="toggleFSOFavorite('${resource.id}')">${isFavorite ? '★' : '☆'}</button>
-                                <button class="btn btn-ghost btn-sm" onclick="copyFSOLink('${resource.url}', '${resource.name.replace(/'/g, "\\'")}')">📋</button>
-                                <a href="${resource.url}" target="_blank" class="btn btn-primary btn-sm">Visit →</a>
+                            <p style="margin:0 0 12px;color:var(--text-secondary);font-size:0.85rem;line-height:1.4">${partner.description}</p>
+                            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px">
+                                ${partner.categories.slice(0,3).map(c => `<span style="background:var(--hover-bg);padding:2px 8px;border-radius:10px;font-size:0.7rem;color:var(--text-tertiary)">${c}</span>`).join('')}
+                            </div>
+                            <div style="display:flex;justify-content:space-between;align-items:center">
+                                ${inPlaylist > 0 ? `<span style="font-size:0.8rem;color:var(--root-green)">${inPlaylist} in playlist</span>` : '<span></span>'}
+                                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openPartnerResources('${partner.id}')">Browse →</button>
                             </div>
                         </div>
                     </div>
@@ -5175,6 +5266,317 @@ function copyFSOLink(url, name) {
         document.body.removeChild(input);
         toast(`Link copied: ${name}`, 'success');
     });
+}
+
+// Study scheduling modal
+function showStudyScheduleModal(studyId) {
+    const study = ROOTED_STUDIES.find(s => s.id === studyId);
+    const church = getChurchData(State.current.user?.churchId);
+    const schedule = church?.studySchedules?.[studyId] || { unlockDay: 0, unlockHour: 19 };
+    
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:450px">
+            <div class="modal-header">
+                <h3 class="modal-title">📅 Schedule: ${study?.title || 'Study'}</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">
+                    Set when new weeks unlock for your congregation. This prevents members from rushing through the entire study in one day.
+                </p>
+                
+                <div class="form-group">
+                    <label class="form-label">Unlock Day</label>
+                    <select id="scheduleDay" class="input-field">
+                        ${DAYS_OF_WEEK.map((day, i) => `
+                            <option value="${i}" ${schedule.unlockDay === i ? 'selected' : ''}>${day}</option>
+                        `).join('')}
+                    </select>
+                    <p style="font-size:0.8rem;color:var(--text-tertiary);margin-top:4px">Each new week unlocks on this day</p>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Unlock Time</label>
+                    <select id="scheduleHour" class="input-field">
+                        ${[6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(h => {
+                            const label = h > 12 ? `${h-12}:00 PM` : h === 12 ? '12:00 PM' : `${h}:00 AM`;
+                            return `<option value="${h}" ${schedule.unlockHour === h ? 'selected' : ''}>${label}</option>`;
+                        }).join('')}
+                    </select>
+                </div>
+                
+                <div style="background:var(--hover-bg);padding:var(--space-md);border-radius:var(--radius-md);margin-top:var(--space-md)">
+                    <strong style="display:block;margin-bottom:4px;font-size:0.9rem">How it works:</strong>
+                    <p style="margin:0;font-size:0.85rem;color:var(--text-secondary)">
+                        When a member completes Week 1, Week 2 will unlock on the next ${DAYS_OF_WEEK[schedule.unlockDay]} at ${schedule.unlockHour > 12 ? schedule.unlockHour - 12 : schedule.unlockHour}:00 ${schedule.unlockHour >= 12 ? 'PM' : 'AM'}.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveStudySchedule('${studyId}')">Save Schedule</button>
+            </div>
+        </div>
+    `);
+}
+
+async function saveStudySchedule(studyId) {
+    const unlockDay = parseInt(document.getElementById('scheduleDay').value);
+    const unlockHour = parseInt(document.getElementById('scheduleHour').value);
+    
+    const churchId = State.current.user?.churchId;
+    if (!churchId) return;
+    
+    const church = getChurchData(churchId);
+    const schedules = { ...(church?.studySchedules || {}), [studyId]: { unlockDay, unlockHour } };
+    
+    try {
+        await ChurchDB.updateChurch(churchId, { studySchedules: schedules });
+        await refreshChurchCache(churchId);
+        closeModal();
+        toast('Schedule saved! 📅', 'success');
+    } catch (e) {
+        console.error('Error saving schedule:', e);
+        toast('Error saving schedule', 'error');
+    }
+}
+
+// ========== PARTNER RESOURCE DETAIL PAGE ==========
+let currentPartnerView = null;
+
+function openPartnerResources(partnerId) {
+    currentPartnerView = partnerId;
+    render();
+}
+
+function closePartnerResources() {
+    currentPartnerView = null;
+    render();
+}
+
+function getChurchResourcePlaylist(churchId) {
+    const church = getChurchData(churchId);
+    return church?.resourcePlaylist || [];
+}
+
+async function toggleResourceInPlaylist(resourceId, partnerId) {
+    const churchId = State.current.user?.churchId;
+    if (!churchId) return;
+    
+    const church = getChurchData(churchId);
+    let playlist = church?.resourcePlaylist || [];
+    
+    const existingIndex = playlist.findIndex(r => r.id === resourceId);
+    
+    if (existingIndex >= 0) {
+        playlist.splice(existingIndex, 1);
+        toast('Removed from playlist', 'info');
+    } else {
+        const partner = PARTNER_RESOURCE_LIBRARIES[partnerId];
+        const resource = partner?.resources.find(r => r.id === resourceId);
+        if (resource) {
+            playlist.push({
+                id: resourceId,
+                partnerId,
+                title: resource.title,
+                type: resource.type,
+                url: resource.url,
+                addedAt: Date.now(),
+                week: null // Not assigned to a week yet
+            });
+            toast('Added to playlist! 📋', 'success');
+        }
+    }
+    
+    try {
+        await ChurchDB.updateChurch(churchId, { resourcePlaylist: playlist });
+        await refreshChurchCache(churchId);
+        render();
+    } catch (e) {
+        console.error('Error updating playlist:', e);
+        toast('Error updating playlist', 'error');
+    }
+}
+
+async function setResourceWeek(resourceId, weekNum) {
+    const churchId = State.current.user?.churchId;
+    if (!churchId) return;
+    
+    const church = getChurchData(churchId);
+    let playlist = [...(church?.resourcePlaylist || [])];
+    
+    const index = playlist.findIndex(r => r.id === resourceId);
+    if (index >= 0) {
+        playlist[index] = { ...playlist[index], week: weekNum };
+        
+        try {
+            await ChurchDB.updateChurch(churchId, { resourcePlaylist: playlist });
+            await refreshChurchCache(churchId);
+            toast(`Assigned to Week ${weekNum}`, 'success');
+            render();
+        } catch (e) {
+            console.error('Error setting week:', e);
+        }
+    }
+}
+
+async function moveResourceInPlaylist(resourceId, direction) {
+    const churchId = State.current.user?.churchId;
+    if (!churchId) return;
+    
+    const church = getChurchData(churchId);
+    let playlist = [...(church?.resourcePlaylist || [])];
+    
+    const index = playlist.findIndex(r => r.id === resourceId);
+    if (index < 0) return;
+    
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= playlist.length) return;
+    
+    // Swap
+    [playlist[index], playlist[newIndex]] = [playlist[newIndex], playlist[index]];
+    
+    try {
+        await ChurchDB.updateChurch(churchId, { resourcePlaylist: playlist });
+        await refreshChurchCache(churchId);
+        render();
+    } catch (e) {
+        console.error('Error reordering:', e);
+    }
+}
+
+async function removeFromPlaylist(resourceId) {
+    const churchId = State.current.user?.churchId;
+    if (!churchId) return;
+    
+    const church = getChurchData(churchId);
+    let playlist = (church?.resourcePlaylist || []).filter(r => r.id !== resourceId);
+    
+    try {
+        await ChurchDB.updateChurch(churchId, { resourcePlaylist: playlist });
+        await refreshChurchCache(churchId);
+        toast('Removed from playlist', 'info');
+        render();
+    } catch (e) {
+        console.error('Error removing:', e);
+    }
+}
+
+function renderPartnerResourcePage(partnerId) {
+    const partner = PARTNER_RESOURCE_LIBRARIES[partnerId];
+    if (!partner) return '';
+    
+    const churchId = State.current.user?.churchId;
+    const playlist = getChurchResourcePlaylist(churchId);
+    const playlistIds = playlist.map(r => r.id);
+    
+    // Group resources by category
+    const byCategory = {};
+    partner.resources.forEach(r => {
+        if (!byCategory[r.category]) byCategory[r.category] = [];
+        byCategory[r.category].push(r);
+    });
+    
+    return `
+    <div class="fade-up" style="max-width:1100px;margin:0 auto">
+        <!-- Back Button & Header -->
+        <button class="btn btn-ghost" onclick="closePartnerResources()" style="margin-bottom:var(--space-md)">
+            ← Back to FSO Resources
+        </button>
+        
+        <div style="background:linear-gradient(135deg,${partner.color},${partner.color}dd);border-radius:16px;padding:30px;margin-bottom:24px;color:white">
+            <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+                <div style="width:60px;height:60px;background:white;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:2rem">📚</div>
+                <div style="flex:1;min-width:200px">
+                    <h1 style="margin:0 0 8px;font-size:1.8rem">${partner.name}</h1>
+                    <p style="margin:0;opacity:0.9">${partner.description}</p>
+                </div>
+                <div style="background:rgba(255,255,255,0.2);padding:8px 16px;border-radius:20px;font-size:0.9rem">
+                    ${partner.resources.length} Resources
+                </div>
+            </div>
+        </div>
+        
+        <div style="display:grid;grid-template-columns:1fr 320px;gap:24px">
+            <!-- Resources List -->
+            <div>
+                <h3 style="margin:0 0 16px">Browse Resources</h3>
+                
+                ${Object.entries(byCategory).map(([category, resources]) => `
+                <div style="margin-bottom:24px">
+                    <h4 style="margin:0 0 12px;color:${partner.color};font-size:0.95rem;text-transform:uppercase;letter-spacing:0.5px">${category}</h4>
+                    <div style="display:grid;gap:10px">
+                        ${resources.map(resource => {
+                            const inPlaylist = playlistIds.includes(resource.id);
+                            return `
+                            <div class="card" style="padding:14px;border-left:3px solid ${inPlaylist ? 'var(--root-green)' : partner.color}">
+                                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+                                    <div style="flex:1">
+                                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                                            <span style="font-size:1.1rem">${resource.type === 'pdf' ? '📄' : '🔗'}</span>
+                                            <strong style="font-size:0.95rem">${resource.title}</strong>
+                                            ${inPlaylist ? '<span style="background:var(--root-green);color:white;padding:2px 6px;border-radius:4px;font-size:0.65rem">IN PLAYLIST</span>' : ''}
+                                        </div>
+                                        <p style="margin:0;color:var(--text-secondary);font-size:0.85rem">${resource.description}</p>
+                                        <p style="margin:6px 0 0;color:var(--text-tertiary);font-size:0.8rem;font-style:italic">${resource.preview}</p>
+                                    </div>
+                                    <div style="display:flex;gap:6px;flex-shrink:0">
+                                        <a href="${resource.url}" target="_blank" class="btn btn-ghost btn-sm" title="Preview">👁</a>
+                                        <button class="btn ${inPlaylist ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="toggleResourceInPlaylist('${resource.id}', '${partnerId}')">
+                                            ${inPlaylist ? '✓' : '+'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+                `).join('')}
+            </div>
+            
+            <!-- Playlist Sidebar -->
+            <div>
+                <div class="card" style="position:sticky;top:20px">
+                    <h3 style="margin:0 0 4px;display:flex;align-items:center;gap:8px">📋 Your Playlist</h3>
+                    <p style="margin:0 0 16px;color:var(--text-secondary);font-size:0.85rem">Organize resources for your church</p>
+                    
+                    ${playlist.length === 0 ? `
+                    <div style="text-align:center;padding:20px;background:var(--hover-bg);border-radius:8px;border:1px dashed var(--border-color)">
+                        <p style="margin:0;color:var(--text-tertiary);font-size:0.9rem">Click + to add resources to your playlist</p>
+                    </div>
+                    ` : `
+                    <div style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto">
+                        ${playlist.map((item, index) => `
+                        <div style="background:var(--hover-bg);padding:10px;border-radius:8px;display:flex;align-items:center;gap:8px">
+                            <div style="display:flex;flex-direction:column;gap:2px">
+                                <button class="btn btn-ghost" style="padding:2px 6px;font-size:0.7rem" onclick="moveResourceInPlaylist('${item.id}', 'up')" ${index === 0 ? 'disabled' : ''}>↑</button>
+                                <button class="btn btn-ghost" style="padding:2px 6px;font-size:0.7rem" onclick="moveResourceInPlaylist('${item.id}', 'down')" ${index === playlist.length - 1 ? 'disabled' : ''}>↓</button>
+                            </div>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:0.85rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.title}</div>
+                                <div style="font-size:0.75rem;color:var(--text-tertiary)">${PARTNER_RESOURCE_LIBRARIES[item.partnerId]?.name || ''}</div>
+                            </div>
+                            <select style="padding:4px;font-size:0.75rem;border-radius:4px;border:1px solid var(--border-color);background:var(--card-bg)" onchange="setResourceWeek('${item.id}', this.value)">
+                                <option value="">Week</option>
+                                ${[1,2,3,4,5,6,7,8,9,10,11,12].map(w => `<option value="${w}" ${item.week == w ? 'selected' : ''}>W${w}</option>`).join('')}
+                            </select>
+                            <button class="btn btn-ghost btn-sm" onclick="removeFromPlaylist('${item.id}')" style="color:var(--error)">×</button>
+                        </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border-color)">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                            <span style="font-size:0.85rem;color:var(--text-secondary)">${playlist.length} resources</span>
+                            <span style="font-size:0.85rem;color:var(--text-secondary)">${playlist.filter(r => r.week).length} assigned</span>
+                        </div>
+                    </div>
+                    `}
+                </div>
+            </div>
+        </div>
+    </div>`;
 }
 
 // ========== YOUTUBE VIDEOS ==========
@@ -6968,6 +7370,9 @@ function renderApp() {
                 <div class="nav-item ${activeNav === 'church-videos' ? 'active' : ''}" onclick="navigate('church-videos')">
                     <span class="nav-item-icon">🎬</span> Videos
                 </div>
+                <div class="nav-item ${activeNav === 'studies' ? 'active' : ''}" onclick="navigate('studies')">
+                    <span class="nav-item-icon">📚</span> Weekly Studies
+                </div>
                 <div class="nav-item ${activeNav === 'tools' ? 'active' : ''}" onclick="navigate('tools')">
                     <span class="nav-item-icon">🧰</span> Growth Tools
                 </div>
@@ -7013,7 +7418,7 @@ function renderApp() {
 }
 
 function getPageTitle(nav) {
-    const titles = { dashboard: 'Dashboard', tools: 'Growth Tools', progress: 'My Progress', profile: 'Profile', settings: 'Settings', 'my-church': 'My Church', 'church-videos': 'Videos' };
+    const titles = { dashboard: 'Dashboard', tools: 'Growth Tools', progress: 'My Progress', profile: 'Profile', settings: 'Settings', 'my-church': 'My Church', 'church-videos': 'Videos', 'studies': 'Weekly Studies' };
     return titles[nav] || 'Dashboard';
 }
 
@@ -7026,6 +7431,7 @@ function renderPage(page) {
         case 'settings': return renderSettings();
         case 'my-church': return renderMyChurch();
         case 'church-videos': return renderChurchVideosPage();
+        case 'studies': return renderUserStudies();
         default: return renderDashboard();
     }
 }
@@ -7063,6 +7469,12 @@ function renderDashboard() {
     const isCheckedIn = userChurchId ? (checkedInTodayCache[userChurchId] || false) : false;
     const isNearby = userChurchId ? isWithinGeofence(userChurchId) : false;
     
+    // Check for available studies
+    const enabledStudies = userChurch?.enabledStudies || [];
+    const availableStudies = ROOTED_STUDIES.filter(s => enabledStudies.includes(s.id));
+    const enrolledStudyIds = availableStudies.filter(s => getUserStudyProgress(user?.uid, s.id)).map(s => s.id);
+    const newStudies = availableStudies.filter(s => !enrolledStudyIds.includes(s.id));
+    
     return `
     <div class="fade-up">
         <!-- Full Bleed Welcome Header -->
@@ -7095,6 +7507,35 @@ function renderDashboard() {
                         ${isNearby ? '📍 Check In' : '🌐 Check In'}
                     </button>
                     ` : ''}
+                </div>
+            </div>
+            ` : ''}
+            
+            ${newStudies.length > 0 ? `
+            <!-- New Studies Available -->
+            <div style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:white;border-radius:var(--radius-lg);padding:var(--space-lg);margin-bottom:var(--space-lg);cursor:pointer" onclick="navigate('studies')">
+                <div style="display:flex;align-items:center;gap:var(--space-md)">
+                    <div style="width:50px;height:50px;background:rgba(255,255,255,0.2);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.5rem">📚</div>
+                    <div style="flex:1">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                            <strong style="font-size:1.1rem">New Study Available!</strong>
+                            <span style="background:rgba(255,255,255,0.3);padding:2px 8px;border-radius:10px;font-size:0.7rem">NEW</span>
+                        </div>
+                        <p style="margin:0;opacity:0.9;font-size:0.9rem">${newStudies[0].title} - ${newStudies[0].weeks} week journey</p>
+                    </div>
+                    <div style="font-size:1.5rem">→</div>
+                </div>
+            </div>
+            ` : enrolledStudyIds.length > 0 ? `
+            <!-- Continue Your Study -->
+            <div style="background:var(--card-bg);border-radius:var(--radius-lg);padding:var(--space-lg);margin-bottom:var(--space-lg);border:1px solid var(--border-color);cursor:pointer" onclick="navigate('studies')">
+                <div style="display:flex;align-items:center;gap:var(--space-md)">
+                    <div style="width:50px;height:50px;background:var(--root-green);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:white">📖</div>
+                    <div style="flex:1">
+                        <strong style="display:block;margin-bottom:2px">Continue Your Study</strong>
+                        <p style="margin:0;color:var(--text-secondary);font-size:0.9rem">${enrolledStudyIds.length} ${enrolledStudyIds.length === 1 ? 'study' : 'studies'} in progress</p>
+                    </div>
+                    <div style="color:var(--text-tertiary);font-size:1.5rem">→</div>
                 </div>
             </div>
             ` : ''}
@@ -9147,6 +9588,229 @@ function searchChurches() {
     searchChurchesByName();
 }
 
+// ========== USER STUDIES PAGE ==========
+function getUserStudyProgress(userId, studyId) {
+    try {
+        const key = `rooted_study_progress_${userId}_${studyId}`;
+        return JSON.parse(localStorage.getItem(key) || 'null');
+    } catch (e) {
+        return null;
+    }
+}
+
+function saveUserStudyProgress(userId, studyId, progress) {
+    const key = `rooted_study_progress_${userId}_${studyId}`;
+    localStorage.setItem(key, JSON.stringify(progress));
+}
+
+function enrollInStudy(studyId) {
+    const userId = Auth.currentUser?.uid;
+    if (!userId) return;
+    
+    const existing = getUserStudyProgress(userId, studyId);
+    if (existing) {
+        toast('You\'re already enrolled in this study!', 'info');
+        return;
+    }
+    
+    const progress = {
+        studyId,
+        enrolledAt: Date.now(),
+        currentWeek: 0,
+        completedWeeks: [],
+        weekUnlockDates: {}
+    };
+    
+    saveUserStudyProgress(userId, studyId, progress);
+    toast('Enrolled! Week 1 is now available 📖', 'success');
+    render();
+}
+
+function getNextUnlockDate(churchId, studyId, weekNum) {
+    const church = getChurchData(churchId);
+    const schedule = church?.studySchedules?.[studyId];
+    
+    if (!schedule) {
+        // Default: 7 days after enrollment
+        return null;
+    }
+    
+    // Church has set a specific unlock day/time
+    const unlockDay = schedule.unlockDay; // 0-6 (Sunday-Saturday)
+    const unlockHour = schedule.unlockHour || 19; // Default 7 PM
+    
+    const now = new Date();
+    let nextUnlock = new Date(now);
+    
+    // Find the next occurrence of the unlock day
+    const daysUntilUnlock = (unlockDay - now.getDay() + 7) % 7 || 7;
+    nextUnlock.setDate(now.getDate() + daysUntilUnlock * weekNum);
+    nextUnlock.setHours(unlockHour, 0, 0, 0);
+    
+    return nextUnlock.getTime();
+}
+
+function isWeekUnlocked(userId, churchId, studyId, weekNum) {
+    if (weekNum === 0) return true; // Week 1 always unlocked
+    
+    const progress = getUserStudyProgress(userId, studyId);
+    if (!progress) return false;
+    
+    // Check if previous week is completed
+    if (!progress.completedWeeks.includes(weekNum - 1)) return false;
+    
+    const church = getChurchData(churchId);
+    const schedule = church?.studySchedules?.[studyId];
+    
+    if (schedule) {
+        // Church has schedule - check if unlock time has passed
+        const unlockTime = progress.weekUnlockDates?.[weekNum];
+        if (unlockTime && Date.now() >= unlockTime) return true;
+        if (!unlockTime) {
+            // Calculate and save unlock time
+            const unlockDate = getNextUnlockDate(churchId, studyId, 1);
+            if (unlockDate) {
+                progress.weekUnlockDates = progress.weekUnlockDates || {};
+                progress.weekUnlockDates[weekNum] = unlockDate;
+                saveUserStudyProgress(userId, studyId, progress);
+            }
+            return false;
+        }
+        return false;
+    } else {
+        // No schedule - 7 day wait
+        const lastCompleted = progress.completedWeeks[progress.completedWeeks.length - 1];
+        const completedAt = progress.weekCompletedAt?.[lastCompleted];
+        if (completedAt && Date.now() >= completedAt + 7 * 24 * 60 * 60 * 1000) return true;
+        return false;
+    }
+}
+
+function formatTimeUntil(timestamp) {
+    const diff = timestamp - Date.now();
+    if (diff <= 0) return 'Now';
+    
+    const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+    const hours = Math.floor((diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+    
+    if (days > 0) return `${days}d ${hours}h`;
+    return `${hours}h`;
+}
+
+function renderUserStudies() {
+    const userId = Auth.currentUser?.uid;
+    const churchId = userId ? getUserChurch(userId) : null;
+    const church = churchId ? getChurchData(churchId) : null;
+    const enabledStudies = church?.enabledStudies || [];
+    
+    // Get user's enrolled studies
+    const enrolledStudies = ROOTED_STUDIES.filter(study => {
+        return enabledStudies.includes(study.id) && getUserStudyProgress(userId, study.id);
+    }).map(study => ({
+        ...study,
+        progress: getUserStudyProgress(userId, study.id)
+    }));
+    
+    // Get available studies (enabled but not enrolled)
+    const availableStudies = ROOTED_STUDIES.filter(study => {
+        return enabledStudies.includes(study.id) && !getUserStudyProgress(userId, study.id);
+    });
+    
+    if (enabledStudies.length === 0) {
+        return `
+        <div class="fade-up">
+            <div class="card" style="text-align:center;padding:var(--space-2xl)">
+                <div style="font-size:4rem;margin-bottom:var(--space-lg)">📚</div>
+                <h3>No Studies Available</h3>
+                <p style="color:var(--text-secondary)">Your church hasn't enabled any weekly studies yet.</p>
+                <p style="color:var(--text-tertiary);font-size:0.9rem;margin-top:var(--space-md)">Check back soon or ask your church admin about upcoming studies!</p>
+            </div>
+        </div>`;
+    }
+    
+    return `
+    <div class="fade-up">
+        ${enrolledStudies.length > 0 ? `
+        <!-- Currently Enrolled Studies -->
+        <div style="margin-bottom:var(--space-xl)">
+            <h3 style="margin-bottom:var(--space-md);display:flex;align-items:center;gap:8px">
+                <span style="background:var(--root-green);color:white;padding:4px 10px;border-radius:12px;font-size:0.8rem">IN PROGRESS</span>
+                My Studies
+            </h3>
+            <div style="display:grid;gap:var(--space-md)">
+                ${enrolledStudies.map(study => {
+                    const completed = study.progress.completedWeeks.length;
+                    const percent = Math.round((completed / study.weeks) * 100);
+                    const currentWeek = completed < study.weeks ? completed : study.weeks - 1;
+                    
+                    return `
+                    <div class="card" style="padding:0;overflow:hidden;border-left:4px solid ${study.color}">
+                        <div style="display:flex;gap:var(--space-lg);flex-wrap:wrap">
+                            <div style="width:140px;height:100px;background:url('${study.image}') center/cover;flex-shrink:0"></div>
+                            <div style="flex:1;padding:var(--space-md);min-width:200px">
+                                <h4 style="margin:0 0 4px">${study.title}</h4>
+                                <p style="margin:0 0 var(--space-sm);color:var(--text-secondary);font-size:0.85rem">${study.subtitle}</p>
+                                <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-sm)">
+                                    <div style="flex:1;height:6px;background:var(--hover-bg);border-radius:3px;overflow:hidden">
+                                        <div style="height:100%;width:${percent}%;background:${study.color};border-radius:3px"></div>
+                                    </div>
+                                    <span style="font-size:0.8rem;color:var(--text-tertiary)">${completed}/${study.weeks} weeks</span>
+                                </div>
+                                <button class="btn btn-primary btn-sm" onclick="openUserStudy('${study.id}', ${currentWeek})">
+                                    Continue Week ${currentWeek + 1} →
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+        ` : ''}
+        
+        ${availableStudies.length > 0 ? `
+        <!-- Available Studies to Enroll -->
+        <div>
+            <h3 style="margin-bottom:var(--space-md)">📖 Available Studies</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--space-md)">
+                ${availableStudies.map(study => `
+                <div class="card" style="padding:0;overflow:hidden">
+                    <div style="height:120px;background:url('${study.image}') center/cover;position:relative">
+                        <div style="position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,0.7) 0%,transparent 60%)"></div>
+                        <div style="position:absolute;bottom:12px;left:12px;display:flex;gap:6px">
+                            <span style="background:${study.color};color:white;padding:3px 8px;border-radius:4px;font-size:0.7rem">${study.weeks} Weeks</span>
+                            <span style="background:rgba(255,255,255,0.2);color:white;padding:3px 8px;border-radius:4px;font-size:0.7rem">${study.difficulty}</span>
+                        </div>
+                    </div>
+                    <div style="padding:var(--space-md)">
+                        <h4 style="margin:0 0 4px">${study.title}</h4>
+                        <p style="margin:0 0 var(--space-md);color:var(--text-secondary);font-size:0.85rem;line-height:1.4">${study.subtitle}</p>
+                        <button class="btn btn-primary btn-sm" style="width:100%" onclick="enrollInStudy('${study.id}')">
+                            Start Study
+                        </button>
+                    </div>
+                </div>
+                `).join('')}
+            </div>
+        </div>
+        ` : ''}
+        
+        ${enrolledStudies.length > 0 && availableStudies.length === 0 ? `
+        <div class="card" style="text-align:center;background:var(--hover-bg);border:1px dashed var(--border-color)">
+            <p style="margin:0;color:var(--text-secondary)">You're enrolled in all available studies! 🎉</p>
+        </div>
+        ` : ''}
+    </div>`;
+}
+
+function openUserStudy(studyId, weekNum) {
+    const study = ROOTED_STUDIES.find(s => s.id === studyId);
+    if (!study) return;
+    
+    // Open the study file in a new window
+    window.open(study.file, '_blank');
+}
+
 function renderMyChurch() {
     const userChurches = Auth.currentUser ? getUserChurches(Auth.currentUser.uid) : [];
     const activeChurchId = Auth.currentUser ? getUserChurch(Auth.currentUser.uid) : null;
@@ -10420,7 +11084,7 @@ async function init() {
         // Determine nav - prefer restored state for regular user
         let activeNav = savedNav || 'dashboard';
         // Make sure it's a valid user nav
-        const validUserNavs = ['dashboard', 'my-church', 'church-videos', 'tools', 'progress', 'profile', 'settings'];
+        const validUserNavs = ['dashboard', 'my-church', 'church-videos', 'tools', 'progress', 'profile', 'settings', 'studies'];
         if (!validUserNavs.includes(activeNav)) {
             activeNav = 'dashboard';
         }
