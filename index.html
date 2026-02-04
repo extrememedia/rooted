@@ -1368,6 +1368,8 @@ const Auth = {
             const users = JSON.parse(localStorage.getItem('rooted_users') || '{}');
             if (users[email] && users[email].password === password) {
                 this.currentUser = users[email].user;
+                users[email].lastLogin = Date.now();
+                localStorage.setItem('rooted_users', JSON.stringify(users));
                 localStorage.setItem('rooted_user', JSON.stringify(this.currentUser));
                 return this.currentUser;
             }
@@ -1382,6 +1384,8 @@ const Auth = {
             photoURL: result.user.photoURL,
             provider: 'email'
         };
+        // Update lastLogin and ensure profile data is current
+        await UserDB.ensureUserDoc(this.currentUser);
         localStorage.setItem('rooted_user', JSON.stringify(this.currentUser));
         return this.currentUser;
     },
@@ -1448,8 +1452,11 @@ const UserDB = {
                     quizResults: {},
                     settings: {}
                 };
-                localStorage.setItem('rooted_users', JSON.stringify(users));
             }
+            // Always update lastLogin
+            users[user.email].lastLogin = Date.now();
+            users[user.email].profile.email = user.email;
+            localStorage.setItem('rooted_users', JSON.stringify(users));
             return;
         }
         
@@ -1457,6 +1464,8 @@ const UserDB = {
         const doc = await docRef.get();
         if (!doc.exists) {
             await docRef.set({
+                email: user.email,
+                name: user.name,
                 profile: {
                     name: user.name,
                     email: user.email,
@@ -1464,9 +1473,19 @@ const UserDB = {
                     provider: user.provider,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 },
+                lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
                 toolProgress: {},
                 quizResults: {},
                 settings: {}
+            });
+        } else {
+            // Always update lastLogin and ensure email is current
+            await docRef.update({
+                lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+                email: user.email,
+                name: user.name || doc.data()?.profile?.name || doc.data()?.name,
+                'profile.email': user.email,
+                'profile.name': user.name || doc.data()?.profile?.name
             });
         }
     },
@@ -4268,6 +4287,10 @@ function renderChurchAdminApp() {
                 <div class="nav-item ${activeNav === 'church-members' ? 'active' : ''}" onclick="navigate('church-members')">
                     <span class="nav-item-icon">👥</span> Members
                 </div>
+                <div class="nav-item ${activeNav === 'church-pulse' ? 'active' : ''}" onclick="navigate('church-pulse')">
+                    <span class="nav-item-icon">📡</span> Pulse
+                    <span id="adminPulseBadge" style="display:none;background:#ef4444;color:white;font-size:0.6rem;padding:2px 6px;border-radius:8px;margin-left:auto"></span>
+                </div>
                 <div class="nav-item ${activeNav === 'church-fso' ? 'active' : ''}" onclick="navigate('church-fso')">
                     <span class="nav-item-icon">📚</span> FSO Resources
                 </div>
@@ -4339,7 +4362,8 @@ function getChurchPageTitle(nav) {
         'church-location': 'Location & Geofence',
         'church-tools': 'Enabled Tools',
         'church-members': 'Members',
-        'church-fso': 'FSO Resources'
+        'church-fso': 'FSO Resources',
+        'church-pulse': 'Pulse Messaging'
     };
     return titles[nav] || 'Dashboard';
 }
@@ -4358,6 +4382,7 @@ function renderChurchPage(page) {
         case 'church-tools': return renderChurchTools();
         case 'church-members': return renderChurchMembers();
         case 'church-fso': return renderChurchFSO();
+        case 'church-pulse': return renderAdminPulse();
         default: return renderChurchDashboard();
     }
 }
@@ -7817,8 +7842,9 @@ function renderMembersList(container, members) {
                     : member.name || 'Unknown';
                 const joinDate = member.joinedAt ? new Date(member.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '-';
                 const checkIns = member.checkInCount || 0;
-                const lastActive = member.lastCheckIn ? getRelativeTime(member.lastCheckIn) : 'Never';
+                const lastLoginStr = member.lastLogin ? getRelativeTime(member.lastLogin) : 'Never';
                 const engagement = calculateEngagementScore(member);
+                const hasPhoto = member.profilePhoto && member.profilePhoto.length > 5;
                 
                 // Status badges - Member status + Check-in status
                 const isMember = member.isMember;
@@ -7842,12 +7868,17 @@ function renderMembersList(container, members) {
                 const engagementColor = engagement >= 70 ? '#22c55e' : engagement >= 40 ? '#f59e0b' : '#ef4444';
                 const engagementLabel = engagement >= 70 ? 'High' : engagement >= 40 ? 'Medium' : 'Low';
                 
-                return `
-                <div class="member-row" onclick="showMemberDetail('${member.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card-bg);border-radius:var(--radius-md);cursor:pointer;transition:all 0.2s;border:1px solid var(--border-color)" onmouseover="this.style.background='var(--hover-bg)';this.style.transform='translateX(4px)'" onmouseout="this.style.background='var(--card-bg)';this.style.transform='none'">
-                    <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,${avatarGradient});display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:0.9rem;flex-shrink:0;position:relative">
+                // Avatar HTML - photo or initials
+                const avatarHTML = hasPhoto
+                    ? `<img src="${member.profilePhoto}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;position:relative" onerror="this.outerHTML='<div style=\\'width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,${avatarGradient});display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:0.9rem;flex-shrink:0\\'>${initials}</div>'">`
+                    : `<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,${avatarGradient});display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:0.9rem;flex-shrink:0;position:relative">
                         ${initials}
                         <div style="position:absolute;bottom:-2px;right:-2px;width:14px;height:14px;background:${engagementColor};border-radius:50%;border:2px solid var(--card-bg)" title="Engagement: ${engagementLabel}"></div>
-                    </div>
+                    </div>`;
+                
+                return `
+                <div class="member-row" onclick="showMemberDetail('${member.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card-bg);border-radius:var(--radius-md);cursor:pointer;transition:all 0.2s;border:1px solid var(--border-color)" onmouseover="this.style.background='var(--hover-bg)';this.style.transform='translateX(4px)'" onmouseout="this.style.background='var(--card-bg)';this.style.transform='none'">
+                    ${avatarHTML}
                     <div style="flex:1;min-width:0">
                         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                             <strong style="font-size:0.95rem">${displayName}</strong>
@@ -7855,7 +7886,7 @@ function renderMembersList(container, members) {
                             ${checkinBadge}
                         </div>
                         <div style="font-size:0.8rem;color:var(--text-tertiary);margin-top:2px">
-                            Joined ${joinDate} • ${checkIns} check-in${checkIns !== 1 ? 's' : ''} • Last active: ${lastActive}
+                            Joined ${joinDate} • ${checkIns} check-in${checkIns !== 1 ? 's' : ''} • Last login: ${lastLoginStr}
                         </div>
                     </div>
                     <div style="text-align:right;flex-shrink:0">
@@ -7910,6 +7941,7 @@ function showMemberDetail(memberId) {
         ? `${member.firstName || ''} ${member.lastName}` 
         : member.name || 'Unknown';
     const joinDate = member.joinedAt ? new Date(member.joinedAt).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'Unknown';
+    const hasPhoto = member.profilePhoto && member.profilePhoto.length > 5;
     
     // Get category
     const category = getMemberCategory(member);
@@ -7928,6 +7960,8 @@ function showMemberDetail(memberId) {
     // Calculate metrics
     const checkIns = member.checkInCount || 0;
     const lastActive = member.lastCheckIn ? formatTimestampForUser(member.lastCheckIn, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Never';
+    const lastLoginTime = member.lastLogin ? formatTimestampForUser(member.lastLogin, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Never';
+    const lastLoginRelative = member.lastLogin ? getRelativeTime(member.lastLogin) : '';
     const toolsUsed = member.toolsUsed || 0;
     const studiesCompleted = member.studiesCompleted || 0;
     const notesCount = member.notesCount || 0;
@@ -7937,9 +7971,10 @@ function showMemberDetail(memberId) {
     const engagementColor = engagementScore >= 70 ? '#22c55e' : engagementScore >= 40 ? '#f59e0b' : '#ef4444';
     const engagementLabel = engagementScore >= 70 ? 'Highly Engaged' : engagementScore >= 40 ? 'Moderately Active' : 'Needs Attention';
     
-    // Days since last activity
-    const daysSinceActive = member.lastCheckIn 
-        ? Math.floor((Date.now() - member.lastCheckIn) / (24 * 60 * 60 * 1000))
+    // Days since last activity (use lastLogin if more recent than lastCheckIn)
+    const mostRecentActivity = Math.max(member.lastLogin || 0, member.lastCheckIn || 0);
+    const daysSinceActive = mostRecentActivity 
+        ? Math.floor((Date.now() - mostRecentActivity) / (24 * 60 * 60 * 1000))
         : null;
     
     // Discipleship recommendations
@@ -7955,7 +7990,10 @@ function showMemberDetail(memberId) {
         <div class="modal" onclick="event.stopPropagation()" style="max-width:600px;max-height:90vh;overflow-y:auto">
             <div class="modal-header" style="background:linear-gradient(135deg,${avatarGradient});color:white;margin:-24px -24px 0;padding:24px;border-radius:var(--radius-lg) var(--radius-lg) 0 0">
                 <div style="display:flex;align-items:center;gap:16px">
-                    <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700">
+                    ${hasPhoto 
+                        ? `<img src="${member.profilePhoto}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,0.3)" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+                        : ''}
+                    <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.2);${hasPhoto ? 'display:none' : 'display:flex'};align-items:center;justify-content:center;font-size:1.5rem;font-weight:700">
                         ${initials}
                     </div>
                     <div style="flex:1">
@@ -7983,9 +8021,24 @@ function showMemberDetail(memberId) {
                             <span style="color:var(--text-secondary)">Address</span>
                             <span style="font-weight:500;text-align:right;max-width:60%">${member.address || '-'}</span>
                         </div>
-                        <div style="display:flex;justify-content:space-between;padding:8px 0">
+                        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color)">
                             <span style="color:var(--text-secondary)">Joined</span>
                             <span style="font-weight:500">${joinDate}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Login & Activity -->
+                <div style="margin-bottom:24px">
+                    <h4 style="margin:0 0 12px;font-size:0.9rem;color:var(--text-tertiary)">LOGIN & ACTIVITY</h4>
+                    <div style="display:grid;gap:8px">
+                        <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--hover-bg);border-radius:8px">
+                            <span style="color:var(--text-secondary)">Last Login</span>
+                            <span style="font-weight:500">${lastLoginTime}${lastLoginRelative ? ` (${lastLoginRelative})` : ''}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--hover-bg);border-radius:8px">
+                            <span style="color:var(--text-secondary)">Last Check-in</span>
+                            <span style="font-weight:500">${lastActive}${daysSinceActive !== null && daysSinceActive > 0 ? ` (${daysSinceActive}d ago)` : daysSinceActive === 0 ? ' (today)' : ''}</span>
                         </div>
                     </div>
                 </div>
@@ -8025,14 +8078,6 @@ function showMemberDetail(memberId) {
                     </div>
                 </div>
                 
-                <!-- Last Activity -->
-                <div style="margin-bottom:24px;padding:12px;background:var(--hover-bg);border-radius:var(--radius-md)">
-                    <div style="display:flex;justify-content:space-between;align-items:center">
-                        <span style="color:var(--text-secondary)">Last Active</span>
-                        <span style="font-weight:500">${lastActive}${daysSinceActive !== null && daysSinceActive > 0 ? ` (${daysSinceActive} day${daysSinceActive !== 1 ? 's' : ''} ago)` : ''}</span>
-                    </div>
-                </div>
-                
                 ${recommendations.length > 0 ? `
                 <!-- Discipleship Recommendations -->
                 <div style="margin-bottom:24px">
@@ -8053,6 +8098,7 @@ function showMemberDetail(memberId) {
                         ? `<button class="btn btn-ghost" onclick="toggleMemberStatus('${member.id}', false); closeModal();" style="flex:1;color:var(--error)">Remove Membership</button>`
                         : `<button class="btn btn-primary" onclick="toggleMemberStatus('${member.id}', true); closeModal();" style="flex:1">Make Member</button>`
                     }
+                    <button class="btn btn-secondary" onclick="closeModal();startDirectMessage('${member.id}', '${displayName.replace(/'/g, "\\'")}')" title="Send direct message via Pulse">💬 Message</button>
                     <button class="btn btn-ghost" onclick="showMemberCheckIns('${member.id}', '${displayName.replace(/'/g, "\\'")}')">View Check-ins</button>
                 </div>
             </div>
@@ -8157,12 +8203,14 @@ async function loadChurchMembers(churchId) {
                             name: fullName,
                             firstName: firstName,
                             lastName: lastName,
-                            email: userData.email || '',
-                            phone: userData.phone || '',
-                            address: userData.address || '',
+                            email: userData.profile?.email || userData.email || '',
+                            phone: userData.profile?.phone || userData.phone || '',
+                            address: userData.profile?.address || userData.address || '',
+                            profilePhoto: userData.profilePhoto || userData.profile?.photoURL || '',
                             isMember: userData.isMember || false,
                             checkInCount: churchCheckIns.length,
                             lastCheckIn: lastCheckIn,
+                            lastLogin: userData.lastLogin?.toMillis?.() || userData.lastLogin || null,
                             toolsUsed: userData.toolHistory?.length || 0,
                             studiesCompleted: userData.completedStudies?.length || 0,
                             notesCount: userData.notes?.length || 0
@@ -8216,12 +8264,14 @@ async function loadChurchMembers(churchId) {
                             name: fullName,
                             firstName: firstName,
                             lastName: lastName,
-                            email: userData.email || '',
-                            phone: userData.phone || '',
-                            address: userData.address || '',
+                            email: userData.profile?.email || userData.email || '',
+                            phone: userData.profile?.phone || userData.phone || '',
+                            address: userData.profile?.address || userData.address || '',
+                            profilePhoto: userData.profilePhoto || userData.profile?.photoURL || '',
                             isMember: userData.isMember || false,
                             checkInCount: churchCheckIns.length,
                             lastCheckIn: lastCheckIn,
+                            lastLogin: userData.lastLogin?.toMillis?.() || userData.lastLogin || null,
                             toolsUsed: userData.toolHistory?.length || 0,
                             studiesCompleted: userData.completedStudies?.length || 0,
                             notesCount: userData.notes?.length || 0,
@@ -8884,6 +8934,13 @@ function renderApp() {
                     <span class="nav-item-icon">📚</span> Studies
                     ${getUnseenResourceCount() > 0 ? `<span class="new-badge">NEW</span>` : ''}
                 </div>
+                <div class="nav-item ${activeNav === 'pulse' ? 'active' : ''}" onclick="navigate('pulse')" style="position:relative">
+                    <span class="nav-item-icon">📡</span> Pulse
+                    <span id="userPulseBadge" style="display:none;background:#ef4444;color:white;font-size:0.6rem;padding:2px 6px;border-radius:8px;margin-left:auto"></span>
+                </div>
+                <div class="nav-item ${activeNav === 'the-body' ? 'active' : ''}" onclick="navigate('the-body')">
+                    <span class="nav-item-icon">🤝</span> The Body
+                </div>
                 <div class="nav-item ${activeNav === 'tools' ? 'active' : ''}" onclick="navigate('tools')">
                     <span class="nav-item-icon">🧰</span> Growth Tools
                 </div>
@@ -8929,7 +8986,7 @@ function renderApp() {
 }
 
 function getPageTitle(nav) {
-    const titles = { dashboard: 'Dashboard', tools: 'Growth Tools', progress: 'My Progress', profile: 'Profile', settings: 'Settings', 'my-church': 'My Church', 'church-videos': 'Videos', 'studies': 'Studies' };
+    const titles = { dashboard: 'Dashboard', tools: 'Growth Tools', progress: 'My Progress', profile: 'Profile', settings: 'Settings', 'my-church': 'My Church', 'church-videos': 'Videos', 'studies': 'Studies', 'pulse': 'Pulse', 'the-body': 'The Body' };
     return titles[nav] || 'Dashboard';
 }
 
@@ -8943,6 +9000,8 @@ function renderPage(page) {
         case 'my-church': return renderMyChurch();
         case 'church-videos': return renderChurchVideosPage();
         case 'studies': return renderUserStudies();
+        case 'pulse': return renderPulse();
+        case 'the-body': return renderTheBody();
         default: return renderDashboard();
     }
 }
@@ -10327,8 +10386,14 @@ function renderProfile() {
             <div style="position:absolute;top:-50px;right:-50px;width:150px;height:150px;background:rgba(255,255,255,0.1);border-radius:50%"></div>
             <div style="position:absolute;bottom:-30px;left:-30px;width:100px;height:100px;background:rgba(255,255,255,0.1);border-radius:50%"></div>
             <div style="display:flex;align-items:center;gap:var(--space-lg);position:relative;z-index:1">
-                <div style="width:100px;height:100px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;font-size:2.5rem;color:var(--root-green);box-shadow:0 8px 20px rgba(0,0,0,0.2);flex-shrink:0">
-                    ${user?.photoURL ? `<img src="${user.photoURL}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : (user?.name?.charAt(0) || 'U')}
+                <div style="position:relative;cursor:pointer" onclick="document.getElementById('profilePhotoInput').click()">
+                    <div style="width:100px;height:100px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;font-size:2.5rem;color:var(--root-green);box-shadow:0 8px 20px rgba(0,0,0,0.2);flex-shrink:0;overflow:hidden">
+                        ${user?.photoURL ? `<img src="${user.photoURL}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : (user?.name?.charAt(0) || 'U')}
+                    </div>
+                    <div style="position:absolute;bottom:0;right:0;width:30px;height:30px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.2)">
+                        <span style="font-size:0.8rem">📷</span>
+                    </div>
+                    <input type="file" id="profilePhotoInput" accept="image/*" style="display:none" onchange="uploadProfilePhoto(this)">
                 </div>
                 <div>
                     <h2 style="margin:0 0 var(--space-xs)">${user?.name || 'User'}</h2>
@@ -12767,7 +12832,7 @@ async function init() {
                 // Make sure it's a valid church admin nav
                 const validChurchNavs = ['church-dashboard', 'church-members', 'church-resources', 
                     'church-checkin-resources', 'church-announcements', 'church-youtube', 
-                    'church-social', 'church-branding', 'church-membership', 'church-location', 'church-tools', 'church-fso'];
+                    'church-social', 'church-branding', 'church-membership', 'church-location', 'church-tools', 'church-fso', 'church-pulse'];
                 if (!validChurchNavs.includes(activeNav)) {
                     activeNav = 'church-dashboard';
                 }
@@ -12821,6 +12886,312 @@ window.addEventListener('hashchange', () => {
         showSuperAdminLogin();
     }
 });
+
+// ==========================================
+// PULSE MESSAGING SYSTEM
+// ==========================================
+
+let pulseConversations = [];
+let currentConversation = null;
+let pulseTab = 'inbox';
+
+function renderAdminPulse() {
+    const churchId = State.current.user?.churchId;
+    if (churchId) setTimeout(() => loadPulseConversations(churchId, true), 100);
+    return `
+    <div class="fade-up">
+        <div class="welcome-banner" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6)">
+            <h2 class="welcome-title">📡 Pulse Messaging</h2>
+            <p class="welcome-subtitle">Communicate with your congregation directly</p>
+        </div>
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <h3 style="margin:0 0 12px">📣 Send Broadcast</h3>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-primary btn-sm" onclick="showBroadcastModal('all')">Everyone</button>
+                <button class="btn btn-secondary btn-sm" onclick="showBroadcastModal('members')">Members Only</button>
+                <button class="btn btn-ghost btn-sm" onclick="showBroadcastModal('nonmembers')">Non-Members</button>
+                <button class="btn btn-ghost btn-sm" onclick="showBroadcastModal('checkedin')">Checked-In</button>
+            </div>
+        </div>
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
+                <h3 style="margin:0">Conversations</h3>
+                <span id="pulseConvoCount" style="font-size:0.8rem;color:var(--text-tertiary)"></span>
+            </div>
+            <div id="pulseConversationsList">
+                <div style="text-align:center;padding:var(--space-xl);color:var(--text-tertiary)">
+                    <div class="loading-spinner" style="width:32px;height:32px;margin:0 auto var(--space-md)"></div>
+                    <p>Loading conversations...</p>
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
+function renderPulse() {
+    const churchId = State.current.user?.churchId;
+    if (churchId) setTimeout(() => loadPulseConversations(churchId, false), 100);
+    return `
+    <div class="fade-up">
+        <div style="display:flex;gap:8px;margin-bottom:var(--space-lg)">
+            <button class="btn ${pulseTab === 'inbox' ? 'btn-primary' : 'btn-ghost'} btn-sm" onclick="pulseTab='inbox';navigate('pulse')">💬 Inbox</button>
+            <button class="btn ${pulseTab === 'broadcasts' ? 'btn-primary' : 'btn-ghost'} btn-sm" onclick="pulseTab='broadcasts';navigate('pulse')">📣 Broadcasts</button>
+        </div>
+        <div class="card">
+            <div id="pulseConversationsList">
+                <div style="text-align:center;padding:var(--space-xl);color:var(--text-tertiary)">
+                    <div class="loading-spinner" style="width:32px;height:32px;margin:0 auto var(--space-md)"></div>
+                    <p>Loading messages...</p>
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
+async function loadPulseConversations(churchId, isAdmin) {
+    const container = document.getElementById('pulseConversationsList');
+    if (!container) return;
+    if (!firebaseInitialized) {
+        pulseConversations = JSON.parse(localStorage.getItem('pulse_conversations_' + churchId) || '[]');
+        renderPulseList(container, isAdmin);
+        return;
+    }
+    try {
+        const userId = isAdmin ? 'admin_' + churchId : Auth.currentUser?.uid;
+        const snapshot = isAdmin
+            ? await db.collection('pulse_conversations').where('churchId', '==', churchId).orderBy('lastMessageAt', 'desc').limit(50).get()
+            : await db.collection('pulse_conversations').where('churchId', '==', churchId).where('participants', 'array-contains', userId).orderBy('lastMessageAt', 'desc').limit(50).get();
+        pulseConversations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (e) { console.error('Pulse load error:', e); pulseConversations = []; }
+    renderPulseList(container, isAdmin);
+}
+
+function renderPulseList(container, isAdmin) {
+    let convos = [...pulseConversations];
+    if (!isAdmin && pulseTab === 'broadcasts') convos = convos.filter(c => c.type === 'broadcast');
+    else if (!isAdmin && pulseTab === 'inbox') convos = convos.filter(c => c.type === 'direct');
+    if (!convos.length) {
+        container.innerHTML = `<div style="text-align:center;padding:var(--space-xl);color:var(--text-tertiary)"><div style="font-size:3rem;margin-bottom:12px">📡</div><p>No messages yet</p><p style="font-size:0.85rem">${isAdmin ? 'Send a broadcast to get started' : 'Visit The Body to connect with fellow members'}</p></div>`;
+        return;
+    }
+    container.innerHTML = `<div style="display:grid;gap:8px">${convos.map(c => {
+        const timeStr = c.lastMessageAt?.toMillis ? getRelativeTime(c.lastMessageAt.toMillis()) : c.lastMessageAt ? getRelativeTime(c.lastMessageAt) : '';
+        const isBc = c.type === 'broadcast';
+        return `<div onclick="openPulseConvo('${c.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card-bg);border-radius:var(--radius-md);cursor:pointer;transition:all 0.2s;border:1px solid var(--border-color)" onmouseover="this.style.background='var(--hover-bg)'" onmouseout="this.style.background='var(--card-bg)'">
+            <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,${isBc ? '#8b5cf6,#a78bfa' : '#3b82f6,#60a5fa'});display:flex;align-items:center;justify-content:center;color:white;font-size:1.2rem;flex-shrink:0">${isBc ? '📣' : '💬'}</div>
+            <div style="flex:1;min-width:0">
+                <div style="display:flex;justify-content:space-between"><strong style="font-size:0.9rem">${c.title || c.participantNames?.join(', ') || 'Message'}</strong><span style="font-size:0.7rem;color:var(--text-tertiary)">${timeStr}</span></div>
+                <p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.lastMessage || 'No messages yet'}</p>
+            </div>
+        </div>`;
+    }).join('')}</div>`;
+    const countEl = document.getElementById('pulseConvoCount');
+    if (countEl) countEl.textContent = convos.length + ' conversation' + (convos.length !== 1 ? 's' : '');
+}
+
+async function openPulseConvo(convoId) {
+    const convo = pulseConversations.find(c => c.id === convoId);
+    if (!convo) return;
+    let messages = [];
+    if (firebaseInitialized) {
+        try { const snap = await db.collection('pulse_conversations').doc(convoId).collection('messages').orderBy('timestamp', 'asc').limit(100).get(); messages = snap.docs.map(d => ({id:d.id,...d.data()})); } catch(e) { console.error(e); }
+    } else { messages = JSON.parse(localStorage.getItem('pulse_messages_' + convoId) || '[]'); }
+    const isAdmin = State.current.accountType === 'church';
+    const myId = isAdmin ? 'admin_' + State.current.user?.churchId : Auth.currentUser?.uid;
+    showModal(`<div class="modal" onclick="event.stopPropagation()" style="max-width:600px;height:80vh;display:flex;flex-direction:column;padding:0">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:12px">
+            <button onclick="closeModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text-primary)">←</button>
+            <div style="flex:1"><strong>${convo.title || convo.participantNames?.join(', ') || 'Conversation'}</strong><p style="margin:0;font-size:0.75rem;color:var(--text-tertiary)">${convo.type === 'broadcast' ? '📣 Broadcast' : '💬 Direct'}</p></div>
+        </div>
+        <div id="pulseMessages" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px">
+            ${!messages.length ? '<p style="text-align:center;color:var(--text-tertiary);margin:auto">Start the conversation!</p>' : messages.map(m => {
+                const isMe = m.senderId === myId;
+                const t = m.timestamp?.toMillis ? new Date(m.timestamp.toMillis()).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : m.timestamp ? new Date(m.timestamp).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : '';
+                return `<div style="display:flex;justify-content:${isMe?'flex-end':'flex-start'}"><div style="max-width:80%;padding:10px 14px;border-radius:16px;${isMe?'background:var(--primary);color:white;border-bottom-right-radius:4px':'background:var(--hover-bg);border-bottom-left-radius:4px'}">${!isMe?`<div style="font-size:0.7rem;font-weight:600;margin-bottom:4px;opacity:0.7">${m.senderName||'Unknown'}</div>`:''}${m.imageUrl?`<img src="${m.imageUrl}" style="max-width:100%;border-radius:8px;margin-bottom:6px">`:''}${m.text?`<div style="font-size:0.9rem">${m.text}</div>`:''}${t?`<div style="font-size:0.6rem;opacity:0.6;margin-top:4px;text-align:right">${t}</div>`:''}</div></div>`;
+            }).join('')}
+        </div>
+        <div style="padding:12px 16px;border-top:1px solid var(--border-color);display:flex;gap:8px;align-items:flex-end">
+            <label style="cursor:pointer;font-size:1.3rem;padding:4px" title="Attach image">📎<input type="file" accept="image/*" style="display:none" onchange="handlePulseImage(this,'${convoId}')"></label>
+            <textarea id="pulseInput" class="input-field" style="flex:1;margin:0;resize:none;min-height:40px;max-height:100px" placeholder="Type a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendPulseMsg('${convoId}');}"></textarea>
+            <button class="btn btn-primary btn-sm" onclick="sendPulseMsg('${convoId}')">Send</button>
+        </div>
+    </div>`);
+    setTimeout(() => { const el = document.getElementById('pulseMessages'); if(el) el.scrollTop = el.scrollHeight; }, 100);
+}
+
+async function sendPulseMsg(convoId) {
+    const input = document.getElementById('pulseInput');
+    if (!input || !input.value.trim()) return;
+    const text = input.value.trim(); input.value = '';
+    const isAdmin = State.current.accountType === 'church';
+    const myId = isAdmin ? 'admin_' + State.current.user?.churchId : Auth.currentUser?.uid;
+    const myName = isAdmin ? '⛪ Church Admin' : (Auth.currentUser?.name || 'User');
+    const msg = { senderId: myId, senderName: myName, text, timestamp: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(), type: 'text' };
+    if (firebaseInitialized) {
+        try { await db.collection('pulse_conversations').doc(convoId).collection('messages').add(msg); await db.collection('pulse_conversations').doc(convoId).update({ lastMessage: text.substring(0,100), lastMessageAt: firebase.firestore.FieldValue.serverTimestamp() }); } catch(e) { toast('Failed to send','error'); return; }
+    } else { const msgs = JSON.parse(localStorage.getItem('pulse_messages_'+convoId)||'[]'); msg.timestamp=Date.now(); msgs.push(msg); localStorage.setItem('pulse_messages_'+convoId,JSON.stringify(msgs)); }
+    openPulseConvo(convoId);
+}
+
+async function handlePulseImage(input, convoId) {
+    const file = input.files?.[0]; if(!file) return;
+    const isAdmin = State.current.accountType === 'church';
+    const myId = isAdmin ? 'admin_' + State.current.user?.churchId : Auth.currentUser?.uid;
+    const myName = isAdmin ? '⛪ Church Admin' : (Auth.currentUser?.name || 'User');
+    showUploadOverlay('Sending image...',0,1);
+    try {
+        let url = '';
+        if (firebaseInitialized && firebase.storage) { const ref = firebase.storage().ref(`pulse-images/${State.current.user?.churchId}/${Date.now()}_${file.name}`); await ref.put(file); url = await ref.getDownloadURL(); }
+        else { url = URL.createObjectURL(file); }
+        const msg = { senderId:myId, senderName:myName, text:'', imageUrl:url, timestamp: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(), type:'image' };
+        if (firebaseInitialized) { await db.collection('pulse_conversations').doc(convoId).collection('messages').add(msg); await db.collection('pulse_conversations').doc(convoId).update({ lastMessage:'📷 Image', lastMessageAt: firebase.firestore.FieldValue.serverTimestamp() }); }
+        else { const msgs = JSON.parse(localStorage.getItem('pulse_messages_'+convoId)||'[]'); msg.timestamp=Date.now(); msgs.push(msg); localStorage.setItem('pulse_messages_'+convoId,JSON.stringify(msgs)); }
+        hideUploadOverlay(); openPulseConvo(convoId);
+    } catch(e) { hideUploadOverlay(); toast('Failed to send image','error'); }
+}
+
+function showBroadcastModal(audience) {
+    const labels = {all:'Everyone',members:'Members Only',nonmembers:'Non-Members',checkedin:'Checked-In Attendees'};
+    showModal(`<div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
+        <div class="modal-header" style="background:linear-gradient(135deg,#8b5cf6,#a78bfa);color:white;margin:-24px -24px 0;padding:20px 24px;border-radius:var(--radius-lg) var(--radius-lg) 0 0">
+            <h3 class="modal-title" style="margin:0">📣 Broadcast to ${labels[audience]}</h3>
+            <button class="modal-close" onclick="closeModal()" style="color:white">✕</button>
+        </div>
+        <div class="modal-body" style="padding-top:20px">
+            <input type="text" id="bcTitle" class="input-field" placeholder="Subject (optional)" style="margin-bottom:12px">
+            <textarea id="bcMessage" class="input-field" rows="5" placeholder="Type your message..." style="resize:vertical"></textarea>
+            <div style="display:flex;gap:12px;margin-top:16px">
+                <button class="btn btn-primary" style="flex:1" onclick="sendBroadcast('${audience}')">Send Broadcast</button>
+                <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>`);
+}
+
+async function sendBroadcast(audience) {
+    const title = document.getElementById('bcTitle')?.value?.trim() || 'Church Announcement';
+    const message = document.getElementById('bcMessage')?.value?.trim();
+    if (!message) { toast('Please enter a message','error'); return; }
+    const churchId = State.current.user?.churchId;
+    const convo = { churchId, type:'broadcast', audience, title:'📣 '+title, lastMessage:message.substring(0,100), lastMessageAt: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(), createdBy:'admin_'+churchId, participants:['admin_'+churchId] };
+    if (firebaseInitialized) {
+        try { const ref = await db.collection('pulse_conversations').add(convo); await ref.collection('messages').add({ senderId:'admin_'+churchId, senderName:'⛪ Church Admin', text:message, timestamp:firebase.firestore.FieldValue.serverTimestamp(), type:'text' }); } catch(e) { toast('Failed to send','error'); return; }
+    } else { const id='bc_'+Date.now(); convo.id=id; convo.lastMessageAt=Date.now(); const s=JSON.parse(localStorage.getItem('pulse_conversations_'+churchId)||'[]'); s.unshift(convo); localStorage.setItem('pulse_conversations_'+churchId,JSON.stringify(s)); localStorage.setItem('pulse_messages_'+id,JSON.stringify([{senderId:'admin_'+churchId,senderName:'⛪ Church Admin',text:message,timestamp:Date.now(),type:'text'}])); }
+    closeModal(); toast('Broadcast sent!','success'); navigate('church-pulse');
+}
+
+async function startDirectMessage(userId, userName) {
+    const churchId = State.current.user?.churchId;
+    const isAdmin = State.current.accountType === 'church';
+    const myId = isAdmin ? 'admin_'+churchId : Auth.currentUser?.uid;
+    let existing = null;
+    if (firebaseInitialized) { try { const snap = await db.collection('pulse_conversations').where('churchId','==',churchId).where('type','==','direct').where('participants','array-contains',myId).get(); const found = snap.docs.find(d => d.data().participants?.includes(userId)); if(found) existing = {id:found.id,...found.data()}; } catch(e){} }
+    if (existing) { closeModal(); openPulseConvo(existing.id); return; }
+    const convo = { churchId, type:'direct', participants:[myId,userId], participantNames:[isAdmin ? '⛪ Church Admin' : (Auth.currentUser?.name||'User'), userName], lastMessage:'', lastMessageAt: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(), createdBy:myId };
+    let convoId;
+    if (firebaseInitialized) { try { const ref = await db.collection('pulse_conversations').add(convo); convoId=ref.id; } catch(e) { toast('Failed to start conversation','error'); return; } }
+    else { convoId='dm_'+Date.now(); convo.id=convoId; convo.lastMessageAt=Date.now(); const s=JSON.parse(localStorage.getItem('pulse_conversations_'+churchId)||'[]'); s.unshift(convo); localStorage.setItem('pulse_conversations_'+churchId,JSON.stringify(s)); }
+    closeModal(); openPulseConvo(convoId);
+}
+
+// ==========================================
+// THE BODY - Member Directory (User Side)
+// ==========================================
+
+let bodyMembers = [];
+
+function renderTheBody() {
+    const churchId = State.current.user?.churchId;
+    if (churchId) setTimeout(() => loadTheBody(churchId), 100);
+    return `<div class="fade-up">
+        <div style="text-align:center;margin-bottom:var(--space-lg)">
+            <h2 style="margin:0 0 8px">🤝 The Body</h2>
+            <p style="color:var(--text-secondary);margin:0">Connect with your church family</p>
+        </div>
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <input type="text" id="bodySearch" class="input-field" placeholder="Search members..." oninput="filterTheBody(this.value)" style="margin:0">
+        </div>
+        <div id="theBodyList"><div style="text-align:center;padding:var(--space-xl)"><div class="loading-spinner" style="width:32px;height:32px;margin:0 auto var(--space-md)"></div><p style="color:var(--text-tertiary)">Loading...</p></div></div>
+    </div>`;
+}
+
+async function loadTheBody(churchId) {
+    const container = document.getElementById('theBodyList');
+    if (!container || !firebaseInitialized) { if(container) container.innerHTML='<p style="text-align:center;color:var(--text-tertiary)">Connect to Firebase to see members.</p>'; return; }
+    try {
+        const snap = await db.collection('users').where('churches','array-contains',churchId).get();
+        const myUid = Auth.currentUser?.uid;
+        bodyMembers = snap.docs.filter(d => d.id !== myUid).map(d => {
+            const u = d.data(); const name = u.profile?.name || u.name || u.displayName || 'User'; const parts = name.trim().split(' ');
+            return { id:d.id, name, firstName:parts[0]||'', lastName:parts.length>1?parts.slice(1).join(' '):'', profilePhoto:u.profilePhoto||u.profile?.photoURL||'', isMember:u.isMember||false, lastLogin:u.lastLogin?.toMillis?.()||u.lastLogin||null };
+        }).sort((a,b) => (a.firstName||'').localeCompare(b.firstName||''));
+        renderBodyList(container, bodyMembers);
+    } catch(e) { console.error(e); container.innerHTML='<p style="text-align:center;color:var(--text-tertiary)">Unable to load members.</p>'; }
+}
+
+function filterTheBody(term) {
+    const c = document.getElementById('theBodyList'); if(!c) return;
+    renderBodyList(c, term.trim() ? bodyMembers.filter(m => m.name.toLowerCase().includes(term.toLowerCase())) : bodyMembers);
+}
+
+function renderBodyList(container, members) {
+    if (!members.length) { container.innerHTML='<div style="text-align:center;padding:var(--space-xl);color:var(--text-tertiary)"><p>No members found</p></div>'; return; }
+    container.innerHTML = `<div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
+    ${members.map(m => {
+        const initials = getInitials(m);
+        const hasPhoto = m.profilePhoto && m.profilePhoto.length > 5;
+        const online = m.lastLogin && (Date.now()-m.lastLogin) < 24*60*60*1000;
+        return `<div class="card" style="padding:16px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'" onclick="showBodyProfile('${m.id}')">
+            <div style="display:flex;align-items:center;gap:12px">
+                <div style="position:relative">
+                    ${hasPhoto ? `<img src="${m.profilePhoto}" style="width:48px;height:48px;border-radius:50%;object-fit:cover">` : `<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,${m.isMember?'var(--root-green),var(--leaf-green)':'#3b82f6,#60a5fa'});display:flex;align-items:center;justify-content:center;color:white;font-weight:600">${initials}</div>`}
+                    ${online ? '<div style="position:absolute;bottom:0;right:0;width:12px;height:12px;background:#22c55e;border-radius:50%;border:2px solid var(--card-bg)"></div>' : ''}
+                </div>
+                <div style="flex:1">
+                    <strong style="font-size:0.95rem">${m.firstName} ${m.lastName}</strong>
+                    ${m.isMember ? '<span style="background:#22c55e;color:white;font-size:0.55rem;padding:1px 5px;border-radius:6px;margin-left:6px">Member</span>' : ''}
+                    <p style="margin:2px 0 0;font-size:0.75rem;color:var(--text-tertiary)">${online ? '🟢 Active recently' : m.lastLogin ? 'Last seen '+getRelativeTime(m.lastLogin) : ''}</p>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();startDirectMessage('${m.id}','${(m.firstName+' '+m.lastName).replace(/'/g,"\\'")}')" title="Message">💬</button>
+            </div>
+        </div>`;
+    }).join('')}</div>`;
+}
+
+function showBodyProfile(userId) {
+    const m = bodyMembers.find(x => x.id === userId); if(!m) return;
+    const initials = getInitials(m); const hasPhoto = m.profilePhoto && m.profilePhoto.length > 5;
+    showModal(`<div class="modal" onclick="event.stopPropagation()" style="max-width:400px">
+        <div style="text-align:center;padding:24px 24px 0">
+            ${hasPhoto ? `<img src="${m.profilePhoto}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:12px">` : `<div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--root-green),var(--leaf-green));display:flex;align-items:center;justify-content:center;color:white;font-size:1.8rem;font-weight:700;margin:0 auto 12px">${initials}</div>`}
+            <h3 style="margin:0">${m.firstName} ${m.lastName}</h3>
+            ${m.isMember ? '<span style="background:#22c55e;color:white;font-size:0.7rem;padding:2px 8px;border-radius:8px">Church Member</span>' : ''}
+        </div>
+        <div style="padding:20px 24px 24px;display:flex;gap:12px;justify-content:center">
+            <button class="btn btn-primary" onclick="closeModal();startDirectMessage('${m.id}','${(m.firstName+' '+m.lastName).replace(/'/g,"\\'")}')">💬 Send Message</button>
+            <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+        </div>
+    </div>`);
+}
+
+// ==========================================
+// PROFILE PHOTO UPLOAD  
+// ==========================================
+
+async function uploadProfilePhoto(input) {
+    const file = input.files?.[0]; if(!file || !file.type.startsWith('image/')) { toast('Please select an image','error'); return; }
+    showUploadOverlay('Uploading photo...',0,1);
+    try {
+        let url = ''; const uid = Auth.currentUser?.uid;
+        if (firebaseInitialized && firebase.storage) {
+            const ref = firebase.storage().ref(`profile-photos/${uid}.jpg`);
+            await ref.put(file); url = await ref.getDownloadURL();
+            await db.collection('users').doc(uid).update({ profilePhoto: url, 'profile.photoURL': url });
+        } else { url = URL.createObjectURL(file); localStorage.setItem('profile_photo_'+uid, url); }
+        if (Auth.currentUser) { Auth.currentUser.photoURL = url; localStorage.setItem('rooted_user', JSON.stringify(Auth.currentUser)); }
+        hideUploadOverlay(); toast('Profile photo updated!','success'); renderApp();
+    } catch(e) { hideUploadOverlay(); toast('Failed to upload photo','error'); }
+}
 
 init();
 </script>
