@@ -7534,51 +7534,83 @@ function renderChurchMembers() {
     return `
     <div class="fade-up">
         <!-- Stats Overview -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--space-md);margin-bottom:var(--space-lg)">
-            <div class="card" style="text-align:center;padding:var(--space-md);border-top:3px solid ${tierColors[tier] || '#22c55e'}">
-                <div style="font-size:2rem;font-weight:700;color:${tierColors[tier] || '#22c55e'}">${memberCount}</div>
-                <p style="color:var(--text-secondary);margin:0;font-size:0.85rem">Total Users</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:var(--space-sm);margin-bottom:var(--space-lg)">
+            <div class="card" style="text-align:center;padding:12px;border-top:3px solid #22c55e;cursor:pointer" onclick="filterMembers('members')">
+                <div id="claimedMemberCount" style="font-size:1.8rem;font-weight:700;color:#22c55e">-</div>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.75rem">Members</p>
             </div>
-            <div class="card" style="text-align:center;padding:var(--space-md);border-top:3px solid #3b82f6">
-                <div id="claimedMemberCount" style="font-size:2rem;font-weight:700;color:#3b82f6">-</div>
-                <p style="color:var(--text-secondary);margin:0;font-size:0.85rem">Members</p>
+            <div class="card" style="text-align:center;padding:12px;border-top:3px solid #f59e0b;cursor:pointer" onclick="filterMembers('attendees')">
+                <div id="attendeeCount" style="font-size:1.8rem;font-weight:700;color:#f59e0b">-</div>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.75rem">Attendees</p>
             </div>
-            <div class="card" style="text-align:center;padding:var(--space-md);border-top:3px solid #f59e0b">
-                <div id="totalCheckInsCount" style="font-size:2rem;font-weight:700;color:#f59e0b">-</div>
-                <p style="color:var(--text-secondary);margin:0;font-size:0.85rem">Check-ins</p>
+            <div class="card" style="text-align:center;padding:12px;border-top:3px solid #3b82f6;cursor:pointer" onclick="filterMembers('users')">
+                <div id="usersOnlyCount" style="font-size:1.8rem;font-weight:700;color:#3b82f6">-</div>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.75rem">Users Only</p>
             </div>
-            <div class="card" style="text-align:center;padding:var(--space-md);border-top:3px solid #8b5cf6">
-                <div id="activeThisWeekCount" style="font-size:2rem;font-weight:700;color:#8b5cf6">-</div>
-                <p style="color:var(--text-secondary);margin:0;font-size:0.85rem">Active This Week</p>
+            <div class="card" style="text-align:center;padding:12px;border-top:3px solid #8b5cf6">
+                <div id="totalCheckInsCount" style="font-size:1.8rem;font-weight:700;color:#8b5cf6">-</div>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.75rem">Total Check-ins</p>
+            </div>
+            <div class="card" style="text-align:center;padding:12px;border-top:3px solid #ec4899">
+                <div id="activeThisWeekCount" style="font-size:1.8rem;font-weight:700;color:#ec4899">-</div>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.75rem">Active This Week</p>
+            </div>
+        </div>
+        
+        <!-- Category Explanation -->
+        <div class="card" style="margin-bottom:var(--space-lg);padding:var(--space-md);background:var(--hover-bg)">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--space-md);font-size:0.85rem">
+                <div>
+                    <strong style="color:#22c55e">✓ Members</strong>
+                    <p style="margin:4px 0 0;color:var(--text-secondary)">Confirmed church members (admin approved)</p>
+                </div>
+                <div>
+                    <strong style="color:#f59e0b">📍 Attendees</strong>
+                    <p style="margin:4px 0 0;color:var(--text-secondary)">Checked in (online or in-person) but not yet members</p>
+                </div>
+                <div>
+                    <strong style="color:#3b82f6">👤 Users</strong>
+                    <p style="margin:4px 0 0;color:var(--text-secondary)">Connected to church but haven't checked in yet</p>
+                </div>
             </div>
         </div>
         
         <!-- Search and Filters -->
         <div class="card" style="margin-bottom:var(--space-lg)">
             <div style="display:flex;gap:var(--space-md);flex-wrap:wrap;align-items:center">
-                <div style="flex:1;min-width:200px">
+                <div style="flex:1;min-width:180px">
                     <input type="text" id="memberSearch" class="input-field" placeholder="Search by name..." oninput="searchMembers(this.value)" style="margin:0">
                 </div>
-                <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap">
+                <div style="display:flex;gap:4px;flex-wrap:wrap">
                     <button class="btn btn-sm" onclick="filterMembers('all')" id="filterAll" style="background:var(--primary);color:white">All</button>
-                    <button class="btn btn-ghost btn-sm" onclick="filterMembers('members')" id="filterMembers">Members</button>
-                    <button class="btn btn-ghost btn-sm" onclick="filterMembers('attendees')" id="filterAttendees">Attendees</button>
+                    <button class="btn btn-ghost btn-sm" onclick="filterMembers('members')" id="filterMembers" style="border-left:3px solid #22c55e">Members</button>
+                    <button class="btn btn-ghost btn-sm" onclick="filterMembers('attendees')" id="filterAttendees" style="border-left:3px solid #f59e0b">Attendees</button>
+                    <button class="btn btn-ghost btn-sm" onclick="filterMembers('users')" id="filterUsers" style="border-left:3px solid #3b82f6">Users</button>
+                    <button class="btn btn-ghost btn-sm" onclick="filterMembers('needsAttention')" id="filterNeedsAttention" style="border-left:3px solid #ef4444">Needs Attention</button>
                     <button class="btn btn-ghost btn-sm" onclick="loadChurchMembers('${churchId}')" title="Refresh">🔄</button>
                 </div>
             </div>
         </div>
         
-        <!-- Members Rolodex List -->
+        <!-- Directory List -->
         <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
-                <h3 style="margin:0">👥 Member Directory</h3>
-                <span id="membersShowing" style="font-size:0.8rem;color:var(--text-tertiary)"></span>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md);flex-wrap:wrap;gap:8px">
+                <h3 style="margin:0">👥 Directory</h3>
+                <div style="display:flex;align-items:center;gap:12px">
+                    <span id="membersShowing" style="font-size:0.8rem;color:var(--text-tertiary)"></span>
+                    <select id="sortMembers" class="input-field" style="margin:0;padding:6px 10px;font-size:0.8rem;min-width:120px" onchange="sortMembersList(this.value)">
+                        <option value="name">Sort: Name</option>
+                        <option value="recent">Sort: Recent</option>
+                        <option value="checkins">Sort: Check-ins</option>
+                        <option value="engagement">Sort: Engagement</option>
+                    </select>
+                </div>
             </div>
             
             <div id="membersList">
                 <div style="text-align:center;padding:var(--space-xl)">
                     <div class="loading-spinner" style="width:32px;height:32px;margin:0 auto var(--space-md)"></div>
-                    <p style="color:var(--text-tertiary)">Loading members...</p>
+                    <p style="color:var(--text-tertiary)">Loading...</p>
                 </div>
             </div>
         </div>
@@ -7598,23 +7630,33 @@ function renderChurchMembers() {
 
 let allMembersData = [];
 let currentMemberFilter = 'all';
+let currentMemberSort = 'name';
 let memberSearchTerm = '';
 
 function filterMembers(filter) {
     currentMemberFilter = filter;
     
-    // Update button styles
-    document.querySelectorAll('#filterAll, #filterMembers, #filterAttendees').forEach(btn => {
-        btn.style.background = '';
-        btn.style.color = '';
-        btn.classList.add('btn-ghost');
+    // Update button styles - reset all
+    document.querySelectorAll('#filterAll, #filterMembers, #filterAttendees, #filterUsers, #filterNeedsAttention').forEach(btn => {
+        if (btn) {
+            btn.style.background = '';
+            btn.style.color = '';
+        }
     });
     
-    const activeBtn = document.getElementById(filter === 'all' ? 'filterAll' : filter === 'members' ? 'filterMembers' : 'filterAttendees');
+    // Highlight active filter
+    const filterBtnMap = {
+        'all': 'filterAll',
+        'members': 'filterMembers', 
+        'attendees': 'filterAttendees',
+        'users': 'filterUsers',
+        'needsAttention': 'filterNeedsAttention'
+    };
+    
+    const activeBtn = document.getElementById(filterBtnMap[filter]);
     if (activeBtn) {
         activeBtn.style.background = 'var(--primary)';
         activeBtn.style.color = 'white';
-        activeBtn.classList.remove('btn-ghost');
     }
     
     applyMemberFilters();
@@ -7625,14 +7667,58 @@ function searchMembers(term) {
     applyMemberFilters();
 }
 
+// Calculate engagement score for discipleship tracking
+function calculateEngagementScore(member) {
+    let score = 0;
+    const checkIns = member.checkInCount || 0;
+    const toolsUsed = member.toolsUsed || 0;
+    const studiesCompleted = member.studiesCompleted || 0;
+    const notesCount = member.notesCount || 0;
+    
+    // Check-ins (max 30 points)
+    if (checkIns > 0) score += Math.min(checkIns * 5, 30);
+    // Tools used (max 25 points)
+    if (toolsUsed > 0) score += Math.min(toolsUsed * 3, 25);
+    // Studies completed (max 20 points)
+    if (studiesCompleted > 0) score += Math.min(studiesCompleted * 10, 20);
+    // Notes saved (max 15 points)
+    if (notesCount > 0) score += Math.min(notesCount * 2, 15);
+    // Recent activity bonus (10 points if active in last week)
+    if (member.lastCheckIn && Date.now() - member.lastCheckIn < 7 * 24 * 60 * 60 * 1000) score += 10;
+    
+    return Math.min(score, 100);
+}
+
+// Categorize person: member > attendee > user
+function getMemberCategory(member) {
+    // Member = admin confirmed
+    if (member.isMember) return 'member';
+    // Attendee = has at least one check-in (online or in-person)
+    if ((member.checkInCount || 0) > 0) return 'attendee';
+    // User = connected but no check-ins yet
+    return 'user';
+}
+
 function applyMemberFilters() {
     let filtered = [...allMembersData];
     
-    // Apply status filter
+    // Apply category filter
     if (currentMemberFilter === 'members') {
+        // Confirmed members only
         filtered = filtered.filter(m => m.isMember);
     } else if (currentMemberFilter === 'attendees') {
-        filtered = filtered.filter(m => !m.isMember);
+        // Has check-ins but not a confirmed member
+        filtered = filtered.filter(m => !m.isMember && (m.checkInCount || 0) > 0);
+    } else if (currentMemberFilter === 'users') {
+        // Connected but no check-ins and not a member
+        filtered = filtered.filter(m => !m.isMember && (m.checkInCount || 0) === 0);
+    } else if (currentMemberFilter === 'needsAttention') {
+        // Low engagement or inactive for 30+ days - needs discipleship attention
+        filtered = filtered.filter(m => {
+            const engagement = calculateEngagementScore(m);
+            const daysSinceActive = m.lastCheckIn ? (Date.now() - m.lastCheckIn) / (24 * 60 * 60 * 1000) : 999;
+            return engagement < 30 || daysSinceActive > 30;
+        });
     }
     
     // Apply search filter
@@ -7642,6 +7728,9 @@ function applyMemberFilters() {
             return fullName.includes(memberSearchTerm);
         });
     }
+    
+    // Apply current sort
+    sortMembersArray(filtered, currentMemberSort);
     
     const container = document.getElementById('membersList');
     if (container) {
@@ -7654,23 +7743,47 @@ function applyMemberFilters() {
     }
 }
 
+function sortMembersList(sortBy) {
+    currentMemberSort = sortBy;
+    applyMemberFilters();
+}
+
+function sortMembersArray(members, sortBy) {
+    switch (sortBy) {
+        case 'recent':
+            // Sort by most recent activity first
+            members.sort((a, b) => (b.lastCheckIn || 0) - (a.lastCheckIn || 0));
+            break;
+        case 'checkins':
+            // Sort by most check-ins first
+            members.sort((a, b) => (b.checkInCount || 0) - (a.checkInCount || 0));
+            break;
+        case 'engagement':
+            // Sort by engagement score (high to low)
+            members.sort((a, b) => calculateEngagementScore(b) - calculateEngagementScore(a));
+            break;
+        case 'name':
+        default:
+            // Sort alphabetically by last name, then first name
+            members.sort((a, b) => {
+                const aName = (a.lastName || a.name || '').toLowerCase();
+                const bName = (b.lastName || b.name || '').toLowerCase();
+                if (aName !== bName) return aName.localeCompare(bName);
+                return (a.firstName || '').toLowerCase().localeCompare((b.firstName || '').toLowerCase());
+            });
+            break;
+    }
+}
+
 function renderMembersList(container, members) {
     if (!members.length) {
         container.innerHTML = `
             <div style="text-align:center;padding:var(--space-xl);color:var(--text-tertiary)">
                 <div style="font-size:3rem;margin-bottom:var(--space-md)">👥</div>
-                <p>No members found</p>
+                <p>No people found matching your filters</p>
             </div>`;
         return;
     }
-    
-    // Sort alphabetically by last name, then first name
-    members.sort((a, b) => {
-        const aName = (a.lastName || a.name || '').toLowerCase();
-        const bName = (b.lastName || b.name || '').toLowerCase();
-        if (aName !== bName) return aName.localeCompare(bName);
-        return (a.firstName || '').toLowerCase().localeCompare((b.firstName || '').toLowerCase());
-    });
     
     container.innerHTML = `
         <div style="display:grid;gap:8px">
@@ -7682,22 +7795,44 @@ function renderMembersList(container, members) {
                 const joinDate = member.joinedAt ? new Date(member.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '-';
                 const checkIns = member.checkInCount || 0;
                 const lastActive = member.lastCheckIn ? getRelativeTime(member.lastCheckIn) : 'Never';
+                const category = getMemberCategory(member);
+                const engagement = calculateEngagementScore(member);
+                
+                // Category styling
+                let categoryBadge, avatarGradient;
+                if (category === 'member') {
+                    categoryBadge = '<span style="background:#22c55e;color:white;font-size:0.6rem;padding:2px 6px;border-radius:8px">✓ Member</span>';
+                    avatarGradient = 'var(--root-green),var(--leaf-green)';
+                } else if (category === 'attendee') {
+                    categoryBadge = '<span style="background:#f59e0b;color:white;font-size:0.6rem;padding:2px 6px;border-radius:8px">📍 Attendee</span>';
+                    avatarGradient = '#f59e0b,#fbbf24';
+                } else {
+                    categoryBadge = '<span style="background:#3b82f6;color:white;font-size:0.6rem;padding:2px 6px;border-radius:8px">👤 User</span>';
+                    avatarGradient = '#3b82f6,#60a5fa';
+                }
+                
+                // Engagement indicator color
+                const engagementColor = engagement >= 70 ? '#22c55e' : engagement >= 40 ? '#f59e0b' : '#ef4444';
+                const engagementLabel = engagement >= 70 ? 'High' : engagement >= 40 ? 'Medium' : 'Low';
                 
                 return `
                 <div class="member-row" onclick="showMemberDetail('${member.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card-bg);border-radius:var(--radius-md);cursor:pointer;transition:all 0.2s;border:1px solid var(--border-color)" onmouseover="this.style.background='var(--hover-bg)';this.style.transform='translateX(4px)'" onmouseout="this.style.background='var(--card-bg)';this.style.transform='none'">
-                    <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,${member.isMember ? 'var(--root-green),var(--leaf-green)' : '#6b7280,#9ca3af'});display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:0.9rem;flex-shrink:0">
+                    <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,${avatarGradient});display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:0.9rem;flex-shrink:0;position:relative">
                         ${initials}
+                        <div style="position:absolute;bottom:-2px;right:-2px;width:14px;height:14px;background:${engagementColor};border-radius:50%;border:2px solid var(--card-bg)" title="Engagement: ${engagementLabel}"></div>
                     </div>
                     <div style="flex:1;min-width:0">
                         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                             <strong style="font-size:0.95rem">${displayName}</strong>
-                            ${member.isMember 
-                                ? '<span style="background:var(--root-green);color:white;font-size:0.65rem;padding:2px 6px;border-radius:8px">Member</span>' 
-                                : '<span style="background:var(--hover-bg);color:var(--text-tertiary);font-size:0.65rem;padding:2px 6px;border-radius:8px">Attendee</span>'}
+                            ${categoryBadge}
                         </div>
                         <div style="font-size:0.8rem;color:var(--text-tertiary);margin-top:2px">
                             Joined ${joinDate} • ${checkIns} check-in${checkIns !== 1 ? 's' : ''} • Last active: ${lastActive}
                         </div>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0">
+                        <div style="font-size:0.75rem;color:${engagementColor};font-weight:600">${engagement}%</div>
+                        <div style="font-size:0.65rem;color:var(--text-tertiary)">Engagement</div>
                     </div>
                     <div style="color:var(--text-tertiary);font-size:1.2rem">→</div>
                 </div>
@@ -7748,6 +7883,20 @@ function showMemberDetail(memberId) {
         : member.name || 'Unknown';
     const joinDate = member.joinedAt ? new Date(member.joinedAt).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'Unknown';
     
+    // Get category
+    const category = getMemberCategory(member);
+    let categoryLabel, avatarGradient;
+    if (category === 'member') {
+        categoryLabel = '✓ Confirmed Member';
+        avatarGradient = 'var(--root-green),var(--leaf-green)';
+    } else if (category === 'attendee') {
+        categoryLabel = '📍 Attendee';
+        avatarGradient = '#f59e0b,#fbbf24';
+    } else {
+        categoryLabel = '👤 User';
+        avatarGradient = '#3b82f6,#60a5fa';
+    }
+    
     // Calculate metrics
     const checkIns = member.checkInCount || 0;
     const lastActive = member.lastCheckIn ? formatTimestampForUser(member.lastCheckIn, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Never';
@@ -7755,28 +7904,35 @@ function showMemberDetail(memberId) {
     const studiesCompleted = member.studiesCompleted || 0;
     const notesCount = member.notesCount || 0;
     
-    // Engagement score (simple calculation)
-    let engagementScore = 0;
-    if (checkIns > 0) engagementScore += Math.min(checkIns * 5, 30);
-    if (toolsUsed > 0) engagementScore += Math.min(toolsUsed * 3, 25);
-    if (studiesCompleted > 0) engagementScore += studiesCompleted * 10;
-    if (notesCount > 0) engagementScore += Math.min(notesCount * 2, 15);
-    if (member.lastCheckIn && Date.now() - member.lastCheckIn < 7 * 24 * 60 * 60 * 1000) engagementScore += 20;
-    engagementScore = Math.min(engagementScore, 100);
+    // Use shared engagement score
+    const engagementScore = calculateEngagementScore(member);
+    const engagementColor = engagementScore >= 70 ? '#22c55e' : engagementScore >= 40 ? '#f59e0b' : '#ef4444';
+    const engagementLabel = engagementScore >= 70 ? 'Highly Engaged' : engagementScore >= 40 ? 'Moderately Active' : 'Needs Attention';
     
-    const engagementColor = engagementScore >= 70 ? 'var(--root-green)' : engagementScore >= 40 ? '#f59e0b' : 'var(--text-tertiary)';
-    const engagementLabel = engagementScore >= 70 ? 'Highly Engaged' : engagementScore >= 40 ? 'Moderately Active' : 'Low Activity';
+    // Days since last activity
+    const daysSinceActive = member.lastCheckIn 
+        ? Math.floor((Date.now() - member.lastCheckIn) / (24 * 60 * 60 * 1000))
+        : null;
+    
+    // Discipleship recommendations
+    let recommendations = [];
+    if (checkIns === 0) recommendations.push('📋 Encourage first check-in at service');
+    if (checkIns > 0 && toolsUsed === 0) recommendations.push('🔧 Introduce spiritual growth tools');
+    if (toolsUsed > 0 && studiesCompleted === 0) recommendations.push('📚 Suggest enrolling in a study');
+    if (daysSinceActive && daysSinceActive > 14) recommendations.push('📞 Personal follow-up recommended');
+    if (engagementScore < 30) recommendations.push('👥 Consider small group invitation');
+    if (!member.isMember && checkIns >= 3) recommendations.push('🎉 Ready for membership conversation');
     
     showModal(`
         <div class="modal" onclick="event.stopPropagation()" style="max-width:600px;max-height:90vh;overflow-y:auto">
-            <div class="modal-header" style="background:linear-gradient(135deg,${member.isMember ? 'var(--root-green),var(--leaf-green)' : '#6b7280,#9ca3af'});color:white;margin:-24px -24px 0;padding:24px;border-radius:var(--radius-lg) var(--radius-lg) 0 0">
+            <div class="modal-header" style="background:linear-gradient(135deg,${avatarGradient});color:white;margin:-24px -24px 0;padding:24px;border-radius:var(--radius-lg) var(--radius-lg) 0 0">
                 <div style="display:flex;align-items:center;gap:16px">
                     <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700">
                         ${initials}
                     </div>
                     <div style="flex:1">
                         <h3 style="margin:0">${displayName}</h3>
-                        <p style="margin:4px 0 0;opacity:0.9">${member.isMember ? '✓ Church Member' : 'Attendee'}</p>
+                        <p style="margin:4px 0 0;opacity:0.9">${categoryLabel}</p>
                     </div>
                 </div>
                 <button class="modal-close" onclick="closeModal()" style="color:white">✕</button>
@@ -7845,9 +8001,23 @@ function showMemberDetail(memberId) {
                 <div style="margin-bottom:24px;padding:12px;background:var(--hover-bg);border-radius:var(--radius-md)">
                     <div style="display:flex;justify-content:space-between;align-items:center">
                         <span style="color:var(--text-secondary)">Last Active</span>
-                        <span style="font-weight:500">${lastActive}</span>
+                        <span style="font-weight:500">${lastActive}${daysSinceActive !== null && daysSinceActive > 0 ? ` (${daysSinceActive} day${daysSinceActive !== 1 ? 's' : ''} ago)` : ''}</span>
                     </div>
                 </div>
+                
+                ${recommendations.length > 0 ? `
+                <!-- Discipleship Recommendations -->
+                <div style="margin-bottom:24px">
+                    <h4 style="margin:0 0 12px;font-size:0.9rem;color:var(--text-tertiary)">DISCIPLESHIP RECOMMENDATIONS</h4>
+                    <div style="display:grid;gap:8px">
+                        ${recommendations.map(rec => `
+                            <div style="padding:10px 12px;background:var(--hover-bg);border-radius:8px;font-size:0.85rem;border-left:3px solid #8b5cf6">
+                                ${rec}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
                 
                 <!-- Actions -->
                 <div style="display:flex;gap:12px;flex-wrap:wrap">
@@ -8068,21 +8238,27 @@ async function loadChurchMembers(churchId) {
         // Store for filtering
         allMembersData = members;
         
-        // Calculate stats
-        const claimedMembers = members.filter(m => m.isMember).length;
+        // Calculate stats by category
+        const confirmedMembers = members.filter(m => m.isMember).length;
+        const attendees = members.filter(m => !m.isMember && (m.checkInCount || 0) > 0).length;
+        const usersOnly = members.filter(m => !m.isMember && (m.checkInCount || 0) === 0).length;
         const totalCheckIns = members.reduce((sum, m) => sum + (m.checkInCount || 0), 0);
         
-        // Calculate active this week (members with check-in in last 7 days)
+        // Calculate active this week (anyone with check-in in last 7 days)
         const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
         const activeThisWeek = members.filter(m => m.lastCheckIn && m.lastCheckIn > oneWeekAgo).length;
         
         // Update stat cards
         const claimedEl = document.getElementById('claimedMemberCount');
+        const attendeeEl = document.getElementById('attendeeCount');
+        const usersEl = document.getElementById('usersOnlyCount');
         const checkInsEl = document.getElementById('totalCheckInsCount');
         const activeEl = document.getElementById('activeThisWeekCount');
         const showingEl = document.getElementById('membersShowing');
         
-        if (claimedEl) claimedEl.textContent = claimedMembers.toString();
+        if (claimedEl) claimedEl.textContent = confirmedMembers.toString();
+        if (attendeeEl) attendeeEl.textContent = attendees.toString();
+        if (usersEl) usersEl.textContent = usersOnly.toString();
         if (checkInsEl) checkInsEl.textContent = totalCheckIns.toString();
         if (activeEl) activeEl.textContent = activeThisWeek.toString();
         if (showingEl) showingEl.textContent = `Showing ${members.length} of ${members.length}`;
