@@ -5589,7 +5589,12 @@ async function saveStudySchedule(studyId) {
     }
 }
 
-// Resource scheduling modal with calendar
+
+// Calendar state for modal
+let calendarViewMonth = null;
+let calendarViewYear = null;
+let selectedScheduleDate = null;
+
 function showScheduleResourceModal(resourceId) {
     const churchId = State.current.user?.churchId;
     const playlist = getChurchResourcePlaylist(churchId);
@@ -5597,158 +5602,192 @@ function showScheduleResourceModal(resourceId) {
     
     if (!resource) return;
     
-    // Use real-time current date
+    // Initialize to current month
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    // Generate next 4 weeks of dates starting from today
-    const dates = [];
-    for (let i = 0; i < 28; i++) {
-        const d = new Date(today);
-        d.setDate(d.getDate() + i);
-        dates.push(d);
-    }
-    
-    // Group by week
-    const weeks = [];
-    for (let i = 0; i < 4; i++) {
-        weeks.push(dates.slice(i * 7, (i + 1) * 7));
-    }
+    calendarViewMonth = now.getMonth();
+    calendarViewYear = now.getFullYear();
     
     // Parse existing schedule
     const existingTime = resource.scheduledTime || '19:00';
-    const currentScheduledDate = resource.scheduledDate || '';
+    selectedScheduleDate = resource.scheduledDate || null;
     
-    // Generate time options in 15-minute intervals
+    // If there's an existing scheduled date, show that month
+    if (resource.scheduledDate) {
+        const existingDate = new Date(resource.scheduledDate + 'T12:00:00');
+        calendarViewMonth = existingDate.getMonth();
+        calendarViewYear = existingDate.getFullYear();
+    }
+    
+    // Generate time options
     const timeOptions = [];
     for (let h = 6; h <= 22; h++) {
         for (let m = 0; m < 60; m += 15) {
             const hour = h.toString().padStart(2, '0');
             const min = m.toString().padStart(2, '0');
             const value = `${hour}:${min}`;
-            const label = `${h > 12 ? h - 12 : h}:${min.padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+            const label = `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${min.padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
             timeOptions.push({ value, label });
         }
     }
     
-    // Get month/year for header
-    const monthYear = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    
     showModal(`
-        <div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:400px">
             <div class="modal-header">
                 <h3 class="modal-title">📅 Schedule Resource</h3>
                 <button class="modal-close" onclick="closeModal()">✕</button>
             </div>
             <div class="modal-body">
-                <p style="margin-bottom:16px"><strong>${resource.title}</strong></p>
+                <p style="margin-bottom:16px;font-weight:500">${resource.title}</p>
                 
-                <div style="margin-bottom:16px">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                        <label class="form-label" style="margin:0">Select Date</label>
-                        <span style="font-size:0.85rem;color:var(--text-secondary)">${monthYear}</span>
-                    </div>
-                    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:0.8rem">
-                        ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div style="color:var(--text-tertiary);padding:4px;font-weight:600">${d}</div>`).join('')}
-                    </div>
-                    <div id="scheduleCalendar">
-                    ${weeks.map((week, wi) => `
-                    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">
-                        ${week.map(date => {
-                            const dateStr = date.toISOString().split('T')[0];
-                            const isToday = date.toDateString() === today.toDateString();
-                            const isSelected = dateStr === currentScheduledDate;
-                            const isPast = date < today;
-                            const dayNum = date.getDate();
-                            const monthLabel = date.getMonth() !== today.getMonth() ? date.toLocaleDateString('en-US', { month: 'short' }) : '';
-                            return `
-                            <button 
-                                class="btn schedule-date-btn ${isSelected ? 'btn-primary selected' : 'btn-ghost'}" 
-                                data-date="${dateStr}"
-                                style="padding:8px 4px;font-size:0.85rem;position:relative;${isPast ? 'opacity:0.3;cursor:not-allowed' : ''};${isToday ? 'border:2px solid var(--root-green)' : ''}"
-                                onclick="${!isPast ? `selectDateForSchedule('${resourceId}', '${dateStr}', this)` : ''}"
-                                ${isPast ? 'disabled' : ''}
-                            >
-                                ${monthLabel ? `<span style="font-size:0.6rem;position:absolute;top:2px;left:50%;transform:translateX(-50%);color:var(--text-tertiary)">${monthLabel}</span>` : ''}
-                                ${dayNum}
-                                ${isToday ? '<span style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;background:var(--root-green);border-radius:50%"></span>' : ''}
-                            </button>
-                            `;
-                        }).join('')}
-                    </div>
-                    `).join('')}
-                    </div>
+                <div id="calendarContainer" style="margin-bottom:16px">
+                    ${renderCalendarMonth()}
                 </div>
                 
                 <div class="form-group" style="margin-bottom:16px">
                     <label class="form-label">Time</label>
-                    <select id="scheduleTime" class="input-field">
+                    <select id="scheduleTime" class="input-field" onchange="updateSchedulePreview()">
                         ${timeOptions.map(t => `<option value="${t.value}" ${t.value === existingTime ? 'selected' : ''}>${t.label}</option>`).join('')}
                     </select>
-                    <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:4px">Resource will automatically push to users at this time</p>
                 </div>
                 
                 <div id="schedulePreview" style="background:var(--hover-bg);padding:12px;border-radius:8px">
+                    ${selectedScheduleDate ? `
                     <p style="margin:0;font-size:0.85rem;color:var(--text-secondary)">
-                        ${currentScheduledDate ? `Currently scheduled for <strong>${new Date(currentScheduledDate + 'T' + existingTime).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} at ${formatTime12h(existingTime)}</strong>` : 'Select a date to schedule'}
+                        Scheduled for <strong>${formatScheduleDate(selectedScheduleDate, existingTime)}</strong>
                     </p>
+                    ` : `<p style="margin:0;font-size:0.85rem;color:var(--text-tertiary)">Select a date</p>`}
                 </div>
             </div>
             <div class="modal-footer">
-                ${currentScheduledDate ? `<button class="btn btn-ghost" onclick="clearResourceSchedule('${resourceId}')">Clear</button>` : ''}
+                ${resource.scheduledDate ? `<button class="btn btn-ghost" onclick="clearResourceSchedule('${resourceId}')">Clear</button>` : ''}
                 <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                <button class="btn btn-primary" id="saveScheduleBtn" onclick="saveResourceSchedule('${resourceId}')" ${!currentScheduledDate ? 'disabled' : ''}>Save Schedule</button>
+                <button class="btn btn-primary" id="saveScheduleBtn" onclick="saveResourceSchedule('${resourceId}')" ${!selectedScheduleDate ? 'disabled' : ''}>Save</button>
             </div>
         </div>
     `);
 }
 
-// Store selected date temporarily
-let selectedScheduleDate = null;
-
-function selectDateForSchedule(resourceId, dateStr, btnEl) {
-    // Update UI - deselect all, select clicked
-    document.querySelectorAll('.schedule-date-btn').forEach(btn => {
-        btn.classList.remove('btn-primary', 'selected');
-        btn.classList.add('btn-ghost');
-    });
-    btnEl.classList.remove('btn-ghost');
-    btnEl.classList.add('btn-primary', 'selected');
+function renderCalendarMonth() {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
-    selectedScheduleDate = dateStr;
+    const year = calendarViewYear;
+    const month = calendarViewMonth;
     
-    // Update preview
-    const time = document.getElementById('scheduleTime').value;
-    const dateObj = new Date(dateStr + 'T' + time);
-    document.getElementById('schedulePreview').innerHTML = `
-        <p style="margin:0;font-size:0.85rem;color:var(--text-secondary)">
-            Will be scheduled for <strong>${dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} at ${formatTime12h(time)}</strong>
-        </p>
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startDayOfWeek = firstDay.getDay();
+    
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    const canGoPrev = year > now.getFullYear() || (year === now.getFullYear() && month > now.getMonth());
+    
+    let html = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <button class="btn btn-ghost btn-sm" onclick="changeCalendarMonth(-1)" ${!canGoPrev ? 'disabled style="opacity:0.3"' : ''}>←</button>
+            <span style="font-weight:600">${monthNames[month]} ${year}</span>
+            <button class="btn btn-ghost btn-sm" onclick="changeCalendarMonth(1)">→</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center">
+            ${['S','M','T','W','T','F','S'].map(d => `<div style="padding:6px;font-size:0.75rem;color:var(--text-tertiary);font-weight:600">${d}</div>`).join('')}
     `;
     
-    // Enable save button
+    for (let i = 0; i < startDayOfWeek; i++) {
+        html += `<div style="padding:8px"></div>`;
+    }
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateObj = new Date(year, month, day);
+        const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+        const isToday = dateObj.toDateString() === today.toDateString();
+        const isSelected = dateStr === selectedScheduleDate;
+        const isPast = dateObj < today;
+        
+        html += `
+            <button 
+                class="btn ${isSelected ? 'btn-primary' : 'btn-ghost'} schedule-date-btn"
+                data-date="${dateStr}"
+                style="padding:6px;font-size:0.8rem;min-width:32px;${isPast ? 'opacity:0.2;cursor:not-allowed' : ''};${isToday && !isSelected ? 'border:2px solid var(--root-green)' : ''}"
+                onclick="${!isPast ? `selectCalendarDate('${dateStr}')` : ''}"
+                ${isPast ? 'disabled' : ''}
+            >${day}</button>
+        `;
+    }
+    
+    html += `</div>`;
+    return html;
+}
+
+function changeCalendarMonth(delta) {
+    calendarViewMonth += delta;
+    if (calendarViewMonth > 11) {
+        calendarViewMonth = 0;
+        calendarViewYear++;
+    } else if (calendarViewMonth < 0) {
+        calendarViewMonth = 11;
+        calendarViewYear--;
+    }
+    
+    const now = new Date();
+    if (calendarViewYear < now.getFullYear() || 
+        (calendarViewYear === now.getFullYear() && calendarViewMonth < now.getMonth())) {
+        calendarViewMonth = now.getMonth();
+        calendarViewYear = now.getFullYear();
+    }
+    
+    document.getElementById('calendarContainer').innerHTML = renderCalendarMonth();
+}
+
+function selectCalendarDate(dateStr) {
+    selectedScheduleDate = dateStr;
+    
+    document.querySelectorAll('.schedule-date-btn').forEach(btn => {
+        btn.classList.toggle('btn-primary', btn.dataset.date === dateStr);
+        btn.classList.toggle('btn-ghost', btn.dataset.date !== dateStr);
+    });
+    
+    updateSchedulePreview();
     document.getElementById('saveScheduleBtn').disabled = false;
+}
+
+function updateSchedulePreview() {
+    if (!selectedScheduleDate) return;
+    const time = document.getElementById('scheduleTime')?.value || '19:00';
+    document.getElementById('schedulePreview').innerHTML = `
+        <p style="margin:0;font-size:0.85rem;color:var(--text-secondary)">
+            Scheduled for <strong>${formatScheduleDate(selectedScheduleDate, time)}</strong>
+        </p>
+    `;
+}
+
+function formatScheduleDate(dateStr, time) {
+    const dateObj = new Date(dateStr + 'T' + time);
+    return dateObj.toLocaleDateString('en-US', { 
+        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' 
+    }) + ' at ' + formatTime12h(time);
 }
 
 function formatTime12h(time24) {
     const [h, m] = time24.split(':').map(Number);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    const hour12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
-    return `${hour12}:${m.toString().padStart(2, '0')} ${ampm}`;
+    return `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+
+// Mark resource as viewed (removes NEW badge)
+function markResourceViewed(resourceId) {
+    const viewed = JSON.parse(localStorage.getItem('rooted_viewed_resources') || '[]');
+    if (!viewed.includes(resourceId)) {
+        viewed.push(resourceId);
+        localStorage.setItem('rooted_viewed_resources', JSON.stringify(viewed));
+    }
 }
 
 async function saveResourceSchedule(resourceId) {
     const churchId = State.current.user?.churchId;
-    if (!churchId) return;
+    if (!churchId || !selectedScheduleDate) return;
     
-    const dateStr = selectedScheduleDate || document.querySelector('.schedule-date-btn.selected')?.dataset.date;
     const time = document.getElementById('scheduleTime').value;
-    
-    if (!dateStr) {
-        toast('Please select a date', 'error');
-        return;
-    }
-    
     const church = getChurchData(churchId);
     let playlist = [...(church?.resourcePlaylist || [])];
     
@@ -5756,9 +5795,9 @@ async function saveResourceSchedule(resourceId) {
     if (index >= 0) {
         playlist[index] = { 
             ...playlist[index], 
-            scheduledDate: dateStr,
+            scheduledDate: selectedScheduleDate,
             scheduledTime: time,
-            scheduledTimestamp: new Date(dateStr + 'T' + time).getTime()
+            scheduledTimestamp: new Date(selectedScheduleDate + 'T' + time).getTime()
         };
         
         try {
@@ -5766,35 +5805,10 @@ async function saveResourceSchedule(resourceId) {
             await refreshChurchCache(churchId);
             closeModal();
             selectedScheduleDate = null;
-            toast(`Scheduled for ${new Date(dateStr + 'T' + time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${formatTime12h(time)}! 📅`, 'success');
+            toast(`Scheduled! 📅`, 'success');
             render();
         } catch (e) {
-            console.error('Error scheduling:', e);
-            toast('Error scheduling resource', 'error');
-        }
-    }
-}
-
-async function selectScheduleDate(resourceId, dateStr) {
-    const churchId = State.current.user?.churchId;
-    if (!churchId) return;
-    
-    const church = getChurchData(churchId);
-    let playlist = [...(church?.resourcePlaylist || [])];
-    
-    const index = playlist.findIndex(r => r.id === resourceId);
-    if (index >= 0) {
-        playlist[index] = { ...playlist[index], scheduledDate: dateStr };
-        
-        try {
-            await ChurchDB.updateChurch(churchId, { resourcePlaylist: playlist });
-            await refreshChurchCache(churchId);
-            closeModal();
-            toast(`Scheduled for ${new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}! 📅`, 'success');
-            render();
-        } catch (e) {
-            console.error('Error scheduling:', e);
-            toast('Error scheduling resource', 'error');
+            toast('Error scheduling', 'error');
         }
     }
 }
@@ -5808,7 +5822,7 @@ async function clearResourceSchedule(resourceId) {
     
     const index = playlist.findIndex(r => r.id === resourceId);
     if (index >= 0) {
-        playlist[index] = { ...playlist[index], scheduledDate: null };
+        playlist[index] = { ...playlist[index], scheduledDate: null, scheduledTime: null, scheduledTimestamp: null };
         
         try {
             await ChurchDB.updateChurch(churchId, { resourcePlaylist: playlist });
@@ -5817,7 +5831,7 @@ async function clearResourceSchedule(resourceId) {
             toast('Schedule cleared', 'info');
             render();
         } catch (e) {
-            console.error('Error clearing schedule:', e);
+            console.error('Error:', e);
         }
     }
 }
@@ -8073,7 +8087,7 @@ function renderApp() {
                     <span class="nav-item-icon">🎬</span> Videos
                 </div>
                 <div class="nav-item ${activeNav === 'studies' ? 'active' : ''} ${getUnseenResourceCount() > 0 ? 'nav-item-new' : ''}" onclick="navigate('studies'); markResourcesSeen();" style="position:relative">
-                    <span class="nav-item-icon">📚</span> Weekly Studies
+                    <span class="nav-item-icon">📚</span> Studies
                     ${getUnseenResourceCount() > 0 ? `<span class="new-badge">NEW</span>` : ''}
                 </div>
                 <div class="nav-item ${activeNav === 'tools' ? 'active' : ''}" onclick="navigate('tools')">
@@ -8121,7 +8135,7 @@ function renderApp() {
 }
 
 function getPageTitle(nav) {
-    const titles = { dashboard: 'Dashboard', tools: 'Growth Tools', progress: 'My Progress', profile: 'Profile', settings: 'Settings', 'my-church': 'My Church', 'church-videos': 'Videos', 'studies': 'Weekly Studies' };
+    const titles = { dashboard: 'Dashboard', tools: 'Growth Tools', progress: 'My Progress', profile: 'Profile', settings: 'Settings', 'my-church': 'My Church', 'church-videos': 'Videos', 'studies': 'Studies' };
     return titles[nav] || 'Dashboard';
 }
 
@@ -8263,45 +8277,86 @@ function renderDashboard() {
             </div>
             
             ${(() => {
-                // Check for pushed resources from church
-                const notifications = userChurch?.userNotifications || [];
-                const recentNotifications = notifications
-                    .filter(n => n.type === 'weekly-resources' || n.type === 'single-resource')
-                    .filter(n => Date.now() - n.createdAt < 7 * 24 * 60 * 60 * 1000) // Last 7 days
-                    .sort((a, b) => b.createdAt - a.createdAt)
+                // Get scheduled resources from church playlist (auto-push based on schedule)
+                const playlist = userChurch?.resourcePlaylist || [];
+                const now = Date.now();
+                const todayStr = new Date().toISOString().split('T')[0];
+                
+                // Get user's viewed resources
+                const viewedResources = JSON.parse(localStorage.getItem('rooted_viewed_resources') || '[]');
+                
+                // Current/past scheduled resources (available now)
+                const availableResources = playlist
+                    .filter(r => r.scheduledTimestamp && r.scheduledTimestamp <= now)
+                    .sort((a, b) => b.scheduledTimestamp - a.scheduledTimestamp)
+                    .slice(0, 5);
+                
+                // Upcoming resources (locked)
+                const upcomingResources = playlist
+                    .filter(r => r.scheduledTimestamp && r.scheduledTimestamp > now)
+                    .sort((a, b) => a.scheduledTimestamp - b.scheduledTimestamp)
                     .slice(0, 3);
                 
-                if (recentNotifications.length === 0) return '';
+                if (availableResources.length === 0 && upcomingResources.length === 0) return '';
                 
                 return `
-                <!-- Weekly Resources from Church -->
+                <!-- Scheduled Resources from Church -->
                 <div class="card" style="margin-bottom:var(--space-lg);border:2px solid var(--root-green);background:linear-gradient(135deg,var(--root-green)08,transparent)">
                     <div style="display:flex;align-items:center;gap:12px;margin-bottom:var(--space-md)">
                         <div style="width:40px;height:40px;background:var(--root-green);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.3rem">📚</div>
-                        <div>
-                            <h3 style="margin:0;font-size:1rem">This Week's Resources</h3>
+                        <div style="flex:1">
+                            <h3 style="margin:0;font-size:1rem">Study Resources</h3>
                             <p style="margin:0;font-size:0.8rem;color:var(--text-secondary)">From ${userChurch?.name || 'your church'}</p>
                         </div>
                     </div>
                     
-                    ${recentNotifications.map(notif => `
-                    <div style="margin-bottom:12px">
-                        ${notif.message ? `<p style="margin:0 0 8px;font-size:0.9rem;color:var(--text-secondary);font-style:italic">"${notif.message}"</p>` : ''}
+                    ${availableResources.length > 0 ? `
+                    <div style="margin-bottom:16px">
                         <div style="display:grid;gap:8px">
-                            ${notif.resources.map(r => `
-                            <a href="${r.url}" target="_blank" style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--hover-bg);border-radius:8px;text-decoration:none;color:inherit;transition:all 0.2s" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform='none'">
-                                <div style="width:36px;height:36px;background:var(--card-bg);border-radius:8px;display:flex;align-items:center;justify-content:center">📄</div>
-                                <div style="flex:1">
-                                    <div style="font-weight:500;font-size:0.9rem">${r.title}</div>
-                                    <div style="font-size:0.75rem;color:var(--text-tertiary)">${PARTNER_RESOURCE_LIBRARIES[r.partnerId]?.name || 'Resource'}</div>
-                                </div>
-                                <span style="color:var(--root-green)">→</span>
-                            </a>
-                            `).join('')}
+                            ${availableResources.map(r => {
+                                const isNew = !viewedResources.includes(r.id) && (now - r.scheduledTimestamp < 24 * 60 * 60 * 1000);
+                                const schedDate = new Date(r.scheduledTimestamp);
+                                return `
+                                <a href="${r.url}" target="_blank" onclick="markResourceViewed('${r.id}')" style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--hover-bg);border-radius:8px;text-decoration:none;color:inherit;transition:all 0.2s" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform='none'">
+                                    <div style="width:36px;height:36px;background:var(--card-bg);border-radius:8px;display:flex;align-items:center;justify-content:center">📄</div>
+                                    <div style="flex:1">
+                                        <div style="display:flex;align-items:center;gap:6px">
+                                            <span style="font-weight:500;font-size:0.9rem">${r.title}</span>
+                                            ${isNew ? '<span style="background:var(--root-green);color:white;padding:1px 6px;border-radius:8px;font-size:0.65rem;font-weight:600">NEW</span>' : ''}
+                                        </div>
+                                        <div style="font-size:0.75rem;color:var(--text-tertiary)">${PARTNER_RESOURCE_LIBRARIES[r.partnerId]?.name || 'Resource'} • ${schedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                                    </div>
+                                    <span style="color:var(--root-green)">→</span>
+                                </a>
+                                `;
+                            }).join('')}
                         </div>
-                        <p style="margin:8px 0 0;font-size:0.7rem;color:var(--text-tertiary)">Shared ${new Date(notif.createdAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
                     </div>
-                    `).join('')}
+                    ` : ''}
+                    
+                    ${upcomingResources.length > 0 ? `
+                    <div style="border-top:1px solid var(--border-color);padding-top:12px">
+                        <h4 style="margin:0 0 8px;font-size:0.85rem;color:var(--text-tertiary)">🔒 Coming Soon</h4>
+                        <div style="display:grid;gap:6px">
+                            ${upcomingResources.map(r => {
+                                const unlockDate = new Date(r.scheduledTimestamp);
+                                const daysUntil = Math.ceil((r.scheduledTimestamp - now) / (24 * 60 * 60 * 1000));
+                                return `
+                                <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--hover-bg);border-radius:8px;opacity:0.7">
+                                    <div style="width:32px;height:32px;background:var(--card-bg);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:0.9rem">🔒</div>
+                                    <div style="flex:1">
+                                        <div style="font-weight:500;font-size:0.85rem">${r.title}</div>
+                                        <div style="font-size:0.7rem;color:var(--text-tertiary)">
+                                            Unlocks ${unlockDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${formatTime12h(r.scheduledTime || '19:00')}
+                                            ${daysUntil === 1 ? ' (tomorrow)' : daysUntil <= 7 ? ` (${daysUntil} days)` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
                 </div>
                 `;
             })()}
