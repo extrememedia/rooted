@@ -64,6 +64,50 @@ input, textarea, select { font-family: inherit; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes glow { 0%, 100% { box-shadow: 0 0 5px var(--root-green), 0 0 10px var(--root-green); } 50% { box-shadow: 0 0 15px var(--root-green), 0 0 25px var(--root-green); } }
+@keyframes bounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+/* New resource badge */
+.new-badge { 
+    position: absolute; 
+    top: -4px; 
+    right: -4px; 
+    background: linear-gradient(135deg, #ef4444, #f97316); 
+    color: white; 
+    font-size: 0.6rem; 
+    font-weight: 700; 
+    padding: 2px 5px; 
+    border-radius: 8px; 
+    animation: bounce 1s ease-in-out infinite; 
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.5);
+}
+.new-dot {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 10px;
+    height: 10px;
+    background: #ef4444;
+    border-radius: 50%;
+    animation: glow 1.5s ease-in-out infinite;
+}
+.nav-item-new {
+    position: relative;
+}
+.nav-item-new::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    background: #ef4444;
+    border-radius: 50%;
+    animation: glow 1.5s ease-in-out infinite;
+}
 .fade-up { animation: fadeUp 0.4s ease; }
 .fade-in { animation: fadeIn 0.3s ease; }
 
@@ -1927,6 +1971,99 @@ async function loadUserChurchData() {
             console.error('Error checking check-in status:', e);
         }
     }
+}
+
+// Check for new resources that user hasn't seen
+function getUnseenResourceCount() {
+    const userId = Auth.currentUser?.uid;
+    const churchId = getUserChurch(userId);
+    if (!churchId) return 0;
+    
+    const church = getChurchData(churchId);
+    const notifications = church?.userNotifications || [];
+    
+    // Get resources from last 7 days
+    const recentNotifications = notifications.filter(n => 
+        (n.type === 'weekly-resources' || n.type === 'single-resource') &&
+        Date.now() - n.createdAt < 7 * 24 * 60 * 60 * 1000
+    );
+    
+    // Check which ones user has seen
+    const seenKey = `rooted_seen_resources_${userId}`;
+    const seenIds = JSON.parse(localStorage.getItem(seenKey) || '[]');
+    
+    const unseenCount = recentNotifications.filter(n => !seenIds.includes(n.id)).length;
+    return unseenCount;
+}
+
+function markResourcesSeen() {
+    const userId = Auth.currentUser?.uid;
+    const churchId = getUserChurch(userId);
+    if (!churchId) return;
+    
+    const church = getChurchData(churchId);
+    const notifications = church?.userNotifications || [];
+    
+    const seenKey = `rooted_seen_resources_${userId}`;
+    const seenIds = notifications.map(n => n.id);
+    localStorage.setItem(seenKey, JSON.stringify(seenIds));
+}
+
+// Auto-push scheduled resources (runs on church admin load)
+async function checkAndPushScheduledResources(churchId) {
+    const church = getChurchData(churchId);
+    if (!church) return;
+    
+    const playlist = church.resourcePlaylist || [];
+    const now = Date.now();
+    
+    // Find resources that are past their scheduled time but not yet pushed
+    const readyToPush = playlist.filter(r => {
+        if (!r.scheduledTimestamp) return false;
+        if (r.pushed) return false; // Already pushed
+        return r.scheduledTimestamp <= now;
+    });
+    
+    if (readyToPush.length === 0) return;
+    
+    // Auto-push these resources
+    for (const resource of readyToPush) {
+        const notification = {
+            id: 'notif_' + Date.now() + '_' + resource.id,
+            type: 'single-resource',
+            title: '📄 New Resource Available!',
+            message: `${resource.title} is now available`,
+            resources: [{
+                id: resource.id,
+                title: resource.title,
+                url: resource.url,
+                partnerId: resource.partnerId
+            }],
+            createdAt: Date.now(),
+            pushedBy: 'Auto-scheduled',
+            autoScheduled: true
+        };
+        
+        const notifications = [...(church.userNotifications || []), notification];
+        
+        // Mark resource as pushed
+        const updatedPlaylist = playlist.map(r => 
+            r.id === resource.id ? { ...r, pushed: true, pushedAt: Date.now() } : r
+        );
+        
+        try {
+            await ChurchDB.updateChurch(churchId, { 
+                userNotifications: notifications,
+                resourcePlaylist: updatedPlaylist
+            });
+            console.log('Auto-pushed resource:', resource.title);
+        } catch (e) {
+            console.error('Error auto-pushing resource:', e);
+        }
+    }
+    
+    // Refresh cache
+    await refreshChurchCache(churchId);
 }
 
 function getUserChurches(userId) {
@@ -5124,6 +5261,12 @@ function renderChurchFSO() {
         return renderPartnerResourcePage(currentPartnerView);
     }
     
+    // Auto-push any scheduled resources that are ready
+    const churchId = State.current.user?.churchId;
+    if (churchId) {
+        checkAndPushScheduledResources(churchId);
+    }
+    
     const favorites = getFSOFavorites();
     const enabledStudies = getEnabledStudies();
     
@@ -5212,23 +5355,33 @@ function renderChurchFSO() {
                 <div style="margin-bottom:20px">
                     <h4 style="margin:0 0 12px;color:var(--root-green)">📆 Scheduled (${scheduled.length})</h4>
                     <div style="display:grid;gap:8px">
-                        ${scheduled.sort((a,b) => new Date(a.scheduledDate) - new Date(b.scheduledDate)).map(item => {
-                            const date = new Date(item.scheduledDate);
+                        ${scheduled.sort((a,b) => (a.scheduledTimestamp || 0) - (b.scheduledTimestamp || 0)).map(item => {
+                            const timestamp = item.scheduledTimestamp || new Date(item.scheduledDate).getTime();
+                            const date = new Date(timestamp);
+                            const now = new Date();
                             const dateStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                            const isPast = date < new Date();
-                            const isToday = date.toDateString() === new Date().toDateString();
+                            const timeStr = item.scheduledTime ? formatTime12h(item.scheduledTime) : '7:00 PM';
+                            const isPast = timestamp < now.getTime();
+                            const isToday = date.toDateString() === now.toDateString();
+                            const isPushed = item.pushed;
+                            const isReady = timestamp <= now.getTime() && !isPushed;
                             return `
-                            <div style="display:flex;align-items:center;gap:12px;padding:12px;background:${isToday ? 'var(--root-green)10' : 'var(--hover-bg)'};border-radius:8px;border-left:3px solid ${isToday ? 'var(--root-green)' : isPast ? 'var(--text-tertiary)' : 'var(--primary)'}">
+                            <div style="display:flex;align-items:center;gap:12px;padding:12px;background:${isPushed ? 'var(--success)10' : isReady ? 'var(--warning)15' : isToday ? 'var(--root-green)10' : 'var(--hover-bg)'};border-radius:8px;border-left:3px solid ${isPushed ? 'var(--success)' : isReady ? 'var(--warning)' : isToday ? 'var(--root-green)' : 'var(--primary)'}">
                                 <div style="min-width:80px;text-align:center">
-                                    <div style="font-size:0.75rem;color:${isToday ? 'var(--root-green)' : 'var(--text-tertiary)'}">${isToday ? 'TODAY' : dateStr.split(',')[0]}</div>
+                                    <div style="font-size:0.7rem;color:${isToday ? 'var(--root-green)' : 'var(--text-tertiary)'};text-transform:uppercase">${isToday ? 'TODAY' : dateStr.split(' ')[0]}</div>
                                     <div style="font-weight:600;font-size:1.1rem">${date.getDate()}</div>
+                                    <div style="font-size:0.7rem;color:var(--text-tertiary)">${timeStr}</div>
                                 </div>
                                 <div style="flex:1;min-width:0">
-                                    <div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.title}</div>
+                                    <div style="display:flex;align-items:center;gap:8px">
+                                        <span style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.title}</span>
+                                        ${isPushed ? '<span style="background:var(--success);color:white;font-size:0.65rem;padding:2px 6px;border-radius:4px">SENT</span>' : ''}
+                                        ${isReady && !isPushed ? '<span style="background:var(--warning);color:white;font-size:0.65rem;padding:2px 6px;border-radius:4px;animation:pulse 1s infinite">READY</span>' : ''}
+                                    </div>
                                     <div style="font-size:0.8rem;color:var(--text-tertiary)">${PARTNER_RESOURCE_LIBRARIES[item.partnerId]?.name || 'Resource'}</div>
                                 </div>
-                                ${isToday ? `<button class="btn btn-primary btn-sm" onclick="pushSingleResource('${item.id}')">Push Now</button>` : ''}
-                                <button class="btn btn-ghost btn-sm" onclick="showScheduleResourceModal('${item.id}')" title="Reschedule">📅</button>
+                                ${isReady && !isPushed ? `<button class="btn btn-primary btn-sm" onclick="pushSingleResource('${item.id}')" style="animation:pulse 2s infinite">🚀 Push Now</button>` : ''}
+                                ${!isPushed ? `<button class="btn btn-ghost btn-sm" onclick="showScheduleResourceModal('${item.id}')" title="Reschedule">📅</button>` : ''}
                                 <button class="btn btn-ghost btn-sm" onclick="removeFromPlaylist('${item.id}')" style="color:var(--error)" title="Remove">×</button>
                             </div>
                             `;
@@ -5444,9 +5597,12 @@ function showScheduleResourceModal(resourceId) {
     
     if (!resource) return;
     
-    // Generate next 4 weeks of dates
+    // Use real-time current date
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // Generate next 4 weeks of dates starting from today
     const dates = [];
-    const today = new Date();
     for (let i = 0; i < 28; i++) {
         const d = new Date(today);
         d.setDate(d.getDate() + i);
@@ -5459,7 +5615,24 @@ function showScheduleResourceModal(resourceId) {
         weeks.push(dates.slice(i * 7, (i + 1) * 7));
     }
     
-    const currentScheduled = resource.scheduledDate ? new Date(resource.scheduledDate).toISOString().split('T')[0] : '';
+    // Parse existing schedule
+    const existingTime = resource.scheduledTime || '19:00';
+    const currentScheduledDate = resource.scheduledDate || '';
+    
+    // Generate time options in 15-minute intervals
+    const timeOptions = [];
+    for (let h = 6; h <= 22; h++) {
+        for (let m = 0; m < 60; m += 15) {
+            const hour = h.toString().padStart(2, '0');
+            const min = m.toString().padStart(2, '0');
+            const value = `${hour}:${min}`;
+            const label = `${h > 12 ? h - 12 : h}:${min.padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+            timeOptions.push({ value, label });
+        }
+    }
+    
+    // Get month/year for header
+    const monthYear = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     
     showModal(`
         <div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
@@ -5471,44 +5644,135 @@ function showScheduleResourceModal(resourceId) {
                 <p style="margin-bottom:16px"><strong>${resource.title}</strong></p>
                 
                 <div style="margin-bottom:16px">
-                    <label class="form-label">Select Date</label>
-                    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:0.8rem">
-                        ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div style="color:var(--text-tertiary);padding:4px">${d}</div>`).join('')}
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                        <label class="form-label" style="margin:0">Select Date</label>
+                        <span style="font-size:0.85rem;color:var(--text-secondary)">${monthYear}</span>
                     </div>
+                    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:0.8rem">
+                        ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div style="color:var(--text-tertiary);padding:4px;font-weight:600">${d}</div>`).join('')}
+                    </div>
+                    <div id="scheduleCalendar">
                     ${weeks.map((week, wi) => `
                     <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">
                         ${week.map(date => {
                             const dateStr = date.toISOString().split('T')[0];
                             const isToday = date.toDateString() === today.toDateString();
-                            const isSelected = dateStr === currentScheduled;
-                            const isPast = date < today && !isToday;
+                            const isSelected = dateStr === currentScheduledDate;
+                            const isPast = date < today;
+                            const dayNum = date.getDate();
+                            const monthLabel = date.getMonth() !== today.getMonth() ? date.toLocaleDateString('en-US', { month: 'short' }) : '';
                             return `
                             <button 
-                                class="btn ${isSelected ? 'btn-primary' : 'btn-ghost'}" 
-                                style="padding:8px 4px;font-size:0.85rem;${isPast ? 'opacity:0.4;cursor:not-allowed' : ''};${isToday ? 'border:2px solid var(--root-green)' : ''}"
-                                onclick="${!isPast ? `selectScheduleDate('${resourceId}', '${dateStr}')` : ''}"
+                                class="btn schedule-date-btn ${isSelected ? 'btn-primary selected' : 'btn-ghost'}" 
+                                data-date="${dateStr}"
+                                style="padding:8px 4px;font-size:0.85rem;position:relative;${isPast ? 'opacity:0.3;cursor:not-allowed' : ''};${isToday ? 'border:2px solid var(--root-green)' : ''}"
+                                onclick="${!isPast ? `selectDateForSchedule('${resourceId}', '${dateStr}', this)` : ''}"
                                 ${isPast ? 'disabled' : ''}
                             >
-                                ${date.getDate()}
+                                ${monthLabel ? `<span style="font-size:0.6rem;position:absolute;top:2px;left:50%;transform:translateX(-50%);color:var(--text-tertiary)">${monthLabel}</span>` : ''}
+                                ${dayNum}
+                                ${isToday ? '<span style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;background:var(--root-green);border-radius:50%"></span>' : ''}
                             </button>
                             `;
                         }).join('')}
                     </div>
                     `).join('')}
+                    </div>
                 </div>
                 
-                <div style="background:var(--hover-bg);padding:12px;border-radius:8px">
+                <div class="form-group" style="margin-bottom:16px">
+                    <label class="form-label">Time</label>
+                    <select id="scheduleTime" class="input-field">
+                        ${timeOptions.map(t => `<option value="${t.value}" ${t.value === existingTime ? 'selected' : ''}>${t.label}</option>`).join('')}
+                    </select>
+                    <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:4px">Resource will automatically push to users at this time</p>
+                </div>
+                
+                <div id="schedulePreview" style="background:var(--hover-bg);padding:12px;border-radius:8px">
                     <p style="margin:0;font-size:0.85rem;color:var(--text-secondary)">
-                        ${currentScheduled ? `Currently scheduled for <strong>${new Date(currentScheduled).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</strong>` : 'Not yet scheduled'}
+                        ${currentScheduledDate ? `Currently scheduled for <strong>${new Date(currentScheduledDate + 'T' + existingTime).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} at ${formatTime12h(existingTime)}</strong>` : 'Select a date to schedule'}
                     </p>
                 </div>
             </div>
             <div class="modal-footer">
-                ${currentScheduled ? `<button class="btn btn-ghost" onclick="clearResourceSchedule('${resourceId}')">Clear Schedule</button>` : ''}
+                ${currentScheduledDate ? `<button class="btn btn-ghost" onclick="clearResourceSchedule('${resourceId}')">Clear</button>` : ''}
                 <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" id="saveScheduleBtn" onclick="saveResourceSchedule('${resourceId}')" ${!currentScheduledDate ? 'disabled' : ''}>Save Schedule</button>
             </div>
         </div>
     `);
+}
+
+// Store selected date temporarily
+let selectedScheduleDate = null;
+
+function selectDateForSchedule(resourceId, dateStr, btnEl) {
+    // Update UI - deselect all, select clicked
+    document.querySelectorAll('.schedule-date-btn').forEach(btn => {
+        btn.classList.remove('btn-primary', 'selected');
+        btn.classList.add('btn-ghost');
+    });
+    btnEl.classList.remove('btn-ghost');
+    btnEl.classList.add('btn-primary', 'selected');
+    
+    selectedScheduleDate = dateStr;
+    
+    // Update preview
+    const time = document.getElementById('scheduleTime').value;
+    const dateObj = new Date(dateStr + 'T' + time);
+    document.getElementById('schedulePreview').innerHTML = `
+        <p style="margin:0;font-size:0.85rem;color:var(--text-secondary)">
+            Will be scheduled for <strong>${dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} at ${formatTime12h(time)}</strong>
+        </p>
+    `;
+    
+    // Enable save button
+    document.getElementById('saveScheduleBtn').disabled = false;
+}
+
+function formatTime12h(time24) {
+    const [h, m] = time24.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    return `${hour12}:${m.toString().padStart(2, '0')} ${ampm}`;
+}
+
+async function saveResourceSchedule(resourceId) {
+    const churchId = State.current.user?.churchId;
+    if (!churchId) return;
+    
+    const dateStr = selectedScheduleDate || document.querySelector('.schedule-date-btn.selected')?.dataset.date;
+    const time = document.getElementById('scheduleTime').value;
+    
+    if (!dateStr) {
+        toast('Please select a date', 'error');
+        return;
+    }
+    
+    const church = getChurchData(churchId);
+    let playlist = [...(church?.resourcePlaylist || [])];
+    
+    const index = playlist.findIndex(r => r.id === resourceId);
+    if (index >= 0) {
+        playlist[index] = { 
+            ...playlist[index], 
+            scheduledDate: dateStr,
+            scheduledTime: time,
+            scheduledTimestamp: new Date(dateStr + 'T' + time).getTime()
+        };
+        
+        try {
+            await ChurchDB.updateChurch(churchId, { resourcePlaylist: playlist });
+            await refreshChurchCache(churchId);
+            closeModal();
+            selectedScheduleDate = null;
+            toast(`Scheduled for ${new Date(dateStr + 'T' + time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${formatTime12h(time)}! 📅`, 'success');
+            render();
+        } catch (e) {
+            console.error('Error scheduling:', e);
+            toast('Error scheduling resource', 'error');
+        }
+    }
 }
 
 async function selectScheduleDate(resourceId, dateStr) {
@@ -5701,6 +5965,82 @@ async function pushSingleResource(resourceId) {
         console.error('Error pushing resource:', e);
         toast('Error pushing resource', 'error');
     }
+}
+
+// Auto-push scheduled resources when their time has arrived
+async function checkAndAutoPushResources(churchId) {
+    if (!churchId) return;
+    
+    const church = await ChurchDB.getChurchFresh(churchId);
+    if (!church) return;
+    
+    const playlist = church.resourcePlaylist || [];
+    const now = Date.now();
+    
+    // Find resources that are scheduled but not yet pushed, and whose time has passed
+    const readyToPush = playlist.filter(r => {
+        if (r.pushed) return false; // Already pushed
+        if (!r.scheduledTimestamp) return false; // Not scheduled with time
+        return r.scheduledTimestamp <= now; // Time has arrived
+    });
+    
+    if (readyToPush.length === 0) return;
+    
+    console.log(`Auto-pushing ${readyToPush.length} scheduled resources`);
+    
+    // Create notification for these resources
+    const notification = {
+        id: 'notif_auto_' + Date.now(),
+        type: 'weekly-resources',
+        title: '📚 New Resources Available!',
+        message: `${church.name}'s scheduled resources are now available!`,
+        resources: readyToPush.map(r => ({
+            id: r.id,
+            title: r.title,
+            url: r.url,
+            partnerId: r.partnerId
+        })),
+        createdAt: Date.now(),
+        pushedBy: 'Auto-scheduled'
+    };
+    
+    // Mark resources as pushed and add notification
+    const updatedPlaylist = playlist.map(r => {
+        if (readyToPush.find(rtp => rtp.id === r.id)) {
+            return { ...r, pushed: true, pushedAt: now };
+        }
+        return r;
+    });
+    
+    const notifications = [...(church.userNotifications || []), notification];
+    
+    try {
+        await ChurchDB.updateChurch(churchId, { 
+            resourcePlaylist: updatedPlaylist,
+            userNotifications: notifications,
+            lastResourcePush: now
+        });
+        console.log('Auto-push complete!');
+    } catch (e) {
+        console.error('Error auto-pushing resources:', e);
+    }
+}
+
+// Check for new notifications for user
+function hasNewNotifications(church, userId) {
+    if (!church?.userNotifications) return false;
+    
+    const lastSeen = parseInt(localStorage.getItem(`rooted_notif_seen_${userId}`) || '0');
+    const recentNotifications = church.userNotifications.filter(n => 
+        n.createdAt > lastSeen && 
+        Date.now() - n.createdAt < 7 * 24 * 60 * 60 * 1000
+    );
+    
+    return recentNotifications.length > 0;
+}
+
+function markNotificationsSeen(userId) {
+    localStorage.setItem(`rooted_notif_seen_${userId}`, Date.now().toString());
 }
 
 // ========== PARTNER RESOURCE DETAIL PAGE ==========
@@ -7732,8 +8072,9 @@ function renderApp() {
                 <div class="nav-item ${activeNav === 'church-videos' ? 'active' : ''}" onclick="navigate('church-videos')">
                     <span class="nav-item-icon">🎬</span> Videos
                 </div>
-                <div class="nav-item ${activeNav === 'studies' ? 'active' : ''}" onclick="navigate('studies')">
+                <div class="nav-item ${activeNav === 'studies' ? 'active' : ''} ${getUnseenResourceCount() > 0 ? 'nav-item-new' : ''}" onclick="navigate('studies'); markResourcesSeen();" style="position:relative">
                     <span class="nav-item-icon">📚</span> Weekly Studies
+                    ${getUnseenResourceCount() > 0 ? `<span class="new-badge">NEW</span>` : ''}
                 </div>
                 <div class="nav-item ${activeNav === 'tools' ? 'active' : ''}" onclick="navigate('tools')">
                     <span class="nav-item-icon">🧰</span> Growth Tools
@@ -11470,6 +11811,10 @@ async function init() {
                     activeNav: activeNav
                 });
                 localStorage.removeItem('rooted_nav');
+                
+                // Check for auto-push scheduled resources
+                checkAndAutoPushResources(session.churchId);
+                
                 return;
             } else {
                 // Invalid session, clear it
