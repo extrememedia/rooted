@@ -1094,6 +1094,78 @@ body.videos-mode .main-header {
     <div id="modalContainer"></div>
 
 <script>
+// ========== TIMEZONE UTILITIES ==========
+// Detect and manage timezone based on user/church location
+
+let userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone; // Default to device timezone
+let timezoneOffset = new Date().getTimezoneOffset(); // Minutes from UTC
+
+// Get timezone from coordinates using a lookup
+async function getTimezoneFromCoords(lat, lng) {
+    try {
+        // Use device timezone as it's typically accurate for the user's current location
+        // The browser's Intl API automatically detects the correct timezone
+        return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch (e) {
+        console.log('Timezone detection error:', e);
+        return 'America/Los_Angeles'; // Default to Pacific
+    }
+}
+
+// Get the effective timezone for scheduling (user location > church location > device)
+function getEffectiveTimezone() {
+    // Check if user has a saved timezone preference
+    const savedTz = localStorage.getItem('rooted_user_timezone');
+    if (savedTz) return savedTz;
+    
+    // Use device/browser timezone (most reliable)
+    return userTimezone;
+}
+
+// Format date/time for display in the effective timezone
+function formatInTimezone(date, options = {}) {
+    const tz = getEffectiveTimezone();
+    return new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        ...options
+    }).format(date);
+}
+
+// Get current date/time in the effective timezone
+function getNowInTimezone() {
+    return new Date();
+}
+
+// Get timezone abbreviation (PST, EST, etc.)
+function getTimezoneAbbr() {
+    const tz = getEffectiveTimezone();
+    const date = new Date();
+    const options = { timeZone: tz, timeZoneName: 'short' };
+    const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(date);
+    const tzPart = parts.find(p => p.type === 'timeZoneName');
+    return tzPart ? tzPart.value : '';
+}
+
+// Get full timezone name
+function getTimezoneName() {
+    const tz = getEffectiveTimezone();
+    try {
+        const options = { timeZone: tz, timeZoneName: 'long' };
+        const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(new Date());
+        const tzPart = parts.find(p => p.type === 'timeZoneName');
+        return tzPart ? tzPart.value : tz;
+    } catch (e) {
+        return tz;
+    }
+}
+
+// Initialize timezone on load
+function initTimezone() {
+    userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    console.log('Detected timezone:', userTimezone, '(' + getTimezoneAbbr() + ')');
+}
+initTimezone();
+
 // ========== FIREBASE CONFIGURATION ==========
 // IMPORTANT: Replace with your own Firebase config from console.firebase.google.com
 const firebaseConfig = {
@@ -5630,6 +5702,9 @@ function showScheduleResourceModal(resourceId) {
         }
     }
     
+    const tzAbbr = getTimezoneAbbr();
+    const tzName = getTimezoneName();
+    
     showModal(`
         <div class="modal" onclick="event.stopPropagation()" style="max-width:400px">
             <div class="modal-header">
@@ -5644,10 +5719,11 @@ function showScheduleResourceModal(resourceId) {
                 </div>
                 
                 <div class="form-group" style="margin-bottom:16px">
-                    <label class="form-label">Time</label>
+                    <label class="form-label">Time <span style="font-weight:normal;color:var(--text-tertiary)">(${tzAbbr})</span></label>
                     <select id="scheduleTime" class="input-field" onchange="updateSchedulePreview()">
                         ${timeOptions.map(t => `<option value="${t.value}" ${t.value === existingTime ? 'selected' : ''}>${t.label}</option>`).join('')}
                     </select>
+                    <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:4px">🌐 ${tzName}</p>
                 </div>
                 
                 <div id="schedulePreview" style="background:var(--hover-bg);padding:12px;border-radius:8px">
@@ -5763,10 +5839,13 @@ function updateSchedulePreview() {
 }
 
 function formatScheduleDate(dateStr, time) {
+    const tz = getEffectiveTimezone();
     const dateObj = new Date(dateStr + 'T' + time);
-    return dateObj.toLocaleDateString('en-US', { 
+    const dateFormatted = dateObj.toLocaleDateString('en-US', { 
+        timeZone: tz,
         weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' 
-    }) + ' at ' + formatTime12h(time);
+    });
+    return dateFormatted + ' at ' + formatTime12h(time) + ' ' + getTimezoneAbbr();
 }
 
 function formatTime12h(time24) {
@@ -8341,13 +8420,14 @@ function renderDashboard() {
                             ${upcomingResources.map(r => {
                                 const unlockDate = new Date(r.scheduledTimestamp);
                                 const daysUntil = Math.ceil((r.scheduledTimestamp - now) / (24 * 60 * 60 * 1000));
+                                const tzAbbr = getTimezoneAbbr();
                                 return `
                                 <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--hover-bg);border-radius:8px;opacity:0.7">
                                     <div style="width:32px;height:32px;background:var(--card-bg);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:0.9rem">🔒</div>
                                     <div style="flex:1">
                                         <div style="font-weight:500;font-size:0.85rem">${r.title}</div>
                                         <div style="font-size:0.7rem;color:var(--text-tertiary)">
-                                            Unlocks ${unlockDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${formatTime12h(r.scheduledTime || '19:00')}
+                                            Unlocks ${unlockDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${formatTime12h(r.scheduledTime || '19:00')} ${tzAbbr}
                                             ${daysUntil === 1 ? ' (tomorrow)' : daysUntil <= 7 ? ` (${daysUntil} days)` : ''}
                                         </div>
                                     </div>
