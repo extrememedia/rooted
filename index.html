@@ -10598,13 +10598,30 @@ function renderUserStudies() {
         return enabledStudies.includes(study.id) && !getUserStudyProgress(userId, study.id);
     });
     
-    if (enabledStudies.length === 0) {
+    // Get scheduled resources from church playlist
+    const playlist = church?.resourcePlaylist || [];
+    const now = Date.now();
+    const viewedResources = JSON.parse(localStorage.getItem('rooted_viewed_resources') || '[]');
+    
+    // Available resources (unlocked)
+    const availableResources = playlist
+        .filter(r => r.scheduledTimestamp && r.scheduledTimestamp <= now)
+        .sort((a, b) => b.scheduledTimestamp - a.scheduledTimestamp);
+    
+    // Upcoming resources (locked)
+    const upcomingResources = playlist
+        .filter(r => r.scheduledTimestamp && r.scheduledTimestamp > now)
+        .sort((a, b) => a.scheduledTimestamp - b.scheduledTimestamp);
+    
+    const hasContent = enabledStudies.length > 0 || availableResources.length > 0 || upcomingResources.length > 0;
+    
+    if (!hasContent) {
         return `
         <div class="fade-up">
             <div class="card" style="text-align:center;padding:var(--space-2xl)">
                 <div style="font-size:4rem;margin-bottom:var(--space-lg)">📚</div>
                 <h3>No Studies Available</h3>
-                <p style="color:var(--text-secondary)">Your church hasn't enabled any weekly studies yet.</p>
+                <p style="color:var(--text-secondary)">Your church hasn't enabled any studies or resources yet.</p>
                 <p style="color:var(--text-tertiary);font-size:0.9rem;margin-top:var(--space-md)">Check back soon or ask your church admin about upcoming studies!</p>
             </div>
         </div>`;
@@ -10650,9 +10667,48 @@ function renderUserStudies() {
         </div>
         ` : ''}
         
+        ${availableResources.length > 0 ? `
+        <!-- Available Resources from Church -->
+        <div style="margin-bottom:var(--space-xl)">
+            <h3 style="margin-bottom:var(--space-md);display:flex;align-items:center;gap:8px">
+                <span style="background:#7c3aed;color:white;padding:4px 10px;border-radius:12px;font-size:0.8rem">AVAILABLE</span>
+                Church Resources
+            </h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--space-md)">
+                ${availableResources.map(r => {
+                    const partner = PARTNER_RESOURCE_LIBRARIES[r.partnerId];
+                    const isNew = !viewedResources.includes(r.id) && (now - r.scheduledTimestamp < 24 * 60 * 60 * 1000);
+                    const schedDate = new Date(r.scheduledTimestamp);
+                    const color = partner?.color || '#7c3aed';
+                    
+                    return `
+                    <div class="card" style="padding:0;overflow:hidden">
+                        <div style="height:120px;background:linear-gradient(135deg,${color},${color}99);position:relative;display:flex;align-items:center;justify-content:center">
+                            <div style="font-size:4rem;opacity:0.2">📄</div>
+                            <div style="position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,0.5) 0%,transparent 50%)"></div>
+                            <div style="position:absolute;bottom:12px;left:12px;display:flex;gap:6px">
+                                ${isNew ? '<span style="background:#22c55e;color:white;padding:3px 8px;border-radius:4px;font-size:0.7rem;font-weight:600">NEW</span>' : ''}
+                                <span style="background:rgba(255,255,255,0.2);color:white;padding:3px 8px;border-radius:4px;font-size:0.7rem">${partner?.name || 'Resource'}</span>
+                                <span style="background:rgba(255,255,255,0.2);color:white;padding:3px 8px;border-radius:4px;font-size:0.7rem">PDF</span>
+                            </div>
+                        </div>
+                        <div style="padding:var(--space-md)">
+                            <h4 style="margin:0 0 4px">${r.title}</h4>
+                            <p style="margin:0 0 var(--space-md);color:var(--text-secondary);font-size:0.85rem;line-height:1.4">Added ${schedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                            <button class="btn btn-primary btn-sm" style="width:100%" onclick="markResourceViewed('${r.id}'); window.open('${r.url}', '_blank')">
+                                Open Resource →
+                            </button>
+                        </div>
+                    </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+        ` : ''}
+        
         ${availableStudies.length > 0 ? `
         <!-- Available Studies to Enroll -->
-        <div>
+        <div style="margin-bottom:var(--space-xl)">
             <h3 style="margin-bottom:var(--space-md)">📖 Available Studies</h3>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--space-md)">
                 ${availableStudies.map(study => `
@@ -10677,7 +10733,50 @@ function renderUserStudies() {
         </div>
         ` : ''}
         
-        ${enrolledStudies.length > 0 && availableStudies.length === 0 ? `
+        ${upcomingResources.length > 0 ? `
+        <!-- Upcoming Resources (Locked) -->
+        <div style="margin-bottom:var(--space-xl)">
+            <h3 style="margin-bottom:var(--space-md);display:flex;align-items:center;gap:8px">
+                <span style="background:var(--text-tertiary);color:white;padding:4px 10px;border-radius:12px;font-size:0.8rem">COMING SOON</span>
+                Upcoming Resources
+            </h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--space-md)">
+                ${upcomingResources.map(r => {
+                    const partner = PARTNER_RESOURCE_LIBRARIES[r.partnerId];
+                    const unlockDate = new Date(r.scheduledTimestamp);
+                    const daysUntil = Math.ceil((r.scheduledTimestamp - now) / (24 * 60 * 60 * 1000));
+                    const color = partner?.color || '#6b7280';
+                    const tzAbbr = getTimezoneAbbr();
+                    
+                    return `
+                    <div class="card" style="padding:0;overflow:hidden;opacity:0.75">
+                        <div style="height:120px;background:linear-gradient(135deg,${color}99,${color}66);position:relative;display:flex;align-items:center;justify-content:center">
+                            <div style="font-size:4rem">🔒</div>
+                            <div style="position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,0.5) 0%,transparent 50%)"></div>
+                            <div style="position:absolute;bottom:12px;left:12px;display:flex;gap:6px">
+                                <span style="background:rgba(255,255,255,0.2);color:white;padding:3px 8px;border-radius:4px;font-size:0.7rem">${partner?.name || 'Resource'}</span>
+                                <span style="background:rgba(255,255,255,0.2);color:white;padding:3px 8px;border-radius:4px;font-size:0.7rem">PDF</span>
+                            </div>
+                        </div>
+                        <div style="padding:var(--space-md)">
+                            <h4 style="margin:0 0 4px">${r.title}</h4>
+                            <p style="margin:0 0 var(--space-md);color:var(--text-secondary);font-size:0.85rem;line-height:1.4">
+                                Unlocks ${unlockDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${formatTime12h(r.scheduledTime || '19:00')} ${tzAbbr}
+                            </p>
+                            <div style="background:var(--hover-bg);padding:10px 12px;border-radius:8px;text-align:center">
+                                <span style="font-size:0.9rem;color:var(--text-secondary);font-weight:500">
+                                    ${daysUntil === 0 ? '⏰ Unlocks today!' : daysUntil === 1 ? '⏰ Unlocks tomorrow' : `⏰ ${daysUntil} days until unlock`}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+        ` : ''}
+        
+        ${enrolledStudies.length > 0 && availableStudies.length === 0 && availableResources.length === 0 && upcomingResources.length === 0 ? `
         <div class="card" style="text-align:center;background:var(--hover-bg);border:1px dashed var(--border-color)">
             <p style="margin:0;color:var(--text-secondary)">You're enrolled in all available studies! 🎉</p>
         </div>
