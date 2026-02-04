@@ -7533,45 +7533,61 @@ function renderChurchMembers() {
     
     return `
     <div class="fade-up">
-        <!-- Stats Overview -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:var(--space-sm);margin-bottom:var(--space-lg)">
-            <div class="card" style="text-align:center;padding:12px;border-top:3px solid #22c55e;cursor:pointer" onclick="filterMembers('members')">
-                <div id="claimedMemberCount" style="font-size:1.8rem;font-weight:700;color:#22c55e">-</div>
-                <p style="color:var(--text-secondary);margin:0;font-size:0.75rem">Members</p>
-            </div>
-            <div class="card" style="text-align:center;padding:12px;border-top:3px solid #f59e0b;cursor:pointer" onclick="filterMembers('attendees')">
-                <div id="attendeeCount" style="font-size:1.8rem;font-weight:700;color:#f59e0b">-</div>
-                <p style="color:var(--text-secondary);margin:0;font-size:0.75rem">Attendees</p>
-            </div>
-            <div class="card" style="text-align:center;padding:12px;border-top:3px solid #3b82f6;cursor:pointer" onclick="filterMembers('users')">
-                <div id="usersOnlyCount" style="font-size:1.8rem;font-weight:700;color:#3b82f6">-</div>
-                <p style="color:var(--text-secondary);margin:0;font-size:0.75rem">Users Only</p>
-            </div>
-            <div class="card" style="text-align:center;padding:12px;border-top:3px solid #8b5cf6">
-                <div id="totalCheckInsCount" style="font-size:1.8rem;font-weight:700;color:#8b5cf6">-</div>
-                <p style="color:var(--text-secondary);margin:0;font-size:0.75rem">Total Check-ins</p>
-            </div>
-            <div class="card" style="text-align:center;padding:12px;border-top:3px solid #ec4899">
-                <div id="activeThisWeekCount" style="font-size:1.8rem;font-weight:700;color:#ec4899">-</div>
-                <p style="color:var(--text-secondary);margin:0;font-size:0.75rem">Active This Week</p>
+        <!-- Non-Member Check-in Alert (populated dynamically) -->
+        <div id="nonMemberCheckInAlert" style="display:none"></div>
+        
+        <!-- Quick Actions Bar -->
+        <div class="card" style="margin-bottom:var(--space-lg);padding:var(--space-md);background:linear-gradient(135deg,var(--root-green),var(--leaf-green))">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+                <div style="color:white">
+                    <h3 style="margin:0;font-size:1rem">📣 Engage Your Community</h3>
+                    <p style="margin:4px 0 0;font-size:0.85rem;opacity:0.9">Send messages to encourage and connect</p>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <button class="btn btn-sm" onclick="showSendMessageModal('members')" style="background:white;color:var(--root-green)">✉️ Members</button>
+                    <button class="btn btn-sm" onclick="showSendMessageModal('nonmembers')" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)">✉️ Non-Members</button>
+                    <button class="btn btn-sm" onclick="showSendMessageModal('all')" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)">✉️ Everyone</button>
+                </div>
             </div>
         </div>
         
-        <!-- Category Explanation -->
-        <div class="card" style="margin-bottom:var(--space-lg);padding:var(--space-md);background:var(--hover-bg)">
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--space-md);font-size:0.85rem">
-                <div>
-                    <strong style="color:#22c55e">✓ Members</strong>
-                    <p style="margin:4px 0 0;color:var(--text-secondary)">Confirmed church members (admin approved)</p>
-                </div>
-                <div>
-                    <strong style="color:#f59e0b">📍 Attendees</strong>
-                    <p style="margin:4px 0 0;color:var(--text-secondary)">Checked in (online or in-person) but not yet members</p>
-                </div>
-                <div>
-                    <strong style="color:#3b82f6">👤 Users</strong>
-                    <p style="margin:4px 0 0;color:var(--text-secondary)">Connected to church but haven't checked in yet</p>
-                </div>
+        <!-- Stats Overview -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:var(--space-sm);margin-bottom:var(--space-lg)">
+            <div class="card" style="text-align:center;padding:12px;border-top:3px solid #22c55e;cursor:pointer" onclick="filterMembers('members')">
+                <div id="claimedMemberCount" style="font-size:1.6rem;font-weight:700;color:#22c55e">-</div>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.7rem">Members</p>
+            </div>
+            <div class="card" style="text-align:center;padding:12px;border-top:3px solid #ef4444;cursor:pointer" onclick="filterMembers('nonmembers')">
+                <div id="nonMemberCount" style="font-size:1.6rem;font-weight:700;color:#ef4444">-</div>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.7rem">Non-Members</p>
+            </div>
+            <div class="card" style="text-align:center;padding:12px;border-top:3px solid #f59e0b;cursor:pointer" onclick="filterMembers('checkedin')">
+                <div id="checkedInCount" style="font-size:1.6rem;font-weight:700;color:#f59e0b">-</div>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.7rem">Checked In</p>
+            </div>
+            <div class="card" style="text-align:center;padding:12px;border-top:3px solid #8b5cf6">
+                <div id="totalCheckInsCount" style="font-size:1.6rem;font-weight:700;color:#8b5cf6">-</div>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.7rem">Total Check-ins</p>
+            </div>
+            <div class="card" style="text-align:center;padding:12px;border-top:3px solid #ec4899">
+                <div id="activeThisWeekCount" style="font-size:1.6rem;font-weight:700;color:#ec4899">-</div>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.7rem">Active (7d)</p>
+            </div>
+        </div>
+        
+        <!-- Category Legend -->
+        <div style="display:flex;gap:var(--space-md);margin-bottom:var(--space-lg);flex-wrap:wrap;font-size:0.8rem">
+            <div style="display:flex;align-items:center;gap:6px">
+                <span style="width:12px;height:12px;border-radius:50%;background:#22c55e"></span>
+                <span style="color:var(--text-secondary)"><strong>Members:</strong> Confirmed by admin</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+                <span style="width:12px;height:12px;border-radius:50%;background:#ef4444"></span>
+                <span style="color:var(--text-secondary)"><strong>Non-Members:</strong> Connected but not confirmed</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+                <span style="width:12px;height:12px;border-radius:50%;background:#f59e0b"></span>
+                <span style="color:var(--text-secondary)"><strong>Checked In:</strong> Has attended (online/in-person)</span>
             </div>
         </div>
         
@@ -7584,9 +7600,9 @@ function renderChurchMembers() {
                 <div style="display:flex;gap:4px;flex-wrap:wrap">
                     <button class="btn btn-sm" onclick="filterMembers('all')" id="filterAll" style="background:var(--primary);color:white">All</button>
                     <button class="btn btn-ghost btn-sm" onclick="filterMembers('members')" id="filterMembers" style="border-left:3px solid #22c55e">Members</button>
-                    <button class="btn btn-ghost btn-sm" onclick="filterMembers('attendees')" id="filterAttendees" style="border-left:3px solid #f59e0b">Attendees</button>
-                    <button class="btn btn-ghost btn-sm" onclick="filterMembers('users')" id="filterUsers" style="border-left:3px solid #3b82f6">Users</button>
-                    <button class="btn btn-ghost btn-sm" onclick="filterMembers('needsAttention')" id="filterNeedsAttention" style="border-left:3px solid #ef4444">Needs Attention</button>
+                    <button class="btn btn-ghost btn-sm" onclick="filterMembers('nonmembers')" id="filterNonMembers" style="border-left:3px solid #ef4444">Non-Members</button>
+                    <button class="btn btn-ghost btn-sm" onclick="filterMembers('checkedin')" id="filterCheckedIn" style="border-left:3px solid #f59e0b">Checked In</button>
+                    <button class="btn btn-ghost btn-sm" onclick="filterMembers('needsAttention')" id="filterNeedsAttention" style="border-left:3px solid #8b5cf6">Needs Attention</button>
                     <button class="btn btn-ghost btn-sm" onclick="loadChurchMembers('${churchId}')" title="Refresh">🔄</button>
                 </div>
             </div>
@@ -7596,15 +7612,7 @@ function renderChurchMembers() {
         <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md);flex-wrap:wrap;gap:8px">
                 <h3 style="margin:0">👥 Directory</h3>
-                <div style="display:flex;align-items:center;gap:12px">
-                    <span id="membersShowing" style="font-size:0.8rem;color:var(--text-tertiary)"></span>
-                    <select id="sortMembers" class="input-field" style="margin:0;padding:6px 10px;font-size:0.8rem;min-width:120px" onchange="sortMembersList(this.value)">
-                        <option value="name">Sort: Name</option>
-                        <option value="recent">Sort: Recent</option>
-                        <option value="checkins">Sort: Check-ins</option>
-                        <option value="engagement">Sort: Engagement</option>
-                    </select>
-                </div>
+                <span id="membersShowing" style="font-size:0.8rem;color:var(--text-tertiary)"></span>
             </div>
             
             <div id="membersList">
@@ -7637,7 +7645,7 @@ function filterMembers(filter) {
     currentMemberFilter = filter;
     
     // Update button styles - reset all
-    document.querySelectorAll('#filterAll, #filterMembers, #filterAttendees, #filterUsers, #filterNeedsAttention').forEach(btn => {
+    document.querySelectorAll('#filterAll, #filterMembers, #filterNonMembers, #filterCheckedIn, #filterNeedsAttention').forEach(btn => {
         if (btn) {
             btn.style.background = '';
             btn.style.color = '';
@@ -7647,9 +7655,9 @@ function filterMembers(filter) {
     // Highlight active filter
     const filterBtnMap = {
         'all': 'filterAll',
-        'members': 'filterMembers', 
-        'attendees': 'filterAttendees',
-        'users': 'filterUsers',
+        'members': 'filterMembers',
+        'nonmembers': 'filterNonMembers',
+        'checkedin': 'filterCheckedIn',
         'needsAttention': 'filterNeedsAttention'
     };
     
@@ -7664,6 +7672,11 @@ function filterMembers(filter) {
 
 function searchMembers(term) {
     memberSearchTerm = term.toLowerCase().trim();
+    applyMemberFilters();
+}
+
+function sortMembersList(sortBy) {
+    currentMemberSort = sortBy;
     applyMemberFilters();
 }
 
@@ -7689,14 +7702,14 @@ function calculateEngagementScore(member) {
     return Math.min(score, 100);
 }
 
-// Categorize person: member > attendee > user
-function getMemberCategory(member) {
-    // Member = admin confirmed
-    if (member.isMember) return 'member';
-    // Attendee = has at least one check-in (online or in-person)
-    if ((member.checkInCount || 0) > 0) return 'attendee';
-    // User = connected but no check-ins yet
-    return 'user';
+// Get status: member or non-member
+function isMemberStatus(member) {
+    return member.isMember === true;
+}
+
+// Has the person checked in at least once?
+function hasCheckedIn(member) {
+    return (member.checkInCount || 0) > 0;
 }
 
 function applyMemberFilters() {
@@ -7706,12 +7719,12 @@ function applyMemberFilters() {
     if (currentMemberFilter === 'members') {
         // Confirmed members only
         filtered = filtered.filter(m => m.isMember);
-    } else if (currentMemberFilter === 'attendees') {
-        // Has check-ins but not a confirmed member
-        filtered = filtered.filter(m => !m.isMember && (m.checkInCount || 0) > 0);
-    } else if (currentMemberFilter === 'users') {
-        // Connected but no check-ins and not a member
-        filtered = filtered.filter(m => !m.isMember && (m.checkInCount || 0) === 0);
+    } else if (currentMemberFilter === 'nonmembers') {
+        // Everyone who is NOT a member (regardless of check-in status)
+        filtered = filtered.filter(m => !m.isMember);
+    } else if (currentMemberFilter === 'checkedin') {
+        // Anyone who has checked in (members AND non-members)
+        filtered = filtered.filter(m => (m.checkInCount || 0) > 0);
     } else if (currentMemberFilter === 'needsAttention') {
         // Low engagement or inactive for 30+ days - needs discipleship attention
         filtered = filtered.filter(m => {
@@ -7795,21 +7808,25 @@ function renderMembersList(container, members) {
                 const joinDate = member.joinedAt ? new Date(member.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '-';
                 const checkIns = member.checkInCount || 0;
                 const lastActive = member.lastCheckIn ? getRelativeTime(member.lastCheckIn) : 'Never';
-                const category = getMemberCategory(member);
                 const engagement = calculateEngagementScore(member);
                 
-                // Category styling
-                let categoryBadge, avatarGradient;
-                if (category === 'member') {
-                    categoryBadge = '<span style="background:#22c55e;color:white;font-size:0.6rem;padding:2px 6px;border-radius:8px">✓ Member</span>';
+                // Status badges - Member status + Check-in status
+                const isMember = member.isMember;
+                const hasCheckins = checkIns > 0;
+                
+                let statusBadge, avatarGradient;
+                if (isMember) {
+                    statusBadge = '<span style="background:#22c55e;color:white;font-size:0.6rem;padding:2px 6px;border-radius:8px">✓ Member</span>';
                     avatarGradient = 'var(--root-green),var(--leaf-green)';
-                } else if (category === 'attendee') {
-                    categoryBadge = '<span style="background:#f59e0b;color:white;font-size:0.6rem;padding:2px 6px;border-radius:8px">📍 Attendee</span>';
-                    avatarGradient = '#f59e0b,#fbbf24';
                 } else {
-                    categoryBadge = '<span style="background:#3b82f6;color:white;font-size:0.6rem;padding:2px 6px;border-radius:8px">👤 User</span>';
-                    avatarGradient = '#3b82f6,#60a5fa';
+                    statusBadge = '<span style="background:#ef4444;color:white;font-size:0.6rem;padding:2px 6px;border-radius:8px">Non-Member</span>';
+                    avatarGradient = '#ef4444,#f87171';
                 }
+                
+                // Add check-in badge if they've attended
+                const checkinBadge = hasCheckins 
+                    ? '<span style="background:#f59e0b;color:white;font-size:0.6rem;padding:2px 6px;border-radius:8px">📍 Checked In</span>'
+                    : '';
                 
                 // Engagement indicator color
                 const engagementColor = engagement >= 70 ? '#22c55e' : engagement >= 40 ? '#f59e0b' : '#ef4444';
@@ -7822,9 +7839,10 @@ function renderMembersList(container, members) {
                         <div style="position:absolute;bottom:-2px;right:-2px;width:14px;height:14px;background:${engagementColor};border-radius:50%;border:2px solid var(--card-bg)" title="Engagement: ${engagementLabel}"></div>
                     </div>
                     <div style="flex:1;min-width:0">
-                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                             <strong style="font-size:0.95rem">${displayName}</strong>
-                            ${categoryBadge}
+                            ${statusBadge}
+                            ${checkinBadge}
                         </div>
                         <div style="font-size:0.8rem;color:var(--text-tertiary);margin-top:2px">
                             Joined ${joinDate} • ${checkIns} check-in${checkIns !== 1 ? 's' : ''} • Last active: ${lastActive}
@@ -8250,18 +8268,63 @@ async function loadChurchMembers(churchId) {
         
         // Update stat cards
         const claimedEl = document.getElementById('claimedMemberCount');
-        const attendeeEl = document.getElementById('attendeeCount');
-        const usersEl = document.getElementById('usersOnlyCount');
+        const nonMemberEl = document.getElementById('nonMemberCount');
+        const checkedInEl = document.getElementById('checkedInCount');
         const checkInsEl = document.getElementById('totalCheckInsCount');
         const activeEl = document.getElementById('activeThisWeekCount');
         const showingEl = document.getElementById('membersShowing');
         
+        // Calculate counts
+        const nonMembers = members.filter(m => !m.isMember).length;
+        const checkedInCount = members.filter(m => (m.checkInCount || 0) > 0).length;
+        
         if (claimedEl) claimedEl.textContent = confirmedMembers.toString();
-        if (attendeeEl) attendeeEl.textContent = attendees.toString();
-        if (usersEl) usersEl.textContent = usersOnly.toString();
+        if (nonMemberEl) nonMemberEl.textContent = nonMembers.toString();
+        if (checkedInEl) checkedInEl.textContent = checkedInCount.toString();
         if (checkInsEl) checkInsEl.textContent = totalCheckIns.toString();
         if (activeEl) activeEl.textContent = activeThisWeek.toString();
         if (showingEl) showingEl.textContent = `Showing ${members.length} of ${members.length}`;
+        
+        // Check for recent non-member check-ins (last 7 days) and show alert
+        const recentNonMemberCheckIns = members.filter(m => {
+            return !m.isMember && 
+                   m.lastCheckIn && 
+                   (Date.now() - m.lastCheckIn) < (7 * 24 * 60 * 60 * 1000);
+        });
+        
+        const alertEl = document.getElementById('nonMemberCheckInAlert');
+        if (alertEl && recentNonMemberCheckIns.length > 0) {
+            alertEl.style.display = 'block';
+            alertEl.innerHTML = `
+                <div class="card" style="margin-bottom:var(--space-lg);background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid #f59e0b;padding:var(--space-md)">
+                    <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+                        <div style="font-size:2rem">🔔</div>
+                        <div style="flex:1;min-width:200px">
+                            <h4 style="margin:0;color:#92400e">Non-Members Checked In Recently!</h4>
+                            <p style="margin:4px 0 12px;color:#a16207;font-size:0.9rem">
+                                ${recentNonMemberCheckIns.length} non-member${recentNonMemberCheckIns.length !== 1 ? 's have' : ' has'} checked in this week. 
+                                Consider reaching out to invite them to membership!
+                            </p>
+                            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+                                ${recentNonMemberCheckIns.slice(0, 5).map(m => `
+                                    <span style="background:white;padding:4px 10px;border-radius:20px;font-size:0.8rem;color:#92400e;cursor:pointer" onclick="showMemberDetail('${m.id}')">
+                                        ${m.firstName || m.name?.split(' ')[0] || 'Unknown'}
+                                    </span>
+                                `).join('')}
+                                ${recentNonMemberCheckIns.length > 5 ? `<span style="background:rgba(0,0,0,0.1);padding:4px 10px;border-radius:20px;font-size:0.8rem;color:#92400e">+${recentNonMemberCheckIns.length - 5} more</span>` : ''}
+                            </div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                                <button class="btn btn-sm" onclick="filterMembers('nonmembers')" style="background:#f59e0b;color:white">View All Non-Members</button>
+                                <button class="btn btn-sm" onclick="showSendMessageModal('nonmembers')" style="background:white;color:#92400e;border:1px solid #f59e0b">Send Membership Invite</button>
+                            </div>
+                        </div>
+                        <button onclick="this.parentElement.parentElement.style.display='none'" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#a16207">✕</button>
+                    </div>
+                </div>
+            `;
+        } else if (alertEl) {
+            alertEl.style.display = 'none';
+        }
         
         // Render member list
         renderMembersList(container, members);
@@ -8270,6 +8333,162 @@ async function loadChurchMembers(churchId) {
         console.error('Error loading members:', e);
         container.innerHTML = `<p style="color:var(--error);text-align:center">Error loading members: ${e.message || 'Unknown error'}. Please try again.</p>`;
     }
+}
+
+// Show messaging modal for bulk communication
+function showSendMessageModal(targetGroup) {
+    let recipients = [];
+    let groupLabel = '';
+    let groupColor = '';
+    
+    switch (targetGroup) {
+        case 'members':
+            recipients = allMembersData.filter(m => m.isMember);
+            groupLabel = 'Members';
+            groupColor = '#22c55e';
+            break;
+        case 'nonmembers':
+            recipients = allMembersData.filter(m => !m.isMember);
+            groupLabel = 'Non-Members';
+            groupColor = '#ef4444';
+            break;
+        case 'attendees':
+            recipients = allMembersData.filter(m => (m.checkInCount || 0) > 0);
+            groupLabel = 'People Who Checked In';
+            groupColor = '#f59e0b';
+            break;
+        case 'all':
+        default:
+            recipients = allMembersData;
+            groupLabel = 'Everyone';
+            groupColor = '#3b82f6';
+            break;
+    }
+    
+    // Get email list
+    const emails = recipients.filter(r => r.email).map(r => r.email);
+    
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:600px;max-height:90vh;overflow-y:auto">
+            <div class="modal-header" style="background:${groupColor};color:white;margin:-24px -24px 0;padding:20px 24px;border-radius:var(--radius-lg) var(--radius-lg) 0 0">
+                <h3 class="modal-title" style="margin:0">📣 Message ${groupLabel}</h3>
+                <button class="modal-close" onclick="closeModal()" style="color:white">✕</button>
+            </div>
+            <div class="modal-body" style="padding-top:20px">
+                <div style="background:var(--hover-bg);padding:12px;border-radius:8px;margin-bottom:16px">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <span style="font-weight:500">${recipients.length} recipients</span>
+                        <span style="font-size:0.85rem;color:var(--text-tertiary)">${emails.length} with email</span>
+                    </div>
+                </div>
+                
+                ${targetGroup === 'nonmembers' ? `
+                <div style="background:#fef3c7;border:1px solid #f59e0b;padding:12px;border-radius:8px;margin-bottom:16px">
+                    <h4 style="margin:0 0 8px;color:#92400e;font-size:0.9rem">💡 Membership Invite Template</h4>
+                    <p style="margin:0;font-size:0.85rem;color:#a16207">Consider inviting them to your membership class or new member orientation!</p>
+                </div>
+                ` : ''}
+                
+                <div class="form-group" style="margin-bottom:16px">
+                    <label class="form-label">Subject</label>
+                    <input type="text" id="messageSubject" class="input-field" placeholder="${targetGroup === 'nonmembers' ? 'Invitation to Join Our Church Family!' : 'Message from our church'}" value="${targetGroup === 'nonmembers' ? 'Invitation to Join Our Church Family!' : ''}">
+                </div>
+                
+                <div class="form-group" style="margin-bottom:16px">
+                    <label class="form-label">Message</label>
+                    <textarea id="messageBody" class="input-field" rows="6" placeholder="Type your message here...">${targetGroup === 'nonmembers' ? `Hi there!
+
+We noticed you've been attending our church and we're so glad to have you! We'd love to invite you to learn more about officially becoming a member of our church family.
+
+Our next membership class is coming up soon. It's a great opportunity to learn about our church's mission, values, and how you can get more connected.
+
+Let us know if you have any questions - we'd love to chat!
+
+Blessings,
+Your Church Team` : ''}</textarea>
+                </div>
+                
+                <div style="background:var(--hover-bg);padding:12px;border-radius:8px;margin-bottom:16px">
+                    <h4 style="margin:0 0 8px;font-size:0.9rem">📋 Recipients Preview</h4>
+                    <div style="max-height:100px;overflow-y:auto;font-size:0.8rem;color:var(--text-secondary)">
+                        ${recipients.slice(0, 10).map(r => `${r.firstName || r.name?.split(' ')[0] || 'Unknown'}${r.email ? ` (${r.email})` : ' (no email)'}`).join(', ')}
+                        ${recipients.length > 10 ? `... and ${recipients.length - 10} more` : ''}
+                    </div>
+                </div>
+                
+                <div style="display:flex;gap:12px;flex-wrap:wrap">
+                    <button class="btn btn-primary" onclick="sendBulkMessage('${targetGroup}')" style="flex:1">
+                        📧 Send Email (${emails.length})
+                    </button>
+                    <button class="btn btn-secondary" onclick="copyEmailList('${targetGroup}')">
+                        📋 Copy Emails
+                    </button>
+                </div>
+                
+                ${emails.length < recipients.length ? `
+                <p style="margin:12px 0 0;font-size:0.8rem;color:var(--text-tertiary);text-align:center">
+                    Note: ${recipients.length - emails.length} recipient${recipients.length - emails.length !== 1 ? 's don\'t' : ' doesn\'t'} have an email address on file
+                </p>
+                ` : ''}
+            </div>
+        </div>
+    `);
+}
+
+// Copy email list to clipboard
+function copyEmailList(targetGroup) {
+    let recipients = [];
+    switch (targetGroup) {
+        case 'members':
+            recipients = allMembersData.filter(m => m.isMember && m.email);
+            break;
+        case 'nonmembers':
+            recipients = allMembersData.filter(m => !m.isMember && m.email);
+            break;
+        case 'attendees':
+            recipients = allMembersData.filter(m => (m.checkInCount || 0) > 0 && m.email);
+            break;
+        default:
+            recipients = allMembersData.filter(m => m.email);
+            break;
+    }
+    
+    const emails = recipients.map(r => r.email).join(', ');
+    navigator.clipboard.writeText(emails).then(() => {
+        toast(`${recipients.length} emails copied to clipboard!`, 'success');
+    }).catch(() => {
+        toast('Failed to copy emails', 'error');
+    });
+}
+
+// Send bulk message (opens email client)
+function sendBulkMessage(targetGroup) {
+    let recipients = [];
+    switch (targetGroup) {
+        case 'members':
+            recipients = allMembersData.filter(m => m.isMember && m.email);
+            break;
+        case 'nonmembers':
+            recipients = allMembersData.filter(m => !m.isMember && m.email);
+            break;
+        case 'attendees':
+            recipients = allMembersData.filter(m => (m.checkInCount || 0) > 0 && m.email);
+            break;
+        default:
+            recipients = allMembersData.filter(m => m.email);
+            break;
+    }
+    
+    const subject = document.getElementById('messageSubject')?.value || '';
+    const body = document.getElementById('messageBody')?.value || '';
+    const emails = recipients.map(r => r.email).join(',');
+    
+    // Use BCC for privacy
+    const mailtoLink = `mailto:?bcc=${encodeURIComponent(emails)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    window.open(mailtoLink, '_blank');
+    closeModal();
+    toast('Opening your email client...', 'success');
 }
 
 async function showMemberCheckIns(userId, userName) {
