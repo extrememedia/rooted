@@ -207,6 +207,11 @@ input, textarea, select { font-family: inherit; }
 /* Coming Soon Badge */
 .coming-soon-badge { display: inline-flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); background: linear-gradient(135deg, var(--warning), #fbbf24); color: #333; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 600; }
 
+/* FSO Resource Cards */
+.fso-resource-card:hover { transform: translateX(4px); box-shadow: var(--shadow-md); }
+.fso-filter-btn { transition: all 0.2s; }
+.fso-filter-btn.active { background: var(--root-green); color: white; border-color: var(--root-green); }
+
 /* Sidebar Overlay (mobile) */
 .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; display: none; }
 .sidebar-overlay.show { display: block; }
@@ -1393,7 +1398,7 @@ const State = {
         if (hash && ['dashboard', 'my-church', 'church-videos', 'tools', 'progress', 'profile', 'settings', 
                      'church-dashboard', 'church-members', 'church-resources', 'church-checkin-resources',
                      'church-announcements', 'church-youtube', 'church-social', 'church-branding',
-                     'church-membership', 'church-location', 'church-tools'].includes(hash)) {
+                     'church-membership', 'church-location', 'church-tools', 'church-fso'].includes(hash)) {
             return { activeNav: hash };
         }
         
@@ -3928,6 +3933,9 @@ function renderChurchAdminApp() {
                 <div class="nav-item ${activeNav === 'church-members' ? 'active' : ''}" onclick="navigate('church-members')">
                     <span class="nav-item-icon">👥</span> Members
                 </div>
+                <div class="nav-item ${activeNav === 'church-fso' ? 'active' : ''}" onclick="navigate('church-fso')">
+                    <span class="nav-item-icon">📚</span> FSO Resources
+                </div>
                 <div class="nav-item ${activeNav === 'church-resources' ? 'active' : ''}" onclick="navigate('church-resources')">
                     <span class="nav-item-icon">📄</span> Resources & PDFs
                 </div>
@@ -3995,7 +4003,8 @@ function getChurchPageTitle(nav) {
         'church-membership': 'Membership Settings',
         'church-location': 'Location & Geofence',
         'church-tools': 'Enabled Tools',
-        'church-members': 'Members'
+        'church-members': 'Members',
+        'church-fso': 'FSO Resources'
     };
     return titles[nav] || 'Dashboard';
 }
@@ -4013,6 +4022,7 @@ function renderChurchPage(page) {
         case 'church-location': return renderChurchLocation();
         case 'church-tools': return renderChurchTools();
         case 'church-members': return renderChurchMembers();
+        case 'church-fso': return renderChurchFSO();
         default: return renderChurchDashboard();
     }
 }
@@ -4780,6 +4790,290 @@ async function handleToolsUpdate(e) {
         console.error('Error saving tools:', error);
         toast('Error saving tool settings', 'error');
     }
+}
+
+// ========== FSO RESOURCES (Free Spiritual Online) ==========
+const FSO_RESOURCES = {
+    discipleship: {
+        name: 'Discipleship',
+        icon: '📖',
+        description: 'Foundational discipleship resources for spiritual growth and formation',
+        resources: [
+            {
+                id: 'ag-discipleship',
+                name: 'Assemblies of God – Discipleship Resources',
+                stream: 'Pentecostal / Evangelical',
+                bestFor: 'Church-wide discipleship pathways',
+                freeContent: 'Strategy PDFs, leader guides, discipleship articles',
+                url: 'https://discipleship.ag.org/Resources',
+                highlights: ['Clear discipleship flow', 'Built for congregations, not academics'],
+                color: '#1e40af'
+            },
+            {
+                id: 'umc-discipleship',
+                name: 'United Methodist Discipleship Ministries',
+                stream: 'Methodist / Protestant',
+                bestFor: 'Weekly studies, small groups, formation',
+                freeContent: 'Hundreds of open-access studies and PDFs',
+                url: 'https://www.umcdiscipleship.org/resources',
+                highlights: ['Extremely deep archive', 'Excellent for table-based discipleship'],
+                color: '#dc2626'
+            },
+            {
+                id: 'alpha-course',
+                name: 'Alpha Course – Free Discussion Guides',
+                stream: 'Evangelical / Anglican-rooted',
+                bestFor: 'Entry-level discipleship',
+                freeContent: 'Session outlines and discussion PDFs',
+                url: 'https://www.alpha.org/resources',
+                highlights: ['Gospel-centered', 'Works across denominations'],
+                color: '#7c3aed'
+            },
+            {
+                id: 'lifeway',
+                name: 'Lifeway Free Church Resources',
+                stream: 'Southern Baptist / Evangelical',
+                bestFor: 'Bible literacy and structured learning',
+                freeContent: 'Free Bible studies and discipleship PDFs',
+                url: 'https://www.lifeway.com/en/articles/free-church-resources',
+                highlights: ['Strong doctrinal clarity', 'Familiar evangelical language'],
+                color: '#0891b2'
+            },
+            {
+                id: 'efca',
+                name: 'Evangelical Free Church of America – Resources',
+                stream: 'Evangelical / Protestant',
+                bestFor: 'Holistic discipleship frameworks',
+                freeContent: 'Open discipleship and formation guides',
+                url: 'https://www.efca.org/resources',
+                highlights: ['Scripture-first', 'Leadership-friendly'],
+                color: '#059669'
+            },
+            {
+                id: 'renovare',
+                name: 'Renovaré – Spiritual Formation Resources',
+                stream: 'Evangelical / Ecumenical',
+                bestFor: 'Practices, prayer, slow discipleship',
+                freeContent: 'PDFs, articles, formation guides',
+                url: 'https://www.renovare.org/resources',
+                highlights: ['Ancient Christian practices', 'No sacramental theology'],
+                color: '#ca8a04'
+            },
+            {
+                id: 'navigators',
+                name: 'The Navigators – Free Discipleship Library',
+                stream: 'Evangelical',
+                bestFor: 'Scripture engagement and habits',
+                freeContent: 'Bible studies, discipleship tools, PDFs',
+                url: 'https://www.navigators.org/resource-library',
+                highlights: ['Old-school disciple-making', 'Simple, repeatable practices'],
+                color: '#0d9488'
+            },
+            {
+                id: 'lausanne',
+                name: 'Lausanne Movement – Discipleship Papers',
+                stream: 'Evangelical (Global Protestant)',
+                bestFor: 'Mission-shaped discipleship',
+                freeContent: 'Open-access formation papers',
+                url: 'https://lausanne.org/resources',
+                highlights: ['Great Commission aligned', 'Globally respected'],
+                color: '#6366f1'
+            },
+            {
+                id: 'bible-project',
+                name: 'Bible Project – Classroom & Study PDFs',
+                stream: 'Evangelical / Protestant',
+                bestFor: 'Scripture literacy and theology',
+                freeContent: 'Study guides, classroom PDFs',
+                url: 'https://bibleproject.com/classroom/',
+                highlights: ['Visually intuitive', 'Strong biblical theology'],
+                color: '#16a34a'
+            },
+            {
+                id: 'ccx',
+                name: 'Center for Christian Discipleship (CCX)',
+                stream: 'Evangelical / Protestant',
+                bestFor: 'Disciple-making culture',
+                freeContent: 'Open-access tools and articles',
+                url: 'https://www.ccx.org/resources',
+                highlights: ['Practice-driven', 'Strong leadership alignment'],
+                color: '#ea580c'
+            }
+        ]
+    }
+};
+
+// Get saved FSO favorites from localStorage
+function getFSOFavorites() {
+    try {
+        return JSON.parse(localStorage.getItem('rooted_fso_favorites') || '[]');
+    } catch (e) {
+        return [];
+    }
+}
+
+// Save FSO favorite
+function toggleFSOFavorite(resourceId) {
+    const favorites = getFSOFavorites();
+    const index = favorites.indexOf(resourceId);
+    
+    if (index === -1) {
+        favorites.push(resourceId);
+        toast('Added to favorites! ⭐', 'success');
+    } else {
+        favorites.splice(index, 1);
+        toast('Removed from favorites', 'info');
+    }
+    
+    localStorage.setItem('rooted_fso_favorites', JSON.stringify(favorites));
+    render();
+}
+
+function renderChurchFSO() {
+    const favorites = getFSOFavorites();
+    const searchQuery = '';
+    
+    return `
+    <div class="fade-up" style="max-width:1000px;margin:0 auto">
+        <!-- Header -->
+        <div class="card" style="margin-bottom:var(--space-lg);background:linear-gradient(135deg,#4f46e5,#7c3aed);color:white;border:none">
+            <div style="display:flex;align-items:center;gap:var(--space-lg);flex-wrap:wrap">
+                <div style="font-size:3rem">📚</div>
+                <div style="flex:1;min-width:200px">
+                    <h2 style="margin:0 0 var(--space-xs)">FSO Resources</h2>
+                    <p style="margin:0;opacity:0.9">Free Spiritual Online — Curated discipleship resources from trusted Christian organizations</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Search & Filter -->
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <div style="display:flex;gap:var(--space-md);flex-wrap:wrap;align-items:center">
+                <div style="flex:1;min-width:200px">
+                    <input type="text" class="input-field" id="fsoSearch" placeholder="Search resources..." oninput="filterFSOResources()" style="margin:0">
+                </div>
+                <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap">
+                    <button class="btn btn-secondary fso-filter-btn active" onclick="filterFSOCategory('all')" data-category="all">All</button>
+                    <button class="btn btn-secondary fso-filter-btn" onclick="filterFSOCategory('favorites')" data-category="favorites">⭐ Favorites (${favorites.length})</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Categories -->
+        ${Object.entries(FSO_RESOURCES).map(([catKey, category]) => `
+        <div class="fso-category" data-category="${catKey}">
+            <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-lg)">
+                <span style="font-size:2rem">${category.icon}</span>
+                <div>
+                    <h3 style="margin:0">${category.name}</h3>
+                    <p style="margin:0;color:var(--text-secondary);font-size:0.9rem">${category.description}</p>
+                </div>
+            </div>
+            
+            <div style="display:grid;gap:var(--space-md)">
+                ${category.resources.map(resource => {
+                    const isFavorite = favorites.includes(resource.id);
+                    return `
+                    <div class="card fso-resource-card" data-resource-id="${resource.id}" style="border-left:4px solid ${resource.color};transition:all 0.2s">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-md);flex-wrap:wrap">
+                            <div style="flex:1;min-width:250px">
+                                <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-sm)">
+                                    <h4 style="margin:0;font-size:1.1rem">${resource.name}</h4>
+                                    ${isFavorite ? '<span style="color:#f59e0b">⭐</span>' : ''}
+                                </div>
+                                <p style="margin:0 0 var(--space-sm);font-size:0.85rem;color:var(--text-tertiary)">
+                                    <span style="background:${resource.color}20;color:${resource.color};padding:2px 8px;border-radius:12px;font-size:0.75rem">${resource.stream}</span>
+                                </p>
+                                <p style="margin:0 0 var(--space-sm);color:var(--text-secondary);font-size:0.9rem">
+                                    <strong>Best for:</strong> ${resource.bestFor}
+                                </p>
+                                <p style="margin:0 0 var(--space-sm);color:var(--text-secondary);font-size:0.9rem">
+                                    <strong>Free:</strong> ${resource.freeContent}
+                                </p>
+                                <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;margin-top:var(--space-sm)">
+                                    ${resource.highlights.map(h => `
+                                        <span style="background:var(--hover-bg);padding:4px 10px;border-radius:16px;font-size:0.75rem;color:var(--text-secondary)">✓ ${h}</span>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:var(--space-sm);align-items:flex-end">
+                                <a href="${resource.url}" target="_blank" class="btn btn-primary" style="white-space:nowrap">
+                                    🔗 Visit Site
+                                </a>
+                                <button class="btn btn-ghost" onclick="toggleFSOFavorite('${resource.id}')" style="font-size:0.85rem">
+                                    ${isFavorite ? '★ Favorited' : '☆ Add to Favorites'}
+                                </button>
+                                <button class="btn btn-ghost" onclick="copyFSOLink('${resource.url}', '${resource.name.replace(/'/g, "\\'")}')" style="font-size:0.85rem">
+                                    📋 Copy Link
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+        `).join('')}
+        
+        <!-- Info Box -->
+        <div class="card" style="margin-top:var(--space-xl);background:var(--hover-bg);border:1px dashed var(--border-color)">
+            <div style="display:flex;align-items:flex-start;gap:var(--space-md)">
+                <span style="font-size:1.5rem">💡</span>
+                <div>
+                    <strong style="display:block;margin-bottom:var(--space-xs)">How to Use FSO Resources</strong>
+                    <p style="margin:0;color:var(--text-secondary);font-size:0.9rem">
+                        Browse these trusted discipleship resources, save your favorites, and share links with your congregation. 
+                        These external resources complement your church's own materials and can be used for small groups, 
+                        personal study, or leader training.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
+function filterFSOResources() {
+    const query = document.getElementById('fsoSearch')?.value?.toLowerCase() || '';
+    const cards = document.querySelectorAll('.fso-resource-card');
+    
+    cards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = text.includes(query) ? '' : 'none';
+    });
+}
+
+function filterFSOCategory(category) {
+    // Update button states
+    document.querySelectorAll('.fso-filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.category === category);
+    });
+    
+    const favorites = getFSOFavorites();
+    const cards = document.querySelectorAll('.fso-resource-card');
+    
+    cards.forEach(card => {
+        const resourceId = card.dataset.resourceId;
+        if (category === 'all') {
+            card.style.display = '';
+        } else if (category === 'favorites') {
+            card.style.display = favorites.includes(resourceId) ? '' : 'none';
+        }
+    });
+}
+
+function copyFSOLink(url, name) {
+    navigator.clipboard.writeText(url).then(() => {
+        toast(`Link copied: ${name}`, 'success');
+    }).catch(() => {
+        // Fallback
+        const input = document.createElement('input');
+        input.value = url;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        toast(`Link copied: ${name}`, 'success');
+    });
 }
 
 // ========== YOUTUBE VIDEOS ==========
