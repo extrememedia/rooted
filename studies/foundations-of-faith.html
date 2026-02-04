@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foundations of Faith - Rooted Studies</title>
+    <style>
+        :root {
+            --primary: #2d5a47;
+            --primary-light: #3d7a5f;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent: #22c55e;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        
+        .header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            border-radius: 16px;
+            margin-bottom: 30px;
+        }
+        .header-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+        }
+        .header h1 { font-size: 2rem; margin-bottom: 10px; }
+        .header p { opacity: 0.9; max-width: 500px; margin: 0 auto; }
+        
+        .progress-bar {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+        .progress-track {
+            height: 8px;
+            background: #334155;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), #4ade80);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        
+        .week-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .week-card:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+        .week-card.locked { opacity: 0.6; }
+        .week-card.completed { border-left: 4px solid var(--accent); }
+        
+        .week-header {
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .week-number {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+        .week-card.completed .week-number { background: linear-gradient(135deg, var(--accent), #4ade80); }
+        .week-info { flex: 1; }
+        .week-title { font-weight: 600; font-size: 1.1rem; margin-bottom: 4px; }
+        .week-subtitle { color: var(--text-secondary); font-size: 0.9rem; }
+        .week-status { font-size: 1.5rem; }
+        
+        .week-content {
+            display: none;
+            padding: 0 20px 20px;
+            border-top: 1px solid #334155;
+        }
+        .week-content.show { display: block; }
+        
+        .section {
+            margin-top: 20px;
+        }
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--accent);
+        }
+        .scripture-box {
+            background: #334155;
+            border-left: 4px solid var(--accent);
+            padding: 16px;
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+            margin-bottom: 16px;
+        }
+        .scripture-ref {
+            display: block;
+            margin-top: 8px;
+            font-style: normal;
+            font-weight: 600;
+            color: var(--accent);
+        }
+        
+        .teaching { color: var(--text-secondary); }
+        .teaching p { margin-bottom: 12px; }
+        
+        .questions {
+            list-style: none;
+            counter-reset: questions;
+        }
+        .questions li {
+            counter-increment: questions;
+            padding: 12px 12px 12px 45px;
+            background: #334155;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            position: relative;
+        }
+        .questions li::before {
+            content: counter(questions);
+            position: absolute;
+            left: 12px;
+            top: 12px;
+            width: 24px;
+            height: 24px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .action-step {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        .action-step h4 { margin-bottom: 8px; }
+        
+        .complete-btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+        .complete-btn:hover { transform: scale(1.02); }
+        .complete-btn:disabled { background: #334155; color: var(--text-secondary); cursor: default; transform: none; }
+        
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+        .back-btn:hover { color: var(--text); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="#" class="back-btn" onclick="window.close(); return false;">← Back to Studies</a>
+        
+        <div class="header">
+            <div class="header-badge">6-Week Study</div>
+            <h1>Foundations of Faith</h1>
+            <p>Build an unshakeable foundation for your walk with Christ through essential biblical truths.</p>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-label">
+                <span>Your Progress</span>
+                <span id="progressText">0 of 6 weeks completed</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <div id="weeksContainer"></div>
+    </div>
+
+    <script>
+        const STUDY_ID = 'foundations-of-faith';
+        const WEEKS = [
+            {
+                title: "Who Is God?",
+                subtitle: "Understanding the nature and character of our Creator",
+                scripture: "In the beginning God created the heavens and the earth. Now the earth was formless and empty, darkness was over the surface of the deep, and the Spirit of God was hovering over the waters.",
+                scriptureRef: "Genesis 1:1-2",
+                teaching: [
+                    "Our journey of faith begins with the most fundamental question: Who is God? The Bible reveals God as eternal, all-powerful, all-knowing, and ever-present. He is not a distant deity but a personal God who desires relationship with His creation.",
+                    "God reveals Himself as Trinity - Father, Son, and Holy Spirit - three persons, one God. This mystery invites us into a community of love that has existed for all eternity. The Father initiates, the Son accomplishes, and the Spirit applies God's work in our lives.",
+                    "Understanding God's character transforms how we approach Him. He is holy yet merciful, just yet gracious, sovereign yet intimate. He is the God who sees you, knows you, and loves you completely."
+                ],
+                questions: [
+                    "What images or ideas come to mind when you think of God? How have these shaped your relationship with Him?",
+                    "Read Psalm 139:1-18. What does this passage reveal about God's knowledge of you personally?",
+                    "How does understanding God as Trinity affect your view of community and relationships?",
+                    "What aspect of God's character do you find most comforting? Most challenging?"
+                ],
+                actionStep: "This week, spend 5 minutes each day simply sitting in God's presence. Don't ask for anything - just acknowledge that He is with you and reflect on one attribute of His character."
+            },
+            {
+                title: "Who Am I?",
+                subtitle: "Discovering your identity as God's beloved creation",
+                scripture: "So God created mankind in his own image, in the image of God he created them; male and female he created them.",
+                scriptureRef: "Genesis 1:27",
+                teaching: [
+                    "You are not an accident. You are not a random collection of cells. You are a masterpiece, intentionally designed by the Creator of the universe. Before time began, God knew you and had a purpose for your life.",
+                    "Being made in God's image means you have inherent dignity, value, and worth that nothing can diminish. It means you were created for relationship - with God and with others. It means you have the capacity to create, to love, to reason, and to choose.",
+                    "Sin has distorted but not destroyed this image. Through Christ, we are being restored to reflect God's glory more fully each day. Your identity is not found in what you do, what you have, or what others say about you - it's found in whose you are."
+                ],
+                questions: [
+                    "What messages has the world given you about your identity? How do these compare to what Scripture says?",
+                    "Read Ephesians 2:10. What does it mean to be God's 'workmanship' or 'masterpiece'?",
+                    "How might your daily life change if you truly believed you were created in God's image?",
+                    "What lies about your identity do you need to replace with God's truth?"
+                ],
+                actionStep: "Write down 5 statements about your identity in Christ (e.g., 'I am loved,' 'I am chosen,' 'I am forgiven'). Read these aloud each morning this week."
+            },
+            {
+                title: "What Went Wrong?",
+                subtitle: "Understanding sin and its effects on humanity",
+                scripture: "For all have sinned and fall short of the glory of God.",
+                scriptureRef: "Romans 3:23",
+                teaching: [
+                    "The world is not as it should be. We feel it in our bones - the longing for something more, the ache of brokenness, the frustration of our own failures. This is the reality of sin's entrance into God's good creation.",
+                    "Sin is not just breaking rules; it's breaking relationship. When Adam and Eve chose their own way over God's way, they introduced separation - from God, from each other, from creation, and even from themselves. Every human since has inherited this bent toward self-rule.",
+                    "But here's the crucial truth: God was not caught off guard. Before the foundation of the world, He had a rescue plan. Understanding the depth of our problem helps us appreciate the magnitude of His solution."
+                ],
+                questions: [
+                    "How do you see the effects of sin in the world around you? In your own life?",
+                    "Read Romans 7:15-25. Can you relate to Paul's struggle? How so?",
+                    "Why is it important to understand the seriousness of sin before we can fully appreciate grace?",
+                    "What areas of your life are you still trying to rule instead of surrendering to God?"
+                ],
+                actionStep: "Take time this week to confess specific sins to God. Write them down, then write 1 John 1:9 over them as a reminder of His faithfulness to forgive."
+            },
+            {
+                title: "What Has God Done?",
+                subtitle: "The good news of Jesus Christ",
+                scripture: "For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.",
+                scriptureRef: "John 3:16",
+                teaching: [
+                    "This is the heart of the gospel: God did not leave us in our sin. While we were still His enemies, Christ died for us. The eternal Son of God took on human flesh, lived the perfect life we couldn't live, and died the death we deserved.",
+                    "On the cross, Jesus absorbed the full weight of God's wrath against sin. He paid a debt He didn't owe because we owed a debt we couldn't pay. Three days later, He rose victorious over sin, death, and the grave - proving His sacrifice was accepted.",
+                    "Salvation is a gift, not a wage. We cannot earn it, deserve it, or add to it. We simply receive it by grace through faith. This is not just fire insurance for eternity - it's the beginning of a transformed life here and now."
+                ],
+                questions: [
+                    "How would you explain the gospel to someone who has never heard it?",
+                    "Read 2 Corinthians 5:21. What does it mean that Christ 'became sin' for us?",
+                    "Why is the resurrection essential to the gospel message?",
+                    "How has understanding God's grace changed your perspective on life?"
+                ],
+                actionStep: "Practice sharing your testimony this week. Write out a brief version: what your life was like before Christ, how you came to faith, and how your life has changed since."
+            },
+            {
+                title: "How Do I Respond?",
+                subtitle: "Faith, repentance, and following Jesus",
+                scripture: "If you declare with your mouth, 'Jesus is Lord,' and believe in your heart that God raised him from the dead, you will be saved.",
+                scriptureRef: "Romans 10:9",
+                teaching: [
+                    "The gospel demands a response. Faith is not merely intellectual agreement - it's wholehearted trust that leads to action. Biblical faith always involves believing, receiving, and following.",
+                    "Repentance is the flip side of faith. It means turning from sin and turning to God. It's not just feeling sorry; it's a change of mind that leads to a change of direction. We stop trying to be the lord of our own lives and submit to Jesus as Lord.",
+                    "Following Jesus is not a one-time decision but a daily journey. We take up our cross daily, denying ourselves and walking in His footsteps. This is not a burden but a joy - for His yoke is easy and His burden is light."
+                ],
+                questions: [
+                    "What's the difference between believing facts about Jesus and trusting in Jesus?",
+                    "Read Luke 9:23-25. What does it mean to 'take up your cross daily'?",
+                    "Are there areas of your life where you're still resisting Jesus' lordship?",
+                    "What practical steps can you take to follow Jesus more closely this week?"
+                ],
+                actionStep: "Identify one area where you've been holding back from full surrender to Jesus. Commit it to Him in prayer and share this decision with a trusted Christian friend."
+            },
+            {
+                title: "What's Next?",
+                subtitle: "Growing in Christ and living on mission",
+                scripture: "Therefore go and make disciples of all nations, baptizing them in the name of the Father and of the Son and of the Holy Spirit, and teaching them to obey everything I have commanded you.",
+                scriptureRef: "Matthew 28:19-20",
+                teaching: [
+                    "Salvation is not the finish line - it's the starting line. God saves us not just from something but for something. We are saved to grow, to serve, and to share the good news with others.",
+                    "Spiritual growth happens through spiritual habits: reading God's Word, prayer, fellowship with believers, worship, and service. These aren't legalistic duties but life-giving practices that connect us to the source of life.",
+                    "Every believer is called to make disciples. This doesn't require a seminary degree or a pulpit - it requires a willing heart and an authentic faith. Who in your life needs to hear the hope you've found in Christ?"
+                ],
+                questions: [
+                    "What spiritual habits do you want to develop or strengthen?",
+                    "Read Acts 2:42-47. What characterized the early church community? How can you pursue this?",
+                    "Who are three people in your life who don't know Jesus? How can you share His love with them?",
+                    "What is one next step God is calling you to take in your faith journey?"
+                ],
+                actionStep: "Commit to one spiritual habit for the next 30 days (daily Bible reading, prayer, etc.). Also, identify one person you will intentionally share your faith journey with."
+            }
+        ];
+
+        function getProgress() {
+            const saved = localStorage.getItem(`rooted_study_${STUDY_ID}`);
+            return saved ? JSON.parse(saved) : { completed: [], currentWeek: 0 };
+        }
+
+        function saveProgress(progress) {
+            localStorage.setItem(`rooted_study_${STUDY_ID}`, JSON.stringify(progress));
+        }
+
+        function toggleWeek(weekIndex) {
+            const content = document.getElementById(`content-${weekIndex}`);
+            const isShowing = content.classList.contains('show');
+            
+            // Close all
+            document.querySelectorAll('.week-content').forEach(c => c.classList.remove('show'));
+            
+            // Open clicked if it was closed
+            if (!isShowing) {
+                content.classList.add('show');
+            }
+        }
+
+        function completeWeek(weekIndex) {
+            const progress = getProgress();
+            if (!progress.completed.includes(weekIndex)) {
+                progress.completed.push(weekIndex);
+                progress.currentWeek = Math.max(progress.currentWeek, weekIndex + 1);
+                saveProgress(progress);
+                renderWeeks();
+            }
+        }
+
+        function renderWeeks() {
+            const progress = getProgress();
+            const container = document.getElementById('weeksContainer');
+            
+            // Update progress bar
+            const completedCount = progress.completed.length;
+            document.getElementById('progressText').textContent = `${completedCount} of ${WEEKS.length} weeks completed`;
+            document.getElementById('progressFill').style.width = `${(completedCount / WEEKS.length) * 100}%`;
+            
+            container.innerHTML = WEEKS.map((week, index) => {
+                const isCompleted = progress.completed.includes(index);
+                const isLocked = index > progress.currentWeek && !isCompleted;
+                const canAccess = index <= progress.currentWeek || isCompleted;
+                
+                return `
+                    <div class="week-card ${isCompleted ? 'completed' : ''} ${isLocked ? 'locked' : ''}">
+                        <div class="week-header" onclick="${canAccess ? `toggleWeek(${index})` : ''}">
+                            <div class="week-number">${index + 1}</div>
+                            <div class="week-info">
+                                <div class="week-title">${week.title}</div>
+                                <div class="week-subtitle">${week.subtitle}</div>
+                            </div>
+                            <div class="week-status">
+                                ${isCompleted ? '✅' : isLocked ? '🔒' : '📖'}
+                            </div>
+                        </div>
+                        <div class="week-content" id="content-${index}">
+                            <div class="section">
+                                <div class="section-title">📜 Scripture</div>
+                                <div class="scripture-box">
+                                    ${week.scripture}
+                                    <span class="scripture-ref">— ${week.scriptureRef}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="section">
+                                <div class="section-title">📚 Teaching</div>
+                                <div class="teaching">
+                                    ${week.teaching.map(p => `<p>${p}</p>`).join('')}
+                                </div>
+                            </div>
+                            
+                            <div class="section">
+                                <div class="section-title">💭 Reflection Questions</div>
+                                <ol class="questions">
+                                    ${week.questions.map(q => `<li>${q}</li>`).join('')}
+                                </ol>
+                            </div>
+                            
+                            <div class="action-step">
+                                <h4>🎯 This Week's Action Step</h4>
+                                <p>${week.actionStep}</p>
+                            </div>
+                            
+                            <button class="complete-btn" onclick="completeWeek(${index})" ${isCompleted ? 'disabled' : ''}>
+                                ${isCompleted ? '✓ Week Completed' : 'Mark Week as Complete'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Initialize
+        renderWeeks();
+    </script>
+</body>
+</html>

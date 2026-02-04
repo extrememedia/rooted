@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Prayer Life - Rooted Studies</title>
+    <style>
+        :root {
+            --primary: #7c3aed;
+            --primary-light: #8b5cf6;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent: #a78bfa;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; padding: 40px 20px; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); border-radius: 16px; margin-bottom: 30px; }
+        .header-badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 6px 16px; border-radius: 20px; font-size: 0.85rem; margin-bottom: 16px; }
+        .header h1 { font-size: 2rem; margin-bottom: 10px; }
+        .header p { opacity: 0.9; max-width: 500px; margin: 0 auto; }
+        .progress-bar { background: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 30px; }
+        .progress-label { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem; }
+        .progress-track { height: 8px; background: #334155; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #c4b5fd); border-radius: 4px; transition: width 0.3s; }
+        .week-card { background: var(--card-bg); border-radius: 12px; margin-bottom: 16px; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
+        .week-card:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+        .week-card.locked { opacity: 0.6; }
+        .week-card.completed { border-left: 4px solid var(--accent); }
+        .week-header { padding: 20px; cursor: pointer; display: flex; align-items: center; gap: 16px; }
+        .week-number { width: 50px; height: 50px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem; }
+        .week-card.completed .week-number { background: linear-gradient(135deg, var(--accent), #c4b5fd); }
+        .week-info { flex: 1; }
+        .week-title { font-weight: 600; font-size: 1.1rem; margin-bottom: 4px; }
+        .week-subtitle { color: var(--text-secondary); font-size: 0.9rem; }
+        .week-status { font-size: 1.5rem; }
+        .week-content { display: none; padding: 0 20px 20px; border-top: 1px solid #334155; }
+        .week-content.show { display: block; }
+        .section { margin-top: 20px; }
+        .section-title { display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 12px; color: var(--accent); }
+        .scripture-box { background: #334155; border-left: 4px solid var(--accent); padding: 16px; border-radius: 0 8px 8px 0; font-style: italic; margin-bottom: 16px; }
+        .scripture-ref { display: block; margin-top: 8px; font-style: normal; font-weight: 600; color: var(--accent); }
+        .teaching { color: var(--text-secondary); }
+        .teaching p { margin-bottom: 12px; }
+        .questions { list-style: none; counter-reset: questions; }
+        .questions li { counter-increment: questions; padding: 12px 12px 12px 45px; background: #334155; border-radius: 8px; margin-bottom: 8px; position: relative; }
+        .questions li::before { content: counter(questions); position: absolute; left: 12px; top: 12px; width: 24px; height: 24px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 600; }
+        .action-step { background: linear-gradient(135deg, var(--primary), var(--primary-light)); padding: 20px; border-radius: 12px; margin-top: 20px; }
+        .action-step h4 { margin-bottom: 8px; }
+        .complete-btn { width: 100%; padding: 16px; background: var(--accent); color: #000; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 20px; transition: transform 0.2s; }
+        .complete-btn:hover { transform: scale(1.02); }
+        .complete-btn:disabled { background: #334155; color: var(--text-secondary); cursor: default; transform: none; }
+        .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--text-secondary); text-decoration: none; margin-bottom: 20px; font-size: 0.9rem; }
+        .back-btn:hover { color: var(--text); }
+        .prayer-model { background: #334155; border-radius: 12px; padding: 20px; margin: 16px 0; }
+        .prayer-model h5 { color: var(--accent); margin-bottom: 12px; }
+        .prayer-model-item { display: flex; gap: 12px; margin-bottom: 12px; }
+        .prayer-model-letter { width: 32px; height: 32px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
+        .prayer-model-content strong { display: block; margin-bottom: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="#" class="back-btn" onclick="window.close(); return false;">← Back to Studies</a>
+        
+        <div class="header">
+            <div class="header-badge">8-Week Study</div>
+            <h1>The Prayer Life</h1>
+            <p>Transform your prayer life from routine to relationship through biblical patterns and spiritual practices.</p>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-label">
+                <span>Your Progress</span>
+                <span id="progressText">0 of 8 weeks completed</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <div id="weeksContainer"></div>
+    </div>
+
+    <script>
+        const STUDY_ID = 'prayer-life';
+        const WEEKS = [
+            {
+                title: "Why Pray?",
+                subtitle: "Understanding the purpose and privilege of prayer",
+                scripture: "Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God. And the peace of God, which transcends all understanding, will guard your hearts and your minds in Christ Jesus.",
+                scriptureRef: "Philippians 4:6-7",
+                teaching: [
+                    "Prayer is not a religious duty to check off a list—it's an invitation into relationship with the Creator of the universe. Imagine: the God who spoke galaxies into existence wants to hear from you. He invites you to bring everything to Him.",
+                    "We pray not to inform God (He already knows) or to convince Him (He already loves you). We pray because it changes us. Prayer aligns our hearts with His, opens our eyes to His work, and positions us to receive what He wants to give.",
+                    "Prayer is also spiritual warfare. When we pray, we participate in God's kingdom breaking into this world. Things happen when we pray that wouldn't happen if we didn't. Our prayers matter more than we can possibly imagine."
+                ],
+                questions: [
+                    "How would you describe your current prayer life? What words come to mind?",
+                    "What barriers keep you from praying more consistently?",
+                    "Read Matthew 6:5-8. What misconceptions about prayer does Jesus correct?",
+                    "If you truly believed God wanted to hear from you, how might your prayers change?"
+                ],
+                actionStep: "Set a specific time and place for prayer this week—even just 5 minutes. Show up faithfully, even when you don't feel like it, and simply talk to God honestly."
+            },
+            {
+                title: "The Lord's Prayer",
+                subtitle: "Learning to pray as Jesus taught",
+                scripture: "This, then, is how you should pray: 'Our Father in heaven, hallowed be your name, your kingdom come, your will be done, on earth as it is in heaven.'",
+                scriptureRef: "Matthew 6:9-10",
+                teaching: [
+                    "When the disciples asked Jesus to teach them to pray, He gave them a pattern—not a script to recite mindlessly, but a framework for authentic communication with God. The Lord's Prayer shows us what matters most.",
+                    "Notice the order: we begin with worship ('hallowed be your name'), move to surrender ('your kingdom come, your will be done'), then bring our requests ('give us,' 'forgive us,' 'lead us'). This sequence realigns our priorities.",
+                    "Each phrase is rich with meaning. 'Our Father' establishes intimacy and identity. 'Your kingdom come' invites His rule into every area of life. 'Daily bread' teaches dependence. 'Forgive us as we forgive' connects vertical and horizontal relationships."
+                ],
+                questions: [
+                    "Pray through the Lord's Prayer slowly. Which phrase resonates most with you right now?",
+                    "How does addressing God as 'Our Father' (not 'my Father') shape how we think about prayer?",
+                    "What does it mean to pray 'Your will be done' when your will conflicts with what God seems to be doing?",
+                    "How might daily praying 'forgive us as we forgive others' transform your relationships?"
+                ],
+                actionStep: "Use the Lord's Prayer as an outline each day this week. Spend 1-2 minutes on each phrase, letting it guide your own prayers and reflections."
+            },
+            {
+                title: "The ACTS Model",
+                subtitle: "A simple structure for balanced prayer",
+                scripture: "Enter his gates with thanksgiving and his courts with praise; give thanks to him and praise his name.",
+                scriptureRef: "Psalm 100:4",
+                teaching: [
+                    "Many people struggle with prayer because they don't know what to say. The ACTS model provides a simple, memorable framework that ensures our prayers are balanced and God-centered.",
+                    "ACTS stands for: Adoration (praising God for who He is), Confession (acknowledging our sins), Thanksgiving (expressing gratitude for what He's done), and Supplication (bringing our requests). This order matters—it positions our hearts rightly before we ask.",
+                    "Starting with adoration lifts our eyes from our problems to our Problem-Solver. Confession clears the channel of communication. Thanksgiving cultivates a heart of faith. Only then do we bring our requests—from a posture of trust rather than anxiety."
+                ],
+                questions: [
+                    "Which element of ACTS comes most naturally to you? Which is hardest?",
+                    "Why do you think the model starts with Adoration rather than requests?",
+                    "Read Psalm 103:1-5. What reasons for thanksgiving do you find there?",
+                    "How might regular confession in prayer affect your daily walk with God?"
+                ],
+                actionStep: "Practice ACTS prayer each day this week. Spend at least 2 minutes on each element. Keep a journal of what you discover.",
+                extraContent: {
+                    type: 'model',
+                    title: 'The ACTS Prayer Model',
+                    items: [
+                        { letter: 'A', word: 'Adoration', description: 'Praise God for who He is—His character, attributes, and nature.' },
+                        { letter: 'C', word: 'Confession', description: 'Acknowledge your sins honestly and receive His forgiveness.' },
+                        { letter: 'T', word: 'Thanksgiving', description: 'Thank God for what He has done—blessings, answers, provision.' },
+                        { letter: 'S', word: 'Supplication', description: 'Bring your requests for yourself and others to God.' }
+                    ]
+                }
+            },
+            {
+                title: "Listening Prayer",
+                subtitle: "Learning to hear God's voice",
+                scripture: "My sheep listen to my voice; I know them, and they follow me.",
+                scriptureRef: "John 10:27",
+                teaching: [
+                    "Prayer is a conversation, not a monologue. Yet many believers do all the talking and none of the listening. God still speaks today—through His Word, His Spirit, circumstances, and the counsel of other believers.",
+                    "Learning to listen requires intentional silence. This is countercultural in our noisy world, but essential for hearing the 'still, small voice' of God. We must quiet our minds, set aside our agendas, and create space for Him to speak.",
+                    "Discerning God's voice takes practice. His voice will always align with Scripture, point toward His character, and lead to greater Christlikeness. When unsure, test what you hear against the Word and seek counsel from mature believers."
+                ],
+                questions: [
+                    "When was a time you sensed God speaking to you? How did you know it was Him?",
+                    "What makes it difficult for you to be still and listen in prayer?",
+                    "Read 1 Kings 19:11-13. What does this teach about how God often speaks?",
+                    "How can we distinguish God's voice from our own thoughts or desires?"
+                ],
+                actionStep: "Practice 5 minutes of silent listening prayer each day this week. After reading a short Scripture passage, simply ask God, 'What do you want to say to me?' and wait. Write down any impressions."
+            },
+            {
+                title: "Praying Scripture",
+                subtitle: "Letting God's Word shape your prayers",
+                scripture: "Let the word of Christ dwell in you richly as you teach and admonish one another with all wisdom, and as you sing psalms, hymns and spiritual songs with gratitude in your hearts to God.",
+                scriptureRef: "Colossians 3:16",
+                teaching: [
+                    "One of the most powerful ways to pray is to pray God's own words back to Him. When we pray Scripture, we know we're praying according to His will. We're aligning our hearts with His heart and using language He has given us.",
+                    "The Psalms are especially rich for this practice. They cover every human emotion—joy, grief, anger, fear, hope, despair. Whatever you're feeling, there's a psalm for that. Praying the psalms teaches us the vocabulary of faith.",
+                    "You can also turn any passage into prayer. Reading a promise? Thank God and claim it. Reading a command? Ask for help to obey. Reading about God's character? Worship Him for who He is. Scripture becomes fuel for prayer."
+                ],
+                questions: [
+                    "Have you ever prayed a Scripture? What was that experience like?",
+                    "Read Psalm 23 slowly. How might you turn each verse into a personal prayer?",
+                    "Why do you think praying Scripture can be more powerful than praying our own words?",
+                    "What Scripture passage would be meaningful to pray over your current situation?"
+                ],
+                actionStep: "Choose one psalm (try Psalm 27 or Psalm 139) and pray through it each day this week. Personalize each verse as your own prayer to God."
+            },
+            {
+                title: "Intercessory Prayer",
+                subtitle: "Standing in the gap for others",
+                scripture: "I urge, then, first of all, that petitions, prayers, intercession and thanksgiving be made for all people.",
+                scriptureRef: "1 Timothy 2:1",
+                teaching: [
+                    "Intercession is praying on behalf of others—standing in the gap between them and God. This is one of the most powerful things you can do for someone. When you intercede, you partner with God in His work in their lives.",
+                    "Jesus modeled intercession. He prayed for His disciples, for Peter specifically, for those who crucified Him, and even now He lives to intercede for us at the Father's right hand. We follow His example when we pray for others.",
+                    "Effective intercession requires moving beyond vague requests ('bless them') to specific, faith-filled prayers. Pray God's purposes for people, not just their comfort. Pray for their spiritual growth, not just their circumstances."
+                ],
+                questions: [
+                    "Who has God placed on your heart to pray for regularly?",
+                    "Read John 17:6-19. What did Jesus specifically pray for His disciples?",
+                    "How might your prayers for others change if you focused on their spiritual needs?",
+                    "What's the difference between praying for someone and worrying about them?"
+                ],
+                actionStep: "Create a simple prayer list of 5 people to intercede for daily. Be specific about what you're asking God to do in each of their lives. Commit to praying for them every day this week."
+            },
+            {
+                title: "Persistent Prayer",
+                subtitle: "Praying with faith when answers delay",
+                scripture: "Then Jesus told his disciples a parable to show them that they should always pray and not give up.",
+                scriptureRef: "Luke 18:1",
+                teaching: [
+                    "Jesus taught that we should 'always pray and not give up.' Persistent prayer isn't about wearing God down or convincing Him to act—it's about deepening our faith and dependence as we wait on His timing.",
+                    "God's delays are not His denials. Sometimes He says 'yes,' sometimes 'no,' and sometimes 'not yet.' Persistent prayer keeps our hearts engaged with God while we wait. It's an act of faith that declares, 'I trust You even when I can't see.'",
+                    "Think of it this way: if you stopped praying after the first unanswered prayer, you'd miss what God wants to do in you through the waiting. Persistent prayer isn't just about getting answers—it's about becoming the kind of person who trusts God completely."
+                ],
+                questions: [
+                    "What prayer have you been tempted to give up on?",
+                    "Read Luke 18:1-8 (the parable of the persistent widow). What is Jesus teaching about God's character?",
+                    "How has waiting on God in prayer changed you in the past?",
+                    "What's the difference between persistent prayer and trying to manipulate God?"
+                ],
+                actionStep: "Identify one prayer request you've given up on or grown weary of. Commit to praying for it daily this week with renewed faith. Journal what God shows you in the waiting."
+            },
+            {
+                title: "A Lifestyle of Prayer",
+                subtitle: "Cultivating continual communion with God",
+                scripture: "Rejoice always, pray continually, give thanks in all circumstances; for this is God's will for you in Christ Jesus.",
+                scriptureRef: "1 Thessalonians 5:16-18",
+                teaching: [
+                    "'Pray continually' doesn't mean spending every moment on your knees—it means maintaining an ongoing awareness of and conversation with God throughout your day. It's living with an open line to heaven.",
+                    "Brother Lawrence called this 'practicing the presence of God.' It's inviting God into the ordinary moments—the commute, the meeting, the meal preparation, the difficult conversation. Every moment becomes an opportunity for prayer.",
+                    "This lifestyle develops through intentional practice. It starts with scheduled times of focused prayer and grows into a habit of ongoing communion. Eventually, prayer becomes less about what you do and more about who you are—a person who walks with God."
+                ],
+                questions: [
+                    "What does 'pray continually' look like practically in your daily life?",
+                    "What ordinary moments could become opportunities for prayer?",
+                    "How has this 8-week study changed your understanding or practice of prayer?",
+                    "What specific prayer habits will you carry forward from this study?"
+                ],
+                actionStep: "Create a 'Rule of Prayer' for your life—a sustainable pattern that includes daily prayer times, weekly extended prayer, and triggers for continual prayer throughout your day. Write it down and commit to practicing it."
+            }
+        ];
+
+        function getProgress() {
+            const saved = localStorage.getItem(`rooted_study_${STUDY_ID}`);
+            return saved ? JSON.parse(saved) : { completed: [], currentWeek: 0 };
+        }
+
+        function saveProgress(progress) {
+            localStorage.setItem(`rooted_study_${STUDY_ID}`, JSON.stringify(progress));
+        }
+
+        function toggleWeek(weekIndex) {
+            const content = document.getElementById(`content-${weekIndex}`);
+            const isShowing = content.classList.contains('show');
+            document.querySelectorAll('.week-content').forEach(c => c.classList.remove('show'));
+            if (!isShowing) content.classList.add('show');
+        }
+
+        function completeWeek(weekIndex) {
+            const progress = getProgress();
+            if (!progress.completed.includes(weekIndex)) {
+                progress.completed.push(weekIndex);
+                progress.currentWeek = Math.max(progress.currentWeek, weekIndex + 1);
+                saveProgress(progress);
+                renderWeeks();
+            }
+        }
+
+        function renderWeeks() {
+            const progress = getProgress();
+            const container = document.getElementById('weeksContainer');
+            const completedCount = progress.completed.length;
+            document.getElementById('progressText').textContent = `${completedCount} of ${WEEKS.length} weeks completed`;
+            document.getElementById('progressFill').style.width = `${(completedCount / WEEKS.length) * 100}%`;
+            
+            container.innerHTML = WEEKS.map((week, index) => {
+                const isCompleted = progress.completed.includes(index);
+                const isLocked = index > progress.currentWeek && !isCompleted;
+                const canAccess = index <= progress.currentWeek || isCompleted;
+                
+                let extraHTML = '';
+                if (week.extraContent && week.extraContent.type === 'model') {
+                    extraHTML = `
+                        <div class="prayer-model">
+                            <h5>${week.extraContent.title}</h5>
+                            ${week.extraContent.items.map(item => `
+                                <div class="prayer-model-item">
+                                    <div class="prayer-model-letter">${item.letter}</div>
+                                    <div class="prayer-model-content">
+                                        <strong>${item.word}</strong>
+                                        ${item.description}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+                
+                return `
+                    <div class="week-card ${isCompleted ? 'completed' : ''} ${isLocked ? 'locked' : ''}">
+                        <div class="week-header" onclick="${canAccess ? `toggleWeek(${index})` : ''}">
+                            <div class="week-number">${index + 1}</div>
+                            <div class="week-info">
+                                <div class="week-title">${week.title}</div>
+                                <div class="week-subtitle">${week.subtitle}</div>
+                            </div>
+                            <div class="week-status">${isCompleted ? '✅' : isLocked ? '🔒' : '📖'}</div>
+                        </div>
+                        <div class="week-content" id="content-${index}">
+                            <div class="section">
+                                <div class="section-title">📜 Scripture</div>
+                                <div class="scripture-box">
+                                    ${week.scripture}
+                                    <span class="scripture-ref">— ${week.scriptureRef}</span>
+                                </div>
+                            </div>
+                            <div class="section">
+                                <div class="section-title">📚 Teaching</div>
+                                <div class="teaching">${week.teaching.map(p => `<p>${p}</p>`).join('')}</div>
+                            </div>
+                            ${extraHTML}
+                            <div class="section">
+                                <div class="section-title">💭 Reflection Questions</div>
+                                <ol class="questions">${week.questions.map(q => `<li>${q}</li>`).join('')}</ol>
+                            </div>
+                            <div class="action-step">
+                                <h4>🎯 This Week's Action Step</h4>
+                                <p>${week.actionStep}</p>
+                            </div>
+                            <button class="complete-btn" onclick="completeWeek(${index})" ${isCompleted ? 'disabled' : ''}>
+                                ${isCompleted ? '✓ Week Completed' : 'Mark Week as Complete'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        renderWeeks();
+    </script>
+</body>
+</html>

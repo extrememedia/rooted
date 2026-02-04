@@ -212,6 +212,10 @@ input, textarea, select { font-family: inherit; }
 .fso-filter-btn { transition: all 0.2s; }
 .fso-filter-btn.active { background: var(--root-green); color: white; border-color: var(--root-green); }
 
+/* Study Cards */
+.study-card { cursor: default; }
+.study-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.15); }
+
 /* Sidebar Overlay (mobile) */
 .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; display: none; }
 .sidebar-overlay.show { display: block; }
@@ -4903,12 +4907,81 @@ const FSO_RESOURCES = {
     }
 };
 
+// Rooted Original Study Series (internal content)
+const ROOTED_STUDIES = [
+    {
+        id: 'foundations-of-faith',
+        title: 'Foundations of Faith',
+        subtitle: 'Build an unshakeable foundation for your walk with Christ',
+        weeks: 6,
+        category: 'New Believers',
+        difficulty: 'Beginner',
+        color: '#2d5a47',
+        image: 'https://images.unsplash.com/photo-1504052434569-70ad5836ab65?w=600&h=400&fit=crop',
+        topics: ['Identity in Christ', 'Understanding God', 'The Gospel', 'Faith & Repentance'],
+        file: 'studies/foundations-of-faith.html'
+    },
+    {
+        id: 'prayer-life',
+        title: 'The Prayer Life',
+        subtitle: 'Transform your prayer life from routine to relationship',
+        weeks: 8,
+        category: 'Spiritual Growth',
+        difficulty: 'Intermediate',
+        color: '#7c3aed',
+        image: 'https://images.unsplash.com/photo-1545987796-200677ee1011?w=600&h=400&fit=crop',
+        topics: ['ACTS Model', 'Listening Prayer', 'Intercession', 'Persistent Prayer'],
+        file: 'studies/prayer-life.html'
+    },
+    {
+        id: 'spiritual-disciplines',
+        title: 'Spiritual Disciplines',
+        subtitle: 'A comprehensive journey through classical Christian practices',
+        weeks: 12,
+        category: 'Deep Discipleship',
+        difficulty: 'Advanced',
+        color: '#0891b2',
+        image: 'https://images.unsplash.com/photo-1499209974431-9dddcece7f88?w=600&h=400&fit=crop',
+        topics: ['Meditation', 'Fasting', 'Solitude', 'Service', 'Confession', 'Celebration'],
+        file: 'studies/spiritual-disciplines.html'
+    }
+];
+
 // Get saved FSO favorites from localStorage
 function getFSOFavorites() {
     try {
         return JSON.parse(localStorage.getItem('rooted_fso_favorites') || '[]');
     } catch (e) {
         return [];
+    }
+}
+
+// Get enabled studies for this church
+function getEnabledStudies() {
+    const church = getChurchData(State.current.user?.churchId);
+    return church?.enabledStudies || [];
+}
+
+// Toggle study enabled status
+async function toggleStudyEnabled(studyId) {
+    const church = getChurchData(State.current.user?.churchId);
+    let enabledStudies = church?.enabledStudies || [];
+    
+    if (enabledStudies.includes(studyId)) {
+        enabledStudies = enabledStudies.filter(id => id !== studyId);
+        toast('Study disabled', 'info');
+    } else {
+        enabledStudies.push(studyId);
+        toast('Study enabled for your church! 🎉', 'success');
+    }
+    
+    try {
+        await ChurchDB.updateChurch(State.current.user.churchId, { enabledStudies });
+        delete churchCache[State.current.user.churchId];
+        render();
+    } catch (e) {
+        console.error('Error updating studies:', e);
+        toast('Error updating study settings', 'error');
     }
 }
 
@@ -4931,80 +5004,56 @@ function toggleFSOFavorite(resourceId) {
 
 function renderChurchFSO() {
     const favorites = getFSOFavorites();
-    const searchQuery = '';
+    const enabledStudies = getEnabledStudies();
     
     return `
-    <div class="fade-up" style="max-width:1000px;margin:0 auto">
-        <!-- Header -->
-        <div class="card" style="margin-bottom:var(--space-lg);background:linear-gradient(135deg,#4f46e5,#7c3aed);color:white;border:none">
-            <div style="display:flex;align-items:center;gap:var(--space-lg);flex-wrap:wrap">
-                <div style="font-size:3rem">📚</div>
-                <div style="flex:1;min-width:200px">
-                    <h2 style="margin:0 0 var(--space-xs)">FSO Resources</h2>
-                    <p style="margin:0;opacity:0.9">Free Spiritual Online — Curated discipleship resources from trusted Christian organizations</p>
-                </div>
+    <div class="fade-up" style="max-width:1100px;margin:0 auto">
+        <!-- Hero Header -->
+        <div style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4338ca 100%);border-radius:20px;padding:40px;margin-bottom:30px;position:relative;overflow:hidden">
+            <div style="position:absolute;top:0;right:0;width:300px;height:100%;background:url('https://images.unsplash.com/photo-1504052434569-70ad5836ab65?w=400') right center/cover;opacity:0.15"></div>
+            <div style="position:relative;z-index:1">
+                <div style="display:inline-block;background:rgba(255,255,255,0.15);padding:6px 16px;border-radius:20px;font-size:0.85rem;margin-bottom:16px;color:white">📚 Discipleship Library</div>
+                <h1 style="color:white;font-size:2rem;margin:0 0 12px;font-weight:700">Studies & Resources</h1>
+                <p style="color:rgba(255,255,255,0.85);font-size:1rem;max-width:600px;margin:0">Ready-to-use weekly studies for your congregation. Enable studies to make them available to your members.</p>
             </div>
         </div>
         
-        <!-- Search & Filter -->
-        <div class="card" style="margin-bottom:var(--space-lg)">
-            <div style="display:flex;gap:var(--space-md);flex-wrap:wrap;align-items:center">
-                <div style="flex:1;min-width:200px">
-                    <input type="text" class="input-field" id="fsoSearch" placeholder="Search resources..." oninput="filterFSOResources()" style="margin:0">
-                </div>
-                <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap">
-                    <button class="btn btn-secondary fso-filter-btn active" onclick="filterFSOCategory('all')" data-category="all">All</button>
-                    <button class="btn btn-secondary fso-filter-btn" onclick="filterFSOCategory('favorites')" data-category="favorites">⭐ Favorites (${favorites.length})</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Categories -->
-        ${Object.entries(FSO_RESOURCES).map(([catKey, category]) => `
-        <div class="fso-category" data-category="${catKey}">
-            <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-lg)">
-                <span style="font-size:2rem">${category.icon}</span>
+        <!-- Rooted Studies Section -->
+        <div style="margin-bottom:40px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
                 <div>
-                    <h3 style="margin:0">${category.name}</h3>
-                    <p style="margin:0;color:var(--text-secondary);font-size:0.9rem">${category.description}</p>
+                    <h2 style="margin:0 0 4px;display:flex;align-items:center;gap:8px">📖 Rooted Original Studies</h2>
+                    <p style="margin:0;color:var(--text-secondary);font-size:0.9rem">High-quality weekly studies branded for your church</p>
                 </div>
+                <span style="background:var(--root-green);color:white;padding:6px 14px;border-radius:20px;font-size:0.85rem;font-weight:600">${enabledStudies.length} Enabled</span>
             </div>
             
-            <div style="display:grid;gap:var(--space-md)">
-                ${category.resources.map(resource => {
-                    const isFavorite = favorites.includes(resource.id);
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px">
+                ${ROOTED_STUDIES.map(study => {
+                    const isEnabled = enabledStudies.includes(study.id);
                     return `
-                    <div class="card fso-resource-card" data-resource-id="${resource.id}" style="border-left:4px solid ${resource.color};transition:all 0.2s">
-                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-md);flex-wrap:wrap">
-                            <div style="flex:1;min-width:250px">
-                                <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-sm)">
-                                    <h4 style="margin:0;font-size:1.1rem">${resource.name}</h4>
-                                    ${isFavorite ? '<span style="color:#f59e0b">⭐</span>' : ''}
-                                </div>
-                                <p style="margin:0 0 var(--space-sm);font-size:0.85rem;color:var(--text-tertiary)">
-                                    <span style="background:${resource.color}20;color:${resource.color};padding:2px 8px;border-radius:12px;font-size:0.75rem">${resource.stream}</span>
-                                </p>
-                                <p style="margin:0 0 var(--space-sm);color:var(--text-secondary);font-size:0.9rem">
-                                    <strong>Best for:</strong> ${resource.bestFor}
-                                </p>
-                                <p style="margin:0 0 var(--space-sm);color:var(--text-secondary);font-size:0.9rem">
-                                    <strong>Free:</strong> ${resource.freeContent}
-                                </p>
-                                <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;margin-top:var(--space-sm)">
-                                    ${resource.highlights.map(h => `
-                                        <span style="background:var(--hover-bg);padding:4px 10px;border-radius:16px;font-size:0.75rem;color:var(--text-secondary)">✓ ${h}</span>
-                                    `).join('')}
-                                </div>
+                    <div class="card study-card" style="padding:0;overflow:hidden;border:2px solid ${isEnabled ? 'var(--root-green)' : 'transparent'};transition:all 0.3s">
+                        <div style="position:relative;height:160px;background:url('${study.image}') center/cover">
+                            <div style="position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,0.85) 0%,rgba(0,0,0,0.3) 50%,transparent 100%)"></div>
+                            <div style="position:absolute;top:12px;left:12px;display:flex;gap:6px">
+                                <span style="background:${study.color};color:white;padding:4px 10px;border-radius:6px;font-size:0.75rem;font-weight:600">${study.weeks} Weeks</span>
+                                <span style="background:rgba(0,0,0,0.7);color:white;padding:4px 10px;border-radius:6px;font-size:0.75rem">${study.difficulty}</span>
                             </div>
-                            <div style="display:flex;flex-direction:column;gap:var(--space-sm);align-items:flex-end">
-                                <a href="${resource.url}" target="_blank" class="btn btn-primary" style="white-space:nowrap">
-                                    🔗 Visit Site
-                                </a>
-                                <button class="btn btn-ghost" onclick="toggleFSOFavorite('${resource.id}')" style="font-size:0.85rem">
-                                    ${isFavorite ? '★ Favorited' : '☆ Add to Favorites'}
-                                </button>
-                                <button class="btn btn-ghost" onclick="copyFSOLink('${resource.url}', '${resource.name.replace(/'/g, "\\'")}')" style="font-size:0.85rem">
-                                    📋 Copy Link
+                            ${isEnabled ? '<div style="position:absolute;top:12px;right:12px;background:var(--root-green);color:white;padding:4px 10px;border-radius:6px;font-size:0.75rem;font-weight:600">✓ ENABLED</div>' : ''}
+                            <div style="position:absolute;bottom:12px;left:12px;right:12px">
+                                <h3 style="color:white;margin:0 0 4px;font-size:1.2rem">${study.title}</h3>
+                                <p style="color:rgba(255,255,255,0.8);margin:0;font-size:0.85rem">${study.subtitle}</p>
+                            </div>
+                        </div>
+                        <div style="padding:16px">
+                            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+                                <span style="background:var(--hover-bg);padding:3px 8px;border-radius:12px;font-size:0.7rem;color:var(--text-secondary)">${study.category}</span>
+                                ${study.topics.slice(0,3).map(t => `<span style="background:var(--hover-bg);padding:3px 8px;border-radius:12px;font-size:0.7rem;color:var(--text-secondary)">${t}</span>`).join('')}
+                            </div>
+                            <div style="display:flex;gap:8px">
+                                <button class="btn btn-ghost btn-sm" onclick="window.open('${study.file}','_blank')" style="flex:1">👁 Preview</button>
+                                <button class="btn ${isEnabled ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="toggleStudyEnabled('${study.id}')" style="flex:1">
+                                    ${isEnabled ? '✓ Enabled' : '+ Enable'}
                                 </button>
                             </div>
                         </div>
@@ -5013,20 +5062,49 @@ function renderChurchFSO() {
                 }).join('')}
             </div>
         </div>
-        `).join('')}
         
-        <!-- Info Box -->
-        <div class="card" style="margin-top:var(--space-xl);background:var(--hover-bg);border:1px dashed var(--border-color)">
-            <div style="display:flex;align-items:flex-start;gap:var(--space-md)">
-                <span style="font-size:1.5rem">💡</span>
+        <!-- Divider -->
+        <div style="border-top:1px solid var(--border-color);margin:30px 0;position:relative">
+            <span style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--bg-primary);padding:0 16px;color:var(--text-tertiary);font-size:0.85rem">External Resources</span>
+        </div>
+        
+        <!-- External Resources Section -->
+        <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
                 <div>
-                    <strong style="display:block;margin-bottom:var(--space-xs)">How to Use FSO Resources</strong>
-                    <p style="margin:0;color:var(--text-secondary);font-size:0.9rem">
-                        Browse these trusted discipleship resources, save your favorites, and share links with your congregation. 
-                        These external resources complement your church's own materials and can be used for small groups, 
-                        personal study, or leader training.
-                    </p>
+                    <h2 style="margin:0 0 4px;display:flex;align-items:center;gap:8px">🔗 Partner Resources</h2>
+                    <p style="margin:0;color:var(--text-secondary);font-size:0.9rem">Curated discipleship content from trusted Christian organizations</p>
                 </div>
+                <div style="display:flex;gap:8px">
+                    <input type="text" class="input-field" id="fsoSearch" placeholder="Search..." oninput="filterFSOResources()" style="margin:0;width:180px;padding:8px 12px">
+                    <button class="btn btn-secondary fso-filter-btn ${favorites.length ? '' : 'active'}" onclick="filterFSOCategory('all')" data-category="all">All</button>
+                    <button class="btn btn-secondary fso-filter-btn" onclick="filterFSOCategory('favorites')" data-category="favorites">⭐ ${favorites.length}</button>
+                </div>
+            </div>
+            
+            <div style="display:grid;gap:12px">
+                ${FSO_RESOURCES.discipleship.resources.map(resource => {
+                    const isFavorite = favorites.includes(resource.id);
+                    return `
+                    <div class="card fso-resource-card" data-resource-id="${resource.id}" style="padding:16px;border-left:4px solid ${resource.color}">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
+                            <div style="flex:1;min-width:250px">
+                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                                    <h4 style="margin:0;font-size:1rem">${resource.name}</h4>
+                                    ${isFavorite ? '<span style="color:#f59e0b">⭐</span>' : ''}
+                                </div>
+                                <span style="display:inline-block;background:${resource.color}15;color:${resource.color};padding:2px 8px;border-radius:10px;font-size:0.7rem;margin-bottom:8px">${resource.stream}</span>
+                                <p style="margin:0;color:var(--text-secondary);font-size:0.85rem"><strong>Best for:</strong> ${resource.bestFor}</p>
+                            </div>
+                            <div style="display:flex;gap:8px;align-items:center">
+                                <button class="btn btn-ghost btn-sm" onclick="toggleFSOFavorite('${resource.id}')">${isFavorite ? '★' : '☆'}</button>
+                                <button class="btn btn-ghost btn-sm" onclick="copyFSOLink('${resource.url}', '${resource.name.replace(/'/g, "\\'")}')">📋</button>
+                                <a href="${resource.url}" target="_blank" class="btn btn-primary btn-sm">Visit →</a>
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                }).join('')}
             </div>
         </div>
     </div>`;

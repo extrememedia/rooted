@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spiritual Disciplines - Rooted Studies</title>
+    <style>
+        :root {
+            --primary: #0891b2;
+            --primary-light: #06b6d4;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent: #22d3ee;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; padding: 40px 20px; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); border-radius: 16px; margin-bottom: 30px; }
+        .header-badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 6px 16px; border-radius: 20px; font-size: 0.85rem; margin-bottom: 16px; }
+        .header h1 { font-size: 2rem; margin-bottom: 10px; }
+        .header p { opacity: 0.9; max-width: 500px; margin: 0 auto; }
+        .progress-bar { background: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 30px; }
+        .progress-label { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem; }
+        .progress-track { height: 8px; background: #334155; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #67e8f9); border-radius: 4px; transition: width 0.3s; }
+        .phase-title { font-size: 1.1rem; font-weight: 600; color: var(--accent); margin: 30px 0 15px; padding-left: 10px; border-left: 4px solid var(--accent); }
+        .week-card { background: var(--card-bg); border-radius: 12px; margin-bottom: 12px; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
+        .week-card:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+        .week-card.locked { opacity: 0.6; }
+        .week-card.completed { border-left: 4px solid var(--accent); }
+        .week-header { padding: 16px 20px; cursor: pointer; display: flex; align-items: center; gap: 16px; }
+        .week-number { width: 44px; height: 44px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem; }
+        .week-card.completed .week-number { background: linear-gradient(135deg, var(--accent), #67e8f9); color: #0f172a; }
+        .week-info { flex: 1; }
+        .week-title { font-weight: 600; font-size: 1rem; margin-bottom: 2px; }
+        .week-subtitle { color: var(--text-secondary); font-size: 0.85rem; }
+        .week-status { font-size: 1.3rem; }
+        .week-content { display: none; padding: 0 20px 20px; border-top: 1px solid #334155; }
+        .week-content.show { display: block; }
+        .section { margin-top: 20px; }
+        .section-title { display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 12px; color: var(--accent); font-size: 0.95rem; }
+        .scripture-box { background: #334155; border-left: 4px solid var(--accent); padding: 14px; border-radius: 0 8px 8px 0; font-style: italic; margin-bottom: 14px; font-size: 0.95rem; }
+        .scripture-ref { display: block; margin-top: 8px; font-style: normal; font-weight: 600; color: var(--accent); }
+        .teaching { color: var(--text-secondary); font-size: 0.95rem; }
+        .teaching p { margin-bottom: 10px; }
+        .questions { list-style: none; counter-reset: questions; }
+        .questions li { counter-increment: questions; padding: 10px 10px 10px 40px; background: #334155; border-radius: 8px; margin-bottom: 6px; position: relative; font-size: 0.9rem; }
+        .questions li::before { content: counter(questions); position: absolute; left: 10px; top: 10px; width: 22px; height: 22px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; }
+        .action-step { background: linear-gradient(135deg, var(--primary), var(--primary-light)); padding: 16px; border-radius: 10px; margin-top: 16px; font-size: 0.95rem; }
+        .action-step h4 { margin-bottom: 6px; font-size: 0.95rem; }
+        .complete-btn { width: 100%; padding: 14px; background: var(--accent); color: #0f172a; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; margin-top: 16px; transition: transform 0.2s; }
+        .complete-btn:hover { transform: scale(1.02); }
+        .complete-btn:disabled { background: #334155; color: var(--text-secondary); cursor: default; transform: none; }
+        .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--text-secondary); text-decoration: none; margin-bottom: 20px; font-size: 0.9rem; }
+        .back-btn:hover { color: var(--text); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="#" class="back-btn" onclick="window.close(); return false;">← Back to Studies</a>
+        
+        <div class="header">
+            <div class="header-badge">12-Week Study</div>
+            <h1>Spiritual Disciplines</h1>
+            <p>A comprehensive journey through the classical disciplines that have shaped believers for centuries.</p>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-label">
+                <span>Your Progress</span>
+                <span id="progressText">0 of 12 weeks completed</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <div id="weeksContainer"></div>
+    </div>
+
+    <script>
+        const STUDY_ID = 'spiritual-disciplines';
+        const PHASES = [
+            { name: "Phase 1: Inward Disciplines", weeks: [0, 1, 2, 3] },
+            { name: "Phase 2: Outward Disciplines", weeks: [4, 5, 6, 7] },
+            { name: "Phase 3: Corporate Disciplines", weeks: [8, 9, 10, 11] }
+        ];
+        const WEEKS = [
+            // Phase 1: Inward Disciplines
+            {
+                title: "Meditation",
+                subtitle: "Filling your mind with God's truth",
+                scripture: "Keep this Book of the Law always on your lips; meditate on it day and night, so that you may be careful to do everything written in it.",
+                scriptureRef: "Joshua 1:8",
+                teaching: [
+                    "Christian meditation is fundamentally different from Eastern meditation. While Eastern practices seek to empty the mind, Christian meditation seeks to fill it—with Scripture, with truth, with the character of God.",
+                    "To meditate is to think deeply, to chew on truth, to let it sink from your head to your heart. It's the bridge between reading Scripture and being transformed by it. Without meditation, we're like people who look in a mirror and immediately forget what they look like.",
+                    "The practice is simple: take a small portion of Scripture, read it slowly multiple times, emphasize different words, ask questions, and let it speak into your life. Give God's Word time to work."
+                ],
+                questions: [
+                    "What's the difference between reading the Bible and meditating on it?",
+                    "Read Psalm 1:1-3. What are the promised benefits of meditation?",
+                    "What obstacles keep you from slowing down to meditate on Scripture?",
+                    "Choose one verse—what happens when you read it five times, emphasizing a different word each time?"
+                ],
+                actionStep: "Select one verse each day this week. Spend 10 minutes with just that verse—read it slowly, write it out, pray through it, and ask God what He wants to show you."
+            },
+            {
+                title: "Prayer",
+                subtitle: "Conversation with the living God",
+                scripture: "Rejoice always, pray continually, give thanks in all circumstances; for this is God's will for you in Christ Jesus.",
+                scriptureRef: "1 Thessalonians 5:16-18",
+                teaching: [
+                    "Prayer is not a technique to master but a relationship to cultivate. It's not about finding the right words but about connecting with the right Person. God invites us into ongoing conversation.",
+                    "The discipline of prayer involves both scheduled times and spontaneous moments. We need focused times of prayer, but we're also invited into continual awareness of God throughout our day.",
+                    "Prayer changes things—including us. As we pray, we align with God's purposes, gain His perspective, and position ourselves to receive what He wants to give. Prayer is partnership with God in His work."
+                ],
+                questions: [
+                    "What does your current prayer life look like? What works well? What's missing?",
+                    "Read Matthew 6:5-15. What does Jesus teach about how to pray?",
+                    "What would it look like to 'pray continually' in your daily routine?",
+                    "How might viewing prayer as conversation rather than duty change your approach?"
+                ],
+                actionStep: "Experiment with different prayer rhythms: morning prayer, midday pause, evening review. Find a sustainable pattern and commit to it this week."
+            },
+            {
+                title: "Fasting",
+                subtitle: "Creating space for God through self-denial",
+                scripture: "When you fast, do not look somber as the hypocrites do... But when you fast, put oil on your head and wash your face, so that it will not be obvious to others that you are fasting, but only to your Father, who is unseen.",
+                scriptureRef: "Matthew 6:16-18",
+                teaching: [
+                    "Notice Jesus said 'when you fast,' not 'if you fast.' Fasting was assumed for His followers. It's a discipline that has been practiced throughout Scripture and church history, though often neglected today.",
+                    "Fasting is not about earning God's favor or twisting His arm. It's about creating space—removing distractions so we can hear more clearly, denying ourselves so we can depend more fully, making room for God to fill.",
+                    "While food fasting is most common, you can also fast from social media, entertainment, or other things that consume your attention. The point is intentional self-denial that heightens your hunger for God."
+                ],
+                questions: [
+                    "What is your experience with fasting? What concerns or questions do you have?",
+                    "Read Isaiah 58:6-7. What does God say about the kind of fasting He desires?",
+                    "What might you need to fast from to create more space for God?",
+                    "How can fasting help reveal what has power over you?"
+                ],
+                actionStep: "Practice a simple fast this week. Options: skip one meal and spend that time in prayer, fast from social media for a day, or go without entertainment one evening to seek God."
+            },
+            {
+                title: "Study",
+                subtitle: "Loving God with your mind",
+                scripture: "Do your best to present yourself to God as one approved, a worker who does not need to be ashamed and who correctly handles the word of truth.",
+                scriptureRef: "2 Timothy 2:15",
+                teaching: [
+                    "Study goes beyond devotional reading. It engages the mind purposefully to understand truth deeply. We're commanded to love God with all our mind, and study is one way we do this.",
+                    "The discipline of study involves concentration, comprehension, and reflection. It means digging into Scripture systematically, learning context and background, and allowing truth to reshape how we think.",
+                    "Study isn't just academic—it's transformational. As we renew our minds with truth, we're equipped to discern God's will and resist the world's deceptive patterns. Good thinking leads to good living."
+                ],
+                questions: [
+                    "What's the difference between reading Scripture and studying it?",
+                    "Read Romans 12:1-2. How does the renewal of your mind relate to transformation?",
+                    "What tools or resources could help you study Scripture more effectively?",
+                    "What book of the Bible would you like to study in depth? Why?"
+                ],
+                actionStep: "Choose one book of the Bible to study this week. Read it through entirely, research its background, outline its structure, and identify its main themes."
+            },
+            // Phase 2: Outward Disciplines
+            {
+                title: "Simplicity",
+                subtitle: "Freedom from the tyranny of things",
+                scripture: "But seek first his kingdom and his righteousness, and all these things will be given to you as well.",
+                scriptureRef: "Matthew 6:33",
+                teaching: [
+                    "Simplicity is not about poverty or having less stuff. It's about inner freedom from the power of possessions. It's the joyful unconcern for things that comes from trusting God completely.",
+                    "Our culture constantly tells us we need more. Simplicity pushes back by asking: What do I actually need? What has power over me? What is cluttering my life and distracting me from what matters most?",
+                    "Practicing simplicity might mean decluttering, giving generously, or simply being content with what you have. It's about holding loosely to earthly things and tightly to eternal ones."
+                ],
+                questions: [
+                    "What possessions or pursuits compete for your heart's allegiance?",
+                    "Read Luke 12:15-21. What warning does Jesus give? How does it apply today?",
+                    "What area of your life feels overly complicated or cluttered?",
+                    "How might practicing simplicity create more space for God and others?"
+                ],
+                actionStep: "Do a 'simplicity audit' this week. Identify three areas of excess in your life and take one practical step to simplify each one."
+            },
+            {
+                title: "Solitude",
+                subtitle: "Being alone with God to find yourself",
+                scripture: "Very early in the morning, while it was still dark, Jesus got up, left the house and went off to a solitary place, where he prayed.",
+                scriptureRef: "Mark 1:35",
+                teaching: [
+                    "Solitude is the practice of intentionally withdrawing from human interaction to be alone with God. Jesus modeled this regularly, retreating to pray before major decisions and after intense ministry.",
+                    "In solitude, we face ourselves honestly. Without the noise and opinions of others, we can hear God more clearly and know ourselves more truly. It's where we're stripped of pretense and find our identity in Christ alone.",
+                    "Solitude is not isolation or loneliness—it's chosen time alone that prepares us for deeper community. Paradoxically, learning to be alone with God makes us more present to others."
+                ],
+                questions: [
+                    "When was the last time you were truly alone, without any media or distraction?",
+                    "Read Luke 5:15-16. Why do you think Jesus made solitude a priority?",
+                    "What fears or resistances come up when you think about extended time alone?",
+                    "How might regular solitude change your relationship with God? With others?"
+                ],
+                actionStep: "Schedule a 'mini-retreat' this week—at least one hour of solitude. Find a quiet place, leave your phone behind, and simply be with God."
+            },
+            {
+                title: "Submission",
+                subtitle: "The freedom of living under authority",
+                scripture: "Submit to one another out of reverence for Christ.",
+                scriptureRef: "Ephesians 5:21",
+                teaching: [
+                    "Submission sounds countercultural because it is. Our world celebrates autonomy and self-determination. But the kingdom of God operates by a different logic—the way up is down, the last are first, and life comes through death to self.",
+                    "Biblical submission is not about weakness or inferiority. It's voluntary yielding for the sake of love and order. Jesus submitted to the Father's will, and we're called to submit to one another, to leaders, and to God's ways.",
+                    "Practicing submission means letting go of always having to be right, have control, or get our way. It's choosing trust over anxiety, humility over pride, and service over self-interest."
+                ],
+                questions: [
+                    "What comes to mind when you hear the word 'submission'? Positive or negative?",
+                    "Read Philippians 2:5-11. How did Jesus model submission? What was the result?",
+                    "In what areas of life do you struggle most to submit?",
+                    "How is submission connected to trust? To freedom?"
+                ],
+                actionStep: "Practice intentional submission this week. Let others choose, defer to someone's judgment, or yield your preferences joyfully. Notice what it stirs in your heart."
+            },
+            {
+                title: "Service",
+                subtitle: "Finding greatness through humble acts",
+                scripture: "The greatest among you will be your servant. For whoever exalts himself will be humbled, and whoever humbles himself will be exalted.",
+                scriptureRef: "Matthew 23:11-12",
+                teaching: [
+                    "Service is active love that meets real needs. It's not waiting for opportunities but looking for them. It's choosing to use our time, energy, and resources for others' benefit rather than our own.",
+                    "Jesus, the King of kings, washed His disciples' feet. He came not to be served but to serve. If He could kneel with a towel and basin, so can we. No act of service is beneath us.",
+                    "True service doesn't seek recognition or keep score. It serves regardless of the recipient's status, response, or awareness. It finds joy in the giving itself, not in the thanks or results."
+                ],
+                questions: [
+                    "Who in your life has modeled Christlike service to you?",
+                    "Read John 13:1-17. What did Jesus want His disciples to understand?",
+                    "What prevents you from serving others more freely?",
+                    "What needs around you have you been ignoring or not seeing?"
+                ],
+                actionStep: "Perform three secret acts of service this week—things that benefit others without any recognition or reward for yourself."
+            },
+            // Phase 3: Corporate Disciplines
+            {
+                title: "Confession",
+                subtitle: "The healing power of honest community",
+                scripture: "Therefore confess your sins to each other and pray for each other so that you may be healed.",
+                scriptureRef: "James 5:16",
+                teaching: [
+                    "Confession to God is essential—but Scripture also calls us to confess to one another. When we bring our darkness into the light with trusted believers, we experience healing and freedom that solitary confession cannot provide.",
+                    "Sin thrives in secrecy. When we confess to another person, we break its power. We find we're not alone, not as unique in our struggles as we thought. We receive grace embodied through human acceptance.",
+                    "Confession requires courage and trust. It means finding safe people who will respond with compassion rather than judgment. And it means being that safe person for others."
+                ],
+                questions: [
+                    "What makes confessing to another person different from confessing only to God?",
+                    "Read 1 John 1:5-9. What connection does John make between light, darkness, and fellowship?",
+                    "Do you have someone you can be fully honest with about your struggles?",
+                    "What holds you back from deeper vulnerability with other believers?"
+                ],
+                actionStep: "Take a risk of vulnerability this week. Share something real—a struggle, fear, or failure—with a trusted Christian friend. Experience grace in community."
+            },
+            {
+                title: "Worship",
+                subtitle: "Giving God the glory He deserves",
+                scripture: "Ascribe to the LORD the glory due his name; worship the LORD in the splendor of his holiness.",
+                scriptureRef: "Psalm 29:2",
+                teaching: [
+                    "Worship is both an attitude and an act. It's bowing our hearts before God in awe and reverence. It's declaring His worth—not to inform Him but to align ourselves with reality.",
+                    "Corporate worship is irreplaceable. When we gather with other believers, something happens that cannot happen alone. We encourage one another, we sing with one voice, we remember together that we're part of something bigger.",
+                    "True worship engages our whole being—mind, emotions, will, and body. It's not performance for others but expression to God. It can be exuberant or quiet, loud or silent—what matters is that it's genuine and God-directed."
+                ],
+                questions: [
+                    "What helps you genuinely connect with God in worship?",
+                    "Read Psalm 95:1-7. What postures and reasons for worship do you find?",
+                    "How is corporate worship different from private worship? Why do we need both?",
+                    "What distracts you most during worship? How might you address that?"
+                ],
+                actionStep: "Engage in worship intentionally this week—both personally and corporately. Try a new posture, sing with abandon, or spend extended time simply praising God for who He is."
+            },
+            {
+                title: "Guidance",
+                subtitle: "Discerning God's will in community",
+                scripture: "Plans fail for lack of counsel, but with many advisers they succeed.",
+                scriptureRef: "Proverbs 15:22",
+                teaching: [
+                    "We were not meant to navigate life alone. The discipline of guidance involves both seeking direction from God and seeking counsel from mature believers. God often speaks through His people.",
+                    "Scripture consistently values wisdom in community. We have blind spots others can see. We face decisions beyond our experience. The body of Christ provides collective wisdom that no individual possesses alone.",
+                    "This requires humility—admitting we don't have all the answers—and trust—believing God works through His people. It also requires being available to offer guidance to others when asked."
+                ],
+                questions: [
+                    "Who are the wise counselors in your life? How did you find them?",
+                    "Read Acts 15:1-29. How did the early church make a difficult decision together?",
+                    "What decision are you currently facing that could benefit from godly counsel?",
+                    "How can you become someone others trust for guidance?"
+                ],
+                actionStep: "Seek counsel this week. Identify a decision you're facing and talk to 2-3 mature believers about it. Listen carefully and prayerfully to their input."
+            },
+            {
+                title: "Celebration",
+                subtitle: "Living in the joy of the Lord",
+                scripture: "This is the day the LORD has made; let us rejoice and be glad in it.",
+                scriptureRef: "Psalm 118:24",
+                teaching: [
+                    "Celebration is not optional for believers—it's commanded. We serve a God who throws parties, commands festivals, and calls us to rejoice always. Joy is not the absence of hardship but the presence of God.",
+                    "The discipline of celebration involves intentionally focusing on what God has done, is doing, and will do. It's choosing gratitude over complaint, hope over despair, and worship over worry.",
+                    "Celebration with others multiplies joy. When we gather to remember God's faithfulness, share testimonies, and feast together, we encourage one another and declare to the world that our God is good."
+                ],
+                questions: [
+                    "What has God done in your life that deserves celebration?",
+                    "Read Nehemiah 8:9-12. Why did Nehemiah tell the people to celebrate instead of mourn?",
+                    "How can celebration be a spiritual discipline during difficult seasons?",
+                    "What might regular celebration add to your life and community?"
+                ],
+                actionStep: "Plan a celebration this week—it could be as simple as a special meal or as elaborate as a gathering with friends. Intentionally thank God and celebrate His goodness together."
+            }
+        ];
+
+        function getProgress() {
+            const saved = localStorage.getItem(`rooted_study_${STUDY_ID}`);
+            return saved ? JSON.parse(saved) : { completed: [], currentWeek: 0 };
+        }
+
+        function saveProgress(progress) {
+            localStorage.setItem(`rooted_study_${STUDY_ID}`, JSON.stringify(progress));
+        }
+
+        function toggleWeek(weekIndex) {
+            const content = document.getElementById(`content-${weekIndex}`);
+            const isShowing = content.classList.contains('show');
+            document.querySelectorAll('.week-content').forEach(c => c.classList.remove('show'));
+            if (!isShowing) content.classList.add('show');
+        }
+
+        function completeWeek(weekIndex) {
+            const progress = getProgress();
+            if (!progress.completed.includes(weekIndex)) {
+                progress.completed.push(weekIndex);
+                progress.currentWeek = Math.max(progress.currentWeek, weekIndex + 1);
+                saveProgress(progress);
+                renderWeeks();
+            }
+        }
+
+        function renderWeeks() {
+            const progress = getProgress();
+            const container = document.getElementById('weeksContainer');
+            const completedCount = progress.completed.length;
+            document.getElementById('progressText').textContent = `${completedCount} of ${WEEKS.length} weeks completed`;
+            document.getElementById('progressFill').style.width = `${(completedCount / WEEKS.length) * 100}%`;
+            
+            let html = '';
+            PHASES.forEach(phase => {
+                html += `<div class="phase-title">${phase.name}</div>`;
+                phase.weeks.forEach(weekIndex => {
+                    const week = WEEKS[weekIndex];
+                    const isCompleted = progress.completed.includes(weekIndex);
+                    const isLocked = weekIndex > progress.currentWeek && !isCompleted;
+                    const canAccess = weekIndex <= progress.currentWeek || isCompleted;
+                    
+                    html += `
+                        <div class="week-card ${isCompleted ? 'completed' : ''} ${isLocked ? 'locked' : ''}">
+                            <div class="week-header" onclick="${canAccess ? `toggleWeek(${weekIndex})` : ''}">
+                                <div class="week-number">${weekIndex + 1}</div>
+                                <div class="week-info">
+                                    <div class="week-title">${week.title}</div>
+                                    <div class="week-subtitle">${week.subtitle}</div>
+                                </div>
+                                <div class="week-status">${isCompleted ? '✅' : isLocked ? '🔒' : '📖'}</div>
+                            </div>
+                            <div class="week-content" id="content-${weekIndex}">
+                                <div class="section">
+                                    <div class="section-title">📜 Scripture</div>
+                                    <div class="scripture-box">
+                                        ${week.scripture}
+                                        <span class="scripture-ref">— ${week.scriptureRef}</span>
+                                    </div>
+                                </div>
+                                <div class="section">
+                                    <div class="section-title">📚 Teaching</div>
+                                    <div class="teaching">${week.teaching.map(p => `<p>${p}</p>`).join('')}</div>
+                                </div>
+                                <div class="section">
+                                    <div class="section-title">💭 Reflection Questions</div>
+                                    <ol class="questions">${week.questions.map(q => `<li>${q}</li>`).join('')}</ol>
+                                </div>
+                                <div class="action-step">
+                                    <h4>🎯 This Week's Action Step</h4>
+                                    <p>${week.actionStep}</p>
+                                </div>
+                                <button class="complete-btn" onclick="completeWeek(${weekIndex})" ${isCompleted ? 'disabled' : ''}>
+                                    ${isCompleted ? '✓ Week Completed' : 'Mark Week as Complete'}
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+            container.innerHTML = html;
+        }
+
+        renderWeeks();
+    </script>
+</body>
+</html>
