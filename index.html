@@ -1095,74 +1095,173 @@ body.videos-mode .main-header {
 
 <script>
 // ========== TIMEZONE UTILITIES ==========
-// Detect and manage timezone based on user/church location
+// Church schedules in church timezone, users see in their local timezone
 
-let userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone; // Default to device timezone
-let timezoneOffset = new Date().getTimezoneOffset(); // Minutes from UTC
+let userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone; // User's device timezone
 
-// Get timezone from coordinates using a lookup
-async function getTimezoneFromCoords(lat, lng) {
-    try {
-        // Use device timezone as it's typically accurate for the user's current location
-        // The browser's Intl API automatically detects the correct timezone
-        return Intl.DateTimeFormat().resolvedOptions().timeZone;
-    } catch (e) {
-        console.log('Timezone detection error:', e);
-        return 'America/Los_Angeles'; // Default to Pacific
+// Common timezone mappings for US states (used when we only have coordinates)
+const TIMEZONE_BY_STATE = {
+    'CA': 'America/Los_Angeles', 'WA': 'America/Los_Angeles', 'OR': 'America/Los_Angeles', 'NV': 'America/Los_Angeles',
+    'AZ': 'America/Phoenix', 'CO': 'America/Denver', 'MT': 'America/Denver', 'UT': 'America/Denver',
+    'WY': 'America/Denver', 'NM': 'America/Denver', 'TX': 'America/Chicago', 'IL': 'America/Chicago',
+    'MN': 'America/Chicago', 'WI': 'America/Chicago', 'MO': 'America/Chicago', 'IA': 'America/Chicago',
+    'NY': 'America/New_York', 'FL': 'America/New_York', 'GA': 'America/New_York', 'NC': 'America/New_York',
+    'VA': 'America/New_York', 'PA': 'America/New_York', 'OH': 'America/New_York', 'MA': 'America/New_York',
+    'NJ': 'America/New_York', 'MI': 'America/New_York', 'TN': 'America/Chicago', 'IN': 'America/Indiana/Indianapolis'
+};
+
+// Get church timezone from church data (address-based)
+function getChurchTimezone(church) {
+    if (!church) return 'America/Los_Angeles';
+    
+    // If church has explicit timezone set, use it
+    if (church.timezone) return church.timezone;
+    
+    // Try to determine from address
+    if (church.address) {
+        const stateMatch = church.address.match(/,\s*([A-Z]{2})\s*\d{5}/);
+        if (stateMatch && TIMEZONE_BY_STATE[stateMatch[1]]) {
+            return TIMEZONE_BY_STATE[stateMatch[1]];
+        }
     }
+    
+    // Default to Pacific
+    return 'America/Los_Angeles';
 }
 
-// Get the effective timezone for scheduling (user location > church location > device)
-function getEffectiveTimezone() {
-    // Check if user has a saved timezone preference
-    const savedTz = localStorage.getItem('rooted_user_timezone');
-    if (savedTz) return savedTz;
-    
-    // Use device/browser timezone (most reliable)
+// Get user's timezone (always from device)
+function getUserTimezone() {
     return userTimezone;
 }
 
-// Format date/time for display in the effective timezone
-function formatInTimezone(date, options = {}) {
-    const tz = getEffectiveTimezone();
-    return new Intl.DateTimeFormat('en-US', {
-        timeZone: tz,
-        ...options
-    }).format(date);
+// Get timezone abbreviation for a specific timezone
+function getTimezoneAbbrFor(tz) {
+    try {
+        const options = { timeZone: tz, timeZoneName: 'short' };
+        const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(new Date());
+        const tzPart = parts.find(p => p.type === 'timeZoneName');
+        return tzPart ? tzPart.value : '';
+    } catch (e) {
+        return '';
+    }
 }
 
-// Get current date/time in the effective timezone
-function getNowInTimezone() {
-    return new Date();
-}
-
-// Get timezone abbreviation (PST, EST, etc.)
+// Get user's timezone abbreviation
 function getTimezoneAbbr() {
-    const tz = getEffectiveTimezone();
-    const date = new Date();
-    const options = { timeZone: tz, timeZoneName: 'short' };
-    const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(date);
-    const tzPart = parts.find(p => p.type === 'timeZoneName');
-    return tzPart ? tzPart.value : '';
+    return getTimezoneAbbrFor(userTimezone);
 }
 
 // Get full timezone name
 function getTimezoneName() {
-    const tz = getEffectiveTimezone();
     try {
-        const options = { timeZone: tz, timeZoneName: 'long' };
+        const options = { timeZone: userTimezone, timeZoneName: 'long' };
         const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(new Date());
         const tzPart = parts.find(p => p.type === 'timeZoneName');
-        return tzPart ? tzPart.value : tz;
+        return tzPart ? tzPart.value : userTimezone;
     } catch (e) {
-        return tz;
+        return userTimezone;
     }
+}
+
+// Convert a date+time in church timezone to a UTC timestamp
+// dateStr: "2026-02-05", timeStr: "19:00", churchTz: "America/Los_Angeles"
+function churchTimeToTimestamp(dateStr, timeStr, churchTz) {
+    // Create a date string that we can parse with the church timezone
+    const dateTimeStr = `${dateStr}T${timeStr}:00`;
+    
+    // Get the offset for the church timezone on that date
+    const tempDate = new Date(dateTimeStr);
+    const churchFormatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: churchTz,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+    });
+    
+    // Parse in UTC and adjust for church timezone
+    // This is a workaround since JS doesn't have native timezone support
+    const parts = dateTimeStr.split('T');
+    const [year, month, day] = parts[0].split('-').map(Number);
+    const [hour, minute] = parts[1].split(':').map(Number);
+    
+    // Create date assuming it's in church timezone
+    // Use a reference point to calculate the offset
+    const utcDate = new Date(Date.UTC(year, month - 1, day, hour, minute, 0));
+    
+    // Get the timezone offset for the church timezone at this time
+    const tzOffsetMs = getTimezoneOffsetMs(churchTz, utcDate);
+    
+    // Adjust to get the actual UTC time
+    return utcDate.getTime() + tzOffsetMs;
+}
+
+// Get timezone offset in milliseconds for a timezone at a specific date
+function getTimezoneOffsetMs(tz, date) {
+    const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
+    const tzDate = new Date(date.toLocaleString('en-US', { timeZone: tz }));
+    return utcDate - tzDate;
+}
+
+// Format a timestamp for display in user's timezone
+function formatTimestampForUser(timestamp, options = {}) {
+    const date = new Date(timestamp);
+    return new Intl.DateTimeFormat('en-US', {
+        timeZone: userTimezone,
+        ...options
+    }).format(date);
+}
+
+// Get "today", "tomorrow", or date string for a timestamp in user's timezone
+function getRelativeDayLabel(timestamp) {
+    const now = new Date();
+    const target = new Date(timestamp);
+    
+    // Get today's date in user timezone
+    const todayStr = formatTimestampForUser(now.getTime(), { year: 'numeric', month: '2-digit', day: '2-digit' });
+    const targetStr = formatTimestampForUser(timestamp, { year: 'numeric', month: '2-digit', day: '2-digit' });
+    
+    // Get tomorrow's date
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = formatTimestampForUser(tomorrow.getTime(), { year: 'numeric', month: '2-digit', day: '2-digit' });
+    
+    if (targetStr === todayStr) return 'today';
+    if (targetStr === tomorrowStr) return 'tomorrow';
+    
+    // Calculate days until
+    const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const targetMidnight = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+    const daysUntil = Math.ceil((targetMidnight - nowMidnight) / (24 * 60 * 60 * 1000));
+    
+    if (daysUntil < 0) return 'past';
+    if (daysUntil <= 7) return `${daysUntil} days`;
+    
+    return formatTimestampForUser(timestamp, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+// Check if a timestamp has passed (resource is unlocked)
+function isTimestampPast(timestamp) {
+    return Date.now() >= timestamp;
+}
+
+// Format time from timestamp in user's timezone (e.g., "7:00 PM PST")
+function formatTimeFromTimestamp(timestamp) {
+    const timeStr = formatTimestampForUser(timestamp, { hour: 'numeric', minute: '2-digit', hour12: true });
+    return timeStr + ' ' + getTimezoneAbbr();
+}
+
+// Format full date/time from timestamp in user's timezone
+function formatFullDateTime(timestamp) {
+    return formatTimestampForUser(timestamp, {
+        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+        hour: 'numeric', minute: '2-digit', hour12: true
+    }) + ' ' + getTimezoneAbbr();
 }
 
 // Initialize timezone on load
 function initTimezone() {
     userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    console.log('Detected timezone:', userTimezone, '(' + getTimezoneAbbr() + ')');
+    console.log('User timezone:', userTimezone, '(' + getTimezoneAbbr() + ')');
 }
 initTimezone();
 
@@ -5870,13 +5969,20 @@ async function saveResourceSchedule(resourceId) {
     const church = getChurchData(churchId);
     let playlist = [...(church?.resourcePlaylist || [])];
     
+    // Get church timezone for proper timestamp calculation
+    const churchTz = getChurchTimezone(church);
+    
     const index = playlist.findIndex(r => r.id === resourceId);
     if (index >= 0) {
+        // Calculate timestamp in church timezone
+        const timestamp = churchTimeToTimestamp(selectedScheduleDate, time, churchTz);
+        
         playlist[index] = { 
             ...playlist[index], 
             scheduledDate: selectedScheduleDate,
             scheduledTime: time,
-            scheduledTimestamp: new Date(selectedScheduleDate + 'T' + time).getTime()
+            scheduledTimestamp: timestamp,
+            churchTimezone: churchTz // Store for reference
         };
         
         try {
@@ -7428,62 +7534,48 @@ function renderChurchMembers() {
     return `
     <div class="fade-up">
         <!-- Stats Overview -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--space-md);margin-bottom:var(--space-lg)">
-            <div class="card" style="text-align:center;border-top:4px solid ${tierColors[tier] || '#22c55e'}">
-                <div style="font-size:2.5rem;font-weight:700;color:${tierColors[tier] || '#22c55e'}">${memberCount}</div>
-                <p style="color:var(--text-secondary);margin:0">Total Users</p>
-                <p style="font-size:0.75rem;color:var(--text-tertiary);margin:var(--space-xs) 0 0">Connected to your church</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--space-md);margin-bottom:var(--space-lg)">
+            <div class="card" style="text-align:center;padding:var(--space-md);border-top:3px solid ${tierColors[tier] || '#22c55e'}">
+                <div style="font-size:2rem;font-weight:700;color:${tierColors[tier] || '#22c55e'}">${memberCount}</div>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.85rem">Total Users</p>
             </div>
-            <div class="card" style="text-align:center;border-top:4px solid #3b82f6">
-                <div id="claimedMemberCount" style="font-size:2.5rem;font-weight:700;color:#3b82f6">-</div>
-                <p style="color:var(--text-secondary);margin:0">Confirmed Members</p>
-                <p style="font-size:0.75rem;color:var(--text-tertiary);margin:var(--space-xs) 0 0">Admin confirmed</p>
+            <div class="card" style="text-align:center;padding:var(--space-md);border-top:3px solid #3b82f6">
+                <div id="claimedMemberCount" style="font-size:2rem;font-weight:700;color:#3b82f6">-</div>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.85rem">Members</p>
             </div>
-            <div class="card" style="text-align:center;border-top:4px solid #f59e0b">
-                <div id="totalCheckInsCount" style="font-size:2.5rem;font-weight:700;color:#f59e0b">-</div>
-                <p style="color:var(--text-secondary);margin:0">Total Check-ins</p>
-                <p style="font-size:0.75rem;color:var(--text-tertiary);margin:var(--space-xs) 0 0">All time</p>
+            <div class="card" style="text-align:center;padding:var(--space-md);border-top:3px solid #f59e0b">
+                <div id="totalCheckInsCount" style="font-size:2rem;font-weight:700;color:#f59e0b">-</div>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.85rem">Check-ins</p>
+            </div>
+            <div class="card" style="text-align:center;padding:var(--space-md);border-top:3px solid #8b5cf6">
+                <div id="activeThisWeekCount" style="font-size:2rem;font-weight:700;color:#8b5cf6">-</div>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.85rem">Active This Week</p>
             </div>
         </div>
         
-        <!-- Capacity -->
-        <div class="card" style="margin-bottom:var(--space-lg);border-left:4px solid ${tierColors[tier] || '#22c55e'}">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--space-md)">
-                <div>
-                    <h3 style="margin:0;display:flex;align-items:center;gap:var(--space-sm)">
-                        <span>📊</span> Capacity
-                        <span style="padding:4px 12px;background:${tierColors[tier] || '#22c55e'};color:white;border-radius:20px;font-size:0.75rem;font-weight:600">
-                            ${tierNames[tier] || 'Free'} Plan
-                        </span>
-                    </h3>
-                    <p style="color:var(--text-secondary);margin:var(--space-sm) 0 0 0">
-                        ${maxMembers === -1 ? `${memberCount} users (Unlimited capacity)` : `${memberCount} of ${maxMembers} user slots used`}
-                    </p>
+        <!-- Search and Filters -->
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <div style="display:flex;gap:var(--space-md);flex-wrap:wrap;align-items:center">
+                <div style="flex:1;min-width:200px">
+                    <input type="text" id="memberSearch" class="input-field" placeholder="Search by name..." oninput="searchMembers(this.value)" style="margin:0">
                 </div>
-                <button class="btn btn-primary" onclick="showUpgradeModal()">⬆️ Upgrade Plan</button>
-            </div>
-            
-            ${maxMembers !== -1 ? `
-                <div style="margin-top:var(--space-md)">
-                    <div style="height:8px;background:var(--hover-bg);border-radius:4px;overflow:hidden">
-                        <div style="height:100%;width:${Math.min((memberCount / maxMembers) * 100, 100)}%;background:${memberCount >= maxMembers ? 'var(--error)' : memberCount >= maxMembers * 0.8 ? 'var(--warning)' : 'var(--root-green)'};transition:width 0.3s"></div>
-                    </div>
-                </div>
-            ` : ''}
-        </div>
-        
-        <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md);flex-wrap:wrap;gap:var(--space-sm)">
-                <h3 style="margin:0">📋 User List</h3>
                 <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap">
-                    <button class="btn btn-ghost btn-sm" onclick="filterMembers('all')" id="filterAll" style="background:var(--hover-bg)">All</button>
-                    <button class="btn btn-ghost btn-sm" onclick="filterMembers('members')" id="filterMembers">Members Only</button>
+                    <button class="btn btn-sm" onclick="filterMembers('all')" id="filterAll" style="background:var(--primary);color:white">All</button>
+                    <button class="btn btn-ghost btn-sm" onclick="filterMembers('members')" id="filterMembers">Members</button>
+                    <button class="btn btn-ghost btn-sm" onclick="filterMembers('attendees')" id="filterAttendees">Attendees</button>
                     <button class="btn btn-ghost btn-sm" onclick="loadChurchMembers('${churchId}')" title="Refresh">🔄</button>
                 </div>
             </div>
-            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">View and manage users who have connected to your church. Use "Make Member" to confirm membership after they complete your church's membership process.</p>
+        </div>
+        
+        <!-- Members Rolodex List -->
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
+                <h3 style="margin:0">👥 Member Directory</h3>
+                <span id="membersShowing" style="font-size:0.8rem;color:var(--text-tertiary)"></span>
+            </div>
             
-            <div id="membersList" style="display:grid;gap:var(--space-md)">
+            <div id="membersList">
                 <div style="text-align:center;padding:var(--space-xl)">
                     <div class="loading-spinner" style="width:32px;height:32px;margin:0 auto var(--space-md)"></div>
                     <p style="color:var(--text-tertiary)">Loading members...</p>
@@ -7491,88 +7583,283 @@ function renderChurchMembers() {
             </div>
         </div>
         
-        <!-- Debug Info (remove in production) -->
-        <div style="margin-top:var(--space-lg);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);font-size:0.75rem;color:var(--text-tertiary)">
-            <strong>Debug:</strong> Church ID: ${churchId || 'Not set'}
+        <!-- Capacity Info -->
+        <div style="margin-top:var(--space-lg);padding:var(--space-md);background:var(--hover-bg);border-radius:var(--radius-md);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--space-md)">
+            <div>
+                <span style="font-weight:600">${tierNames[tier]} Plan</span>
+                <span style="color:var(--text-secondary);margin-left:8px">
+                    ${maxMembers === -1 ? 'Unlimited capacity' : `${memberCount}/${maxMembers} slots used`}
+                </span>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="showUpgradeModal()">⬆️ Upgrade</button>
         </div>
     </div>`;
 }
 
 let allMembersData = [];
+let currentMemberFilter = 'all';
+let memberSearchTerm = '';
 
 function filterMembers(filter) {
-    document.getElementById('filterAll').style.background = filter === 'all' ? 'var(--hover-bg)' : '';
-    document.getElementById('filterMembers').style.background = filter === 'members' ? 'var(--hover-bg)' : '';
+    currentMemberFilter = filter;
+    
+    // Update button styles
+    document.querySelectorAll('#filterAll, #filterMembers, #filterAttendees').forEach(btn => {
+        btn.style.background = '';
+        btn.style.color = '';
+        btn.classList.add('btn-ghost');
+    });
+    
+    const activeBtn = document.getElementById(filter === 'all' ? 'filterAll' : filter === 'members' ? 'filterMembers' : 'filterAttendees');
+    if (activeBtn) {
+        activeBtn.style.background = 'var(--primary)';
+        activeBtn.style.color = 'white';
+        activeBtn.classList.remove('btn-ghost');
+    }
+    
+    applyMemberFilters();
+}
+
+function searchMembers(term) {
+    memberSearchTerm = term.toLowerCase().trim();
+    applyMemberFilters();
+}
+
+function applyMemberFilters() {
+    let filtered = [...allMembersData];
+    
+    // Apply status filter
+    if (currentMemberFilter === 'members') {
+        filtered = filtered.filter(m => m.isMember);
+    } else if (currentMemberFilter === 'attendees') {
+        filtered = filtered.filter(m => !m.isMember);
+    }
+    
+    // Apply search filter
+    if (memberSearchTerm) {
+        filtered = filtered.filter(m => {
+            const fullName = `${m.firstName || ''} ${m.lastName || ''} ${m.name || ''}`.toLowerCase();
+            return fullName.includes(memberSearchTerm);
+        });
+    }
     
     const container = document.getElementById('membersList');
-    if (!container || !allMembersData.length) return;
+    if (container) {
+        renderMembersList(container, filtered);
+    }
     
-    const filtered = filter === 'members' ? allMembersData.filter(m => m.isMember) : allMembersData;
-    renderMembersList(container, filtered);
+    const showingEl = document.getElementById('membersShowing');
+    if (showingEl) {
+        showingEl.textContent = `Showing ${filtered.length} of ${allMembersData.length}`;
+    }
 }
 
 function renderMembersList(container, members) {
     if (!members.length) {
-        container.innerHTML = '<p style="color:var(--text-tertiary);text-align:center;padding:var(--space-xl)">No users found.</p>';
+        container.innerHTML = `
+            <div style="text-align:center;padding:var(--space-xl);color:var(--text-tertiary)">
+                <div style="font-size:3rem;margin-bottom:var(--space-md)">👥</div>
+                <p>No members found</p>
+            </div>`;
         return;
     }
     
+    // Sort alphabetically by last name, then first name
+    members.sort((a, b) => {
+        const aName = (a.lastName || a.name || '').toLowerCase();
+        const bName = (b.lastName || b.name || '').toLowerCase();
+        if (aName !== bName) return aName.localeCompare(bName);
+        return (a.firstName || '').toLowerCase().localeCompare((b.firstName || '').toLowerCase());
+    });
+    
     container.innerHTML = `
-        <div style="overflow-x:auto">
-            <table style="width:100%;border-collapse:collapse;font-size:0.9rem">
-                <thead>
-                    <tr style="background:var(--hover-bg);text-align:left">
-                        <th style="padding:12px 16px;font-weight:600;white-space:nowrap">Name</th>
-                        <th style="padding:12px 16px;font-weight:600;white-space:nowrap">Email</th>
-                        <th style="padding:12px 16px;font-weight:600;white-space:nowrap">Phone</th>
-                        <th style="padding:12px 16px;font-weight:600;white-space:nowrap">Address</th>
-                        <th style="padding:12px 16px;font-weight:600;white-space:nowrap">Joined</th>
-                        <th style="padding:12px 16px;font-weight:600;white-space:nowrap">Status</th>
-                        <th style="padding:12px 16px;font-weight:600;white-space:nowrap">Check-ins</th>
-                        <th style="padding:12px 16px;font-weight:600;white-space:nowrap">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${members.map((member, i) => `
-                        <tr style="border-bottom:1px solid var(--border-color);${i % 2 === 0 ? '' : 'background:var(--hover-bg);opacity:0.7'}">
-                            <td style="padding:12px 16px;white-space:nowrap">
-                                <div style="display:flex;align-items:center;gap:10px">
-                                    <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--root-green),var(--leaf-green));display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:0.85rem;flex-shrink:0">
-                                        ${member.name.charAt(0).toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <strong>${member.lastName ? member.lastName + ', ' + member.firstName : member.name}</strong>
-                                    </div>
-                                </div>
-                            </td>
-                            <td style="padding:12px 16px;color:var(--text-secondary)">${member.email || '-'}</td>
-                            <td style="padding:12px 16px;color:var(--text-secondary);white-space:nowrap">${member.phone || '-'}</td>
-                            <td style="padding:12px 16px;color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis">${member.address || '-'}</td>
-                            <td style="padding:12px 16px;color:var(--text-tertiary);white-space:nowrap">${member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : '-'}</td>
-                            <td style="padding:12px 16px">
-                                ${member.isMember 
-                                    ? '<span style="background:var(--root-green);color:white;font-size:0.7rem;padding:3px 8px;border-radius:10px">✓ Member</span>' 
-                                    : '<span style="background:var(--hover-bg);color:var(--text-tertiary);font-size:0.7rem;padding:3px 8px;border-radius:10px">Attendee</span>'}
-                            </td>
-                            <td style="padding:12px 16px;text-align:center">
-                                <button class="btn btn-ghost" onclick="showMemberCheckIns('${member.id}', '${member.name.replace(/'/g, "\\'")}')" style="font-size:0.75rem;padding:4px 10px">
-                                    ${member.checkInCount || 0}
-                                </button>
-                            </td>
-                            <td style="padding:12px 16px;white-space:nowrap">
-                                ${member.isMember 
-                                    ? `<button class="btn btn-ghost btn-sm" onclick="toggleMemberStatus('${member.id}', false)" style="font-size:0.7rem;color:var(--error)">Remove Member</button>`
-                                    : `<button class="btn btn-primary btn-sm" onclick="toggleMemberStatus('${member.id}', true)" style="font-size:0.7rem">Make Member</button>`}
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
+        <div style="display:grid;gap:8px">
+            ${members.map(member => {
+                const initials = getInitials(member);
+                const displayName = member.lastName 
+                    ? `${member.lastName}, ${member.firstName || ''}` 
+                    : member.name || 'Unknown';
+                const joinDate = member.joinedAt ? new Date(member.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '-';
+                const checkIns = member.checkInCount || 0;
+                const lastActive = member.lastCheckIn ? getRelativeTime(member.lastCheckIn) : 'Never';
+                
+                return `
+                <div class="member-row" onclick="showMemberDetail('${member.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card-bg);border-radius:var(--radius-md);cursor:pointer;transition:all 0.2s;border:1px solid var(--border-color)" onmouseover="this.style.background='var(--hover-bg)';this.style.transform='translateX(4px)'" onmouseout="this.style.background='var(--card-bg)';this.style.transform='none'">
+                    <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,${member.isMember ? 'var(--root-green),var(--leaf-green)' : '#6b7280,#9ca3af'});display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:0.9rem;flex-shrink:0">
+                        ${initials}
+                    </div>
+                    <div style="flex:1;min-width:0">
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                            <strong style="font-size:0.95rem">${displayName}</strong>
+                            ${member.isMember 
+                                ? '<span style="background:var(--root-green);color:white;font-size:0.65rem;padding:2px 6px;border-radius:8px">Member</span>' 
+                                : '<span style="background:var(--hover-bg);color:var(--text-tertiary);font-size:0.65rem;padding:2px 6px;border-radius:8px">Attendee</span>'}
+                        </div>
+                        <div style="font-size:0.8rem;color:var(--text-tertiary);margin-top:2px">
+                            Joined ${joinDate} • ${checkIns} check-in${checkIns !== 1 ? 's' : ''} • Last active: ${lastActive}
+                        </div>
+                    </div>
+                    <div style="color:var(--text-tertiary);font-size:1.2rem">→</div>
+                </div>
+                `;
+            }).join('')}
         </div>
-        <p style="color:var(--text-tertiary);font-size:0.8rem;margin-top:var(--space-md);text-align:right">
-            Showing ${members.length} ${members.length === 1 ? 'user' : 'users'}
-        </p>
     `;
+}
+
+function getInitials(member) {
+    if (member.firstName && member.lastName) {
+        return (member.firstName[0] + member.lastName[0]).toUpperCase();
+    }
+    if (member.name) {
+        const parts = member.name.trim().split(' ');
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        return member.name.substring(0, 2).toUpperCase();
+    }
+    return '??';
+}
+
+function getRelativeTime(timestamp) {
+    if (!timestamp) return 'Never';
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    if (days < 30) return `${Math.floor(days / 7)}w ago`;
+    return new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// Show detailed member profile modal
+function showMemberDetail(memberId) {
+    const member = allMembersData.find(m => m.id === memberId);
+    if (!member) return;
+    
+    const initials = getInitials(member);
+    const displayName = member.lastName 
+        ? `${member.firstName || ''} ${member.lastName}` 
+        : member.name || 'Unknown';
+    const joinDate = member.joinedAt ? new Date(member.joinedAt).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'Unknown';
+    
+    // Calculate metrics
+    const checkIns = member.checkInCount || 0;
+    const lastActive = member.lastCheckIn ? formatTimestampForUser(member.lastCheckIn, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Never';
+    const toolsUsed = member.toolsUsed || 0;
+    const studiesCompleted = member.studiesCompleted || 0;
+    const notesCount = member.notesCount || 0;
+    
+    // Engagement score (simple calculation)
+    let engagementScore = 0;
+    if (checkIns > 0) engagementScore += Math.min(checkIns * 5, 30);
+    if (toolsUsed > 0) engagementScore += Math.min(toolsUsed * 3, 25);
+    if (studiesCompleted > 0) engagementScore += studiesCompleted * 10;
+    if (notesCount > 0) engagementScore += Math.min(notesCount * 2, 15);
+    if (member.lastCheckIn && Date.now() - member.lastCheckIn < 7 * 24 * 60 * 60 * 1000) engagementScore += 20;
+    engagementScore = Math.min(engagementScore, 100);
+    
+    const engagementColor = engagementScore >= 70 ? 'var(--root-green)' : engagementScore >= 40 ? '#f59e0b' : 'var(--text-tertiary)';
+    const engagementLabel = engagementScore >= 70 ? 'Highly Engaged' : engagementScore >= 40 ? 'Moderately Active' : 'Low Activity';
+    
+    showModal(`
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:600px;max-height:90vh;overflow-y:auto">
+            <div class="modal-header" style="background:linear-gradient(135deg,${member.isMember ? 'var(--root-green),var(--leaf-green)' : '#6b7280,#9ca3af'});color:white;margin:-24px -24px 0;padding:24px;border-radius:var(--radius-lg) var(--radius-lg) 0 0">
+                <div style="display:flex;align-items:center;gap:16px">
+                    <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700">
+                        ${initials}
+                    </div>
+                    <div style="flex:1">
+                        <h3 style="margin:0">${displayName}</h3>
+                        <p style="margin:4px 0 0;opacity:0.9">${member.isMember ? '✓ Church Member' : 'Attendee'}</p>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="closeModal()" style="color:white">✕</button>
+            </div>
+            
+            <div class="modal-body" style="padding-top:24px">
+                <!-- Contact Info -->
+                <div style="margin-bottom:24px">
+                    <h4 style="margin:0 0 12px;font-size:0.9rem;color:var(--text-tertiary)">CONTACT INFORMATION</h4>
+                    <div style="display:grid;gap:8px">
+                        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color)">
+                            <span style="color:var(--text-secondary)">Email</span>
+                            <span style="font-weight:500">${member.email || '-'}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color)">
+                            <span style="color:var(--text-secondary)">Phone</span>
+                            <span style="font-weight:500">${member.phone || '-'}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color)">
+                            <span style="color:var(--text-secondary)">Address</span>
+                            <span style="font-weight:500;text-align:right;max-width:60%">${member.address || '-'}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:8px 0">
+                            <span style="color:var(--text-secondary)">Joined</span>
+                            <span style="font-weight:500">${joinDate}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Engagement Score -->
+                <div style="margin-bottom:24px;padding:16px;background:var(--hover-bg);border-radius:var(--radius-md)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                        <h4 style="margin:0;font-size:0.9rem">Engagement Score</h4>
+                        <span style="font-size:1.5rem;font-weight:700;color:${engagementColor}">${engagementScore}%</span>
+                    </div>
+                    <div style="height:8px;background:var(--border-color);border-radius:4px;overflow:hidden;margin-bottom:8px">
+                        <div style="height:100%;width:${engagementScore}%;background:${engagementColor};border-radius:4px"></div>
+                    </div>
+                    <p style="margin:0;font-size:0.85rem;color:${engagementColor};font-weight:500">${engagementLabel}</p>
+                </div>
+                
+                <!-- Activity Metrics -->
+                <div style="margin-bottom:24px">
+                    <h4 style="margin:0 0 12px;font-size:0.9rem;color:var(--text-tertiary)">ACTIVITY METRICS</h4>
+                    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+                        <div style="text-align:center;padding:16px;background:var(--card-bg);border-radius:var(--radius-md);border:1px solid var(--border-color)">
+                            <div style="font-size:1.8rem;font-weight:700;color:#f59e0b">${checkIns}</div>
+                            <p style="margin:0;font-size:0.8rem;color:var(--text-secondary)">Check-ins</p>
+                        </div>
+                        <div style="text-align:center;padding:16px;background:var(--card-bg);border-radius:var(--radius-md);border:1px solid var(--border-color)">
+                            <div style="font-size:1.8rem;font-weight:700;color:#3b82f6">${toolsUsed}</div>
+                            <p style="margin:0;font-size:0.8rem;color:var(--text-secondary)">Tools Used</p>
+                        </div>
+                        <div style="text-align:center;padding:16px;background:var(--card-bg);border-radius:var(--radius-md);border:1px solid var(--border-color)">
+                            <div style="font-size:1.8rem;font-weight:700;color:#8b5cf6">${studiesCompleted}</div>
+                            <p style="margin:0;font-size:0.8rem;color:var(--text-secondary)">Studies Done</p>
+                        </div>
+                        <div style="text-align:center;padding:16px;background:var(--card-bg);border-radius:var(--radius-md);border:1px solid var(--border-color)">
+                            <div style="font-size:1.8rem;font-weight:700;color:#22c55e">${notesCount}</div>
+                            <p style="margin:0;font-size:0.8rem;color:var(--text-secondary)">Notes Saved</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Last Activity -->
+                <div style="margin-bottom:24px;padding:12px;background:var(--hover-bg);border-radius:var(--radius-md)">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <span style="color:var(--text-secondary)">Last Active</span>
+                        <span style="font-weight:500">${lastActive}</span>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div style="display:flex;gap:12px;flex-wrap:wrap">
+                    ${member.isMember 
+                        ? `<button class="btn btn-ghost" onclick="toggleMemberStatus('${member.id}', false); closeModal();" style="flex:1;color:var(--error)">Remove Membership</button>`
+                        : `<button class="btn btn-primary" onclick="toggleMemberStatus('${member.id}', true); closeModal();" style="flex:1">Make Member</button>`
+                    }
+                    <button class="btn btn-ghost" onclick="showMemberCheckIns('${member.id}', '${displayName.replace(/'/g, "\\'")}')">View Check-ins</button>
+                </div>
+            </div>
+        </div>
+    `);
 }
 
 // Toggle membership status (admin only)
@@ -7656,6 +7943,9 @@ async function loadChurchMembers(churchId) {
                         // Count check-ins for this church
                         const checkInHistory = userData.checkInHistory || [];
                         const churchCheckIns = checkInHistory.filter(c => c.churchId === churchId);
+                        const lastCheckIn = churchCheckIns.length > 0 
+                            ? Math.max(...churchCheckIns.map(c => c.timestamp || 0)) 
+                            : null;
                         
                         // Parse name into first/last
                         const fullName = userData.name || userData.displayName || 'Unknown User';
@@ -7673,7 +7963,11 @@ async function loadChurchMembers(churchId) {
                             phone: userData.phone || '',
                             address: userData.address || '',
                             isMember: userData.isMember || false,
-                            checkInCount: churchCheckIns.length
+                            checkInCount: churchCheckIns.length,
+                            lastCheckIn: lastCheckIn,
+                            toolsUsed: userData.toolHistory?.length || 0,
+                            studiesCompleted: userData.completedStudies?.length || 0,
+                            notesCount: userData.notes?.length || 0
                         };
                     } catch (e) {
                         console.error('Error loading user data:', e);
@@ -7715,6 +8009,9 @@ async function loadChurchMembers(churchId) {
                         // Count check-ins for this church
                         const checkInHistory = userData.checkInHistory || [];
                         const churchCheckIns = checkInHistory.filter(c => c.churchId === churchId);
+                        const lastCheckIn = churchCheckIns.length > 0 
+                            ? Math.max(...churchCheckIns.map(c => c.timestamp || 0)) 
+                            : null;
                         
                         return {
                             id: doc.id,
@@ -7726,6 +8023,10 @@ async function loadChurchMembers(churchId) {
                             address: userData.address || '',
                             isMember: userData.isMember || false,
                             checkInCount: churchCheckIns.length,
+                            lastCheckIn: lastCheckIn,
+                            toolsUsed: userData.toolHistory?.length || 0,
+                            studiesCompleted: userData.completedStudies?.length || 0,
+                            notesCount: userData.notes?.length || 0,
                             joinedAt: userData.createdAt || null
                         };
                     });
@@ -7771,11 +8072,20 @@ async function loadChurchMembers(churchId) {
         const claimedMembers = members.filter(m => m.isMember).length;
         const totalCheckIns = members.reduce((sum, m) => sum + (m.checkInCount || 0), 0);
         
+        // Calculate active this week (members with check-in in last 7 days)
+        const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+        const activeThisWeek = members.filter(m => m.lastCheckIn && m.lastCheckIn > oneWeekAgo).length;
+        
         // Update stat cards
         const claimedEl = document.getElementById('claimedMemberCount');
         const checkInsEl = document.getElementById('totalCheckInsCount');
+        const activeEl = document.getElementById('activeThisWeekCount');
+        const showingEl = document.getElementById('membersShowing');
+        
         if (claimedEl) claimedEl.textContent = claimedMembers.toString();
         if (checkInsEl) checkInsEl.textContent = totalCheckIns.toString();
+        if (activeEl) activeEl.textContent = activeThisWeek.toString();
+        if (showingEl) showingEl.textContent = `Showing ${members.length} of ${members.length}`;
         
         // Render member list
         renderMembersList(container, members);
@@ -8418,17 +8728,22 @@ function renderDashboard() {
                         <h4 style="margin:0 0 8px;font-size:0.85rem;color:var(--text-tertiary)">🔒 Coming Soon</h4>
                         <div style="display:grid;gap:6px">
                             ${upcomingResources.map(r => {
-                                const unlockDate = new Date(r.scheduledTimestamp);
-                                const daysUntil = Math.ceil((r.scheduledTimestamp - now) / (24 * 60 * 60 * 1000));
-                                const tzAbbr = getTimezoneAbbr();
+                                const relativeDay = getRelativeDayLabel(r.scheduledTimestamp);
+                                const unlockTimeStr = formatTimeFromTimestamp(r.scheduledTimestamp);
+                                const unlockDateStr = formatTimestampForUser(r.scheduledTimestamp, { weekday: 'short', month: 'short', day: 'numeric' });
+                                
+                                let relativeSuffix = '';
+                                if (relativeDay === 'today') relativeSuffix = ' (today)';
+                                else if (relativeDay === 'tomorrow') relativeSuffix = ' (tomorrow)';
+                                else if (relativeDay.includes('days')) relativeSuffix = ` (${relativeDay})`;
+                                
                                 return `
                                 <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--hover-bg);border-radius:8px;opacity:0.7">
                                     <div style="width:32px;height:32px;background:var(--card-bg);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:0.9rem">🔒</div>
                                     <div style="flex:1">
                                         <div style="font-weight:500;font-size:0.85rem">${r.title}</div>
                                         <div style="font-size:0.7rem;color:var(--text-tertiary)">
-                                            Unlocks ${unlockDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${formatTime12h(r.scheduledTime || '19:00')} ${tzAbbr}
-                                            ${daysUntil === 1 ? ' (tomorrow)' : daysUntil <= 7 ? ` (${daysUntil} days)` : ''}
+                                            Unlocks ${unlockDateStr} at ${unlockTimeStr}${relativeSuffix}
                                         </div>
                                     </div>
                                 </div>
@@ -10743,10 +11058,24 @@ function renderUserStudies() {
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--space-md)">
                 ${upcomingResources.map(r => {
                     const partner = PARTNER_RESOURCE_LIBRARIES[r.partnerId];
-                    const unlockDate = new Date(r.scheduledTimestamp);
-                    const daysUntil = Math.ceil((r.scheduledTimestamp - now) / (24 * 60 * 60 * 1000));
+                    const relativeDay = getRelativeDayLabel(r.scheduledTimestamp);
                     const color = partner?.color || '#6b7280';
-                    const tzAbbr = getTimezoneAbbr();
+                    const unlockTimeStr = formatTimeFromTimestamp(r.scheduledTimestamp);
+                    const unlockDateStr = formatTimestampForUser(r.scheduledTimestamp, { weekday: 'short', month: 'short', day: 'numeric' });
+                    
+                    // Determine countdown text
+                    let countdownText;
+                    if (relativeDay === 'today') {
+                        countdownText = '⏰ Unlocks today!';
+                    } else if (relativeDay === 'tomorrow') {
+                        countdownText = '⏰ Unlocks tomorrow';
+                    } else if (relativeDay === 'past') {
+                        countdownText = '✓ Available now';
+                    } else if (relativeDay.includes('days')) {
+                        countdownText = `⏰ ${relativeDay} until unlock`;
+                    } else {
+                        countdownText = `⏰ Unlocks ${relativeDay}`;
+                    }
                     
                     return `
                     <div class="card" style="padding:0;overflow:hidden;opacity:0.75">
@@ -10761,11 +11090,11 @@ function renderUserStudies() {
                         <div style="padding:var(--space-md)">
                             <h4 style="margin:0 0 4px">${r.title}</h4>
                             <p style="margin:0 0 var(--space-md);color:var(--text-secondary);font-size:0.85rem;line-height:1.4">
-                                Unlocks ${unlockDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${formatTime12h(r.scheduledTime || '19:00')} ${tzAbbr}
+                                Unlocks ${unlockDateStr} at ${unlockTimeStr}
                             </p>
                             <div style="background:var(--hover-bg);padding:10px 12px;border-radius:8px;text-align:center">
                                 <span style="font-size:0.9rem;color:var(--text-secondary);font-weight:500">
-                                    ${daysUntil === 0 ? '⏰ Unlocks today!' : daysUntil === 1 ? '⏰ Unlocks tomorrow' : `⏰ ${daysUntil} days until unlock`}
+                                    ${countdownText}
                                 </span>
                             </div>
                         </div>
