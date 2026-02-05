@@ -13193,23 +13193,37 @@ function pulseRenderConvoList(container, isAdmin) {
         const timeStr = c.lastMessageAt?.toMillis ? getRelativeTime(c.lastMessageAt.toMillis()) : c.lastMessageAt ? getRelativeTime(c.lastMessageAt) : '';
         const isBc = c.type === 'broadcast';
         
+        // Look up the actual church name from the stored churchId
+        const churchObj = getChurchData(c.churchId);
+        const churchName = c.churchName || churchObj?.name || State.current.user?.name || 'Church';
+        
         // Title logic:
-        // Broadcast on USER side → show church name (from stored churchName field)
-        // Broadcast on ADMIN side → show subject/title
-        // DM → show the OTHER person's name
+        // Broadcast → always show church name as title (subject goes in subtitle)
+        // DM from admin to user → user sees church name
+        // DM between users → show the other person's name
         let title;
-        if (isBc && !isAdmin) {
-            // User sees church name for broadcasts
-            title = c.churchName || c.senderName || 'Church';
-            if (c.title) title += ': ' + c.title;
-        } else if (isBc && isAdmin) {
-            title = c.title || 'Broadcast';
+        let subtitle = c.lastMessage || 'No messages yet';
+        
+        if (isBc) {
+            // Broadcast: church name is the title, subject becomes part of subtitle
+            title = churchName;
+            if (c.title) subtitle = c.title + (c.lastMessage ? ' — ' + c.lastMessage : '');
         } else {
-            // DM - show the other person's name
-            const otherName = c.participantNames?.find((n, i) => c.participants?.[i] !== myId) 
-                || c.participantNames?.filter(n => n !== myName).join(', ')
-                || 'Message';
-            title = otherName;
+            // DM - figure out who the other person is
+            const adminPrefix = 'admin_';
+            const otherIdx = c.participants?.findIndex(p => p !== myId);
+            const otherParticipant = otherIdx >= 0 ? c.participants[otherIdx] : null;
+            const otherNameFromArr = otherIdx >= 0 ? c.participantNames?.[otherIdx] : null;
+            
+            if (!isAdmin && otherParticipant?.startsWith(adminPrefix)) {
+                // User is viewing a DM from admin → show church name
+                title = churchName;
+            } else if (isAdmin && otherParticipant && !otherParticipant.startsWith(adminPrefix)) {
+                // Admin is viewing a DM with a user → show user name
+                title = otherNameFromArr || 'User';
+            } else {
+                title = otherNameFromArr || c.participantNames?.filter(n => n !== myName).join(', ') || 'Message';
+            }
         }
         
         const icon = isBc ? '📣' : '💬';
@@ -13219,7 +13233,7 @@ function pulseRenderConvoList(container, isAdmin) {
             '<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,' + grad + ');display:flex;align-items:center;justify-content:center;color:white;font-size:1.1rem;flex-shrink:0">' + icon + '</div>' +
             '<div style="flex:1;min-width:0">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center"><strong style="font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + title + '</strong><span style="font-size:0.7rem;color:var(--text-tertiary);flex-shrink:0;margin-left:8px">' + timeStr + '</span></div>' +
-                '<p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (c.lastMessage || 'No messages yet') + '</p>' +
+                '<p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + subtitle + '</p>' +
             '</div>' +
         '</div>';
     }).join('') + '</div>';
