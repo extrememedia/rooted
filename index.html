@@ -13530,7 +13530,7 @@ async function pulseSendMsg(convoId) {
     input.focus();
     const isAdmin = State.current.accountType === 'church';
     const myId = isAdmin ? 'admin_' + pulseGetChurchId() : Auth.currentUser?.uid;
-    const myName = isAdmin ? 'Church Admin' : (Auth.currentUser?.name || 'User');
+    const myName = isAdmin ? (State.current.user?.name || 'Church Admin') : (Auth.currentUser?.name || 'User');
     const msg = { senderId: myId, senderName: myName, text, timestamp: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(), type: 'text' };
     
     if (firebaseInitialized) {
@@ -13552,7 +13552,7 @@ async function pulseSendImage(input, convoId) {
     const file = input.files?.[0]; if(!file) return;
     const isAdmin = State.current.accountType === 'church';
     const myId = isAdmin ? 'admin_' + pulseGetChurchId() : Auth.currentUser?.uid;
-    const myName = isAdmin ? 'Church Admin' : (Auth.currentUser?.name || 'User');
+    const myName = isAdmin ? (State.current.user?.name || 'Church Admin') : (Auth.currentUser?.name || 'User');
     showUploadOverlay('Sending image...', 0, 1);
     try {
         let url = '';
@@ -13616,7 +13616,7 @@ async function pulseSendBroadcast(audience) {
         try {
             const ref = await db.collection('pulse_conversations').add(convo);
             await ref.collection('messages').add({
-                senderId: adminId, senderName: 'Church Admin',
+                senderId: adminId, senderName: State.current.user?.name || 'Church Admin',
                 text: message,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 type: 'text'
@@ -13627,7 +13627,7 @@ async function pulseSendBroadcast(audience) {
         const s = JSON.parse(localStorage.getItem('pulse_convos_' + churchId) || '[]');
         s.unshift(convo);
         localStorage.setItem('pulse_convos_' + churchId, JSON.stringify(s));
-        localStorage.setItem('pulse_msgs_' + id, JSON.stringify([{senderId: adminId, senderName:'Church Admin', text: message, timestamp: Date.now(), type:'text'}]));
+        localStorage.setItem('pulse_msgs_' + id, JSON.stringify([{senderId: adminId, senderName: State.current.user?.name || 'Church Admin', text: message, timestamp: Date.now(), type:'text'}]));
     }
     closeModal(); toast('Broadcast sent!','success'); navigate('church-pulse');
 }
@@ -13667,7 +13667,7 @@ async function pulseStartDM(userId, userName) {
     if (existingId) { closeModal(); pulseOpenConvo(existingId); return; }
     
     // Create new conversation
-    const myName = isAdmin ? 'Church Admin' : (Auth.currentUser?.name || 'User');
+    const myName = isAdmin ? (State.current.user?.name || 'Church Admin') : (Auth.currentUser?.name || 'User');
     const convo = {
         churchId, type: 'direct',
         participants: [myId, userId],
