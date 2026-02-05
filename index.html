@@ -1634,10 +1634,10 @@ const State = {
     restoreNavState() {
         // First check URL hash
         const hash = window.location.hash.slice(1);
-        if (hash && ['dashboard', 'my-church', 'church-videos', 'tools', 'progress', 'profile', 'settings', 
+        if (hash && ['dashboard', 'my-church', 'church-videos', 'tools', 'progress', 'profile', 'settings', 'pulse', 'studies',
                      'church-dashboard', 'church-members', 'church-resources', 'church-checkin-resources',
                      'church-announcements', 'church-youtube', 'church-social', 'church-branding',
-                     'church-membership', 'church-location', 'church-tools', 'church-fso'].includes(hash)) {
+                     'church-membership', 'church-location', 'church-tools', 'church-fso', 'church-pulse'].includes(hash)) {
             return { activeNav: hash };
         }
         
@@ -12912,9 +12912,22 @@ let pulseConnections = [];
 let pulsePendingRequests = [];
 let pulsePrivacy = { visibility: 'everyone', allowMessages: 'everyone' };
 
+// Helper: get churchId for EITHER admin or user accounts
+function pulseGetChurchId() {
+    // Admin accounts store churchId directly on the user object
+    if (State.current.accountType === 'church' && State.current.user?.churchId) {
+        return State.current.user.churchId;
+    }
+    // User accounts use the cached active church from getUserChurch()
+    const fromCache = getUserChurch(Auth.currentUser?.uid);
+    if (fromCache) return fromCache;
+    // Last resort: check cachedActiveChurch directly
+    return cachedActiveChurch || null;
+}
+
 // ---- ADMIN PULSE ----
 function renderAdminPulse() {
-    const churchId = State.current.user?.churchId;
+    const churchId = pulseGetChurchId();
     if (churchId) setTimeout(() => pulseLoadConversations(churchId, true), 100);
     return `
     <div class="fade-up">
@@ -12945,7 +12958,7 @@ function renderAdminPulse() {
 
 // ---- USER PULSE ----
 function renderPulse() {
-    const churchId = State.current.user?.churchId;
+    const churchId = pulseGetChurchId();
     if (!churchId) return '<div class="card" style="text-align:center;padding:40px"><p>Join a church first to use Pulse</p></div>';
 
     // Load data based on tab
@@ -13323,7 +13336,7 @@ async function pulseOpenConvo(convoId) {
     }
     
     const isAdmin = State.current.accountType === 'church';
-    const myId = isAdmin ? 'admin_' + State.current.user?.churchId : Auth.currentUser?.uid;
+    const myId = isAdmin ? 'admin_' + pulseGetChurchId() : Auth.currentUser?.uid;
     const title = convo.title || convo.participantNames?.filter(n => n !== (Auth.currentUser?.name||'')).join(', ') || 'Conversation';
     const isBc = convo.type === 'broadcast';
     
@@ -13368,7 +13381,7 @@ async function pulseSendMsg(convoId) {
     if (!input || !input.value.trim()) return;
     const text = input.value.trim(); input.value = '';
     const isAdmin = State.current.accountType === 'church';
-    const myId = isAdmin ? 'admin_' + State.current.user?.churchId : Auth.currentUser?.uid;
+    const myId = isAdmin ? 'admin_' + pulseGetChurchId() : Auth.currentUser?.uid;
     const myName = isAdmin ? 'Church Admin' : (Auth.currentUser?.name || 'User');
     const msg = { senderId: myId, senderName: myName, text, timestamp: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(), type: 'text' };
     
@@ -13388,13 +13401,13 @@ async function pulseSendMsg(convoId) {
 async function pulseSendImage(input, convoId) {
     const file = input.files?.[0]; if(!file) return;
     const isAdmin = State.current.accountType === 'church';
-    const myId = isAdmin ? 'admin_' + State.current.user?.churchId : Auth.currentUser?.uid;
+    const myId = isAdmin ? 'admin_' + pulseGetChurchId() : Auth.currentUser?.uid;
     const myName = isAdmin ? 'Church Admin' : (Auth.currentUser?.name || 'User');
     showUploadOverlay('Sending image...', 0, 1);
     try {
         let url = '';
         if (firebaseInitialized && firebase.storage) {
-            const ref = firebase.storage().ref('pulse-images/' + State.current.user?.churchId + '/' + Date.now() + '_' + file.name);
+            const ref = firebase.storage().ref('pulse-images/' + pulseGetChurchId() + '/' + Date.now() + '_' + file.name);
             await ref.put(file); url = await ref.getDownloadURL();
         } else { url = URL.createObjectURL(file); }
         const msg = { senderId: myId, senderName: myName, text: '', imageUrl: url, timestamp: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(), type: 'image' };
@@ -13436,7 +13449,7 @@ async function pulseSendBroadcast(audience) {
     const title = document.getElementById('bcTitle')?.value?.trim() || 'Church Announcement';
     const message = document.getElementById('bcMessage')?.value?.trim();
     if (!message) { toast('Please enter a message','error'); return; }
-    const churchId = State.current.user?.churchId;
+    const churchId = pulseGetChurchId();
     const adminId = 'admin_' + churchId;
     const convo = {
         churchId, type: 'broadcast', audience,
@@ -13472,7 +13485,7 @@ async function pulseSendBroadcast(audience) {
 // ==========================================
 
 async function pulseStartDM(userId, userName) {
-    const churchId = State.current.user?.churchId;
+    const churchId = pulseGetChurchId();
     const isAdmin = State.current.accountType === 'church';
     const myId = isAdmin ? 'admin_' + churchId : Auth.currentUser?.uid;
     
@@ -13557,7 +13570,7 @@ function pulseGetConnectionStatus(userId) {
 }
 
 async function pulseSendConnRequest(toId, toName) {
-    const churchId = State.current.user?.churchId;
+    const churchId = pulseGetChurchId();
     const myId = Auth.currentUser?.uid;
     const myName = Auth.currentUser?.name || 'User';
     if (!firebaseInitialized) { toast('Requires Firebase','error'); return; }
@@ -13586,7 +13599,7 @@ async function pulseRespondConn(connectionId, response) {
             respondedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         toast(response === 'accepted' ? 'Connected!' : 'Request declined','success');
-        await pulseLoadConnections(State.current.user?.churchId);
+        await pulseLoadConnections(pulseGetChurchId());
         navigate('pulse');
     } catch(e) { toast('Failed to respond','error'); }
 }
