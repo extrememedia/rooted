@@ -13087,11 +13087,36 @@ async function loadPulseConversations(churchId, isAdmin) {
     }
     try {
         const userId = isAdmin ? 'admin_' + churchId : Auth.currentUser?.uid;
-        const snapshot = isAdmin
-            ? await db.collection('pulse_conversations').where('churchId', '==', churchId).orderBy('lastMessageAt', 'desc').limit(50).get()
-            : await db.collection('pulse_conversations').where('churchId', '==', churchId).where('participants', 'array-contains', userId).orderBy('lastMessageAt', 'desc').limit(50).get();
+        let snapshot;
+        try {
+            // Try with orderBy (requires composite index in Firestore)
+            snapshot = isAdmin
+                ? await db.collection('pulse_conversations').where('churchId', '==', churchId).orderBy('lastMessageAt', 'desc').limit(50).get()
+                : await db.collection('pulse_conversations').where('churchId', '==', churchId).where('participants', 'array-contains', userId).orderBy('lastMessageAt', 'desc').limit(50).get();
+        } catch (indexErr) {
+            // Fallback: no orderBy (no index needed), sort client-side
+            console.log('Pulse: orderBy index not ready, using fallback:', indexErr.message);
+            try {
+                snapshot = isAdmin
+                    ? await db.collection('pulse_conversations').where('churchId', '==', churchId).limit(50).get()
+                    : await db.collection('pulse_conversations').where('churchId', '==', churchId).where('participants', 'array-contains', userId).limit(50).get();
+            } catch (fallbackErr) {
+                // Collection may not exist yet - that's OK
+                console.log('Pulse: collection may not exist yet:', fallbackErr.message);
+                snapshot = { docs: [] };
+            }
+        }
         pulseConversations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } catch (e) { console.error('Pulse load error:', e); pulseConversations = []; }
+        // Client-side sort by lastMessageAt descending
+        pulseConversations.sort((a, b) => {
+            const aTime = a.lastMessageAt?.toMillis?.() || a.lastMessageAt || 0;
+            const bTime = b.lastMessageAt?.toMillis?.() || b.lastMessageAt || 0;
+            return bTime - aTime;
+        });
+    } catch (e) {
+        console.error('Pulse load error:', e);
+        pulseConversations = [];
+    }
     renderPulseList(container, isAdmin);
 }
 
@@ -13232,7 +13257,23 @@ async function startDirectMessage(userId, userName) {
 
     // Check for existing conversation
     let existing = null;
-    if (firebaseInitialized) { try { const snap = await db.collection('pulse_conversations').where('churchId','==',churchId).where('type','==','direct').where('participants','array-contains',myId).get(); const found = snap.docs.find(d => d.data().participants?.includes(userId)); if(found) existing = {id:found.id,...found.data()}; } catch(e){} }
+    if (firebaseInitialized) { 
+        try { 
+            // Try compound query first
+            let snap;
+            try {
+                snap = await db.collection('pulse_conversations').where('churchId','==',churchId).where('type','==','direct').where('participants','array-contains',myId).get(); 
+            } catch(indexErr) {
+                // Fallback without type filter
+                snap = await db.collection('pulse_conversations').where('participants','array-contains',myId).get();
+            }
+            const found = snap.docs.find(d => {
+                const data = d.data();
+                return data.churchId === churchId && data.type === 'direct' && data.participants?.includes(userId);
+            }); 
+            if(found) existing = {id:found.id,...found.data()}; 
+        } catch(e){ console.log('DM existing check failed:', e.message); } 
+    }
     if (existing) { closeModal(); openPulseConvo(existing.id); return; }
 
     const convo = { churchId, type:'direct', participants:[myId,userId], participantNames:[isAdmin ? '⛪ Church Admin' : (Auth.currentUser?.name||'User'), userName], lastMessage:'', lastMessageAt: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(), createdBy:myId };
@@ -13416,12 +13457,26 @@ function showBodyProfile(userId) {
 async function loadMyConnections(churchId) {
     if (!firebaseInitialized) { myConnections = []; pendingRequests = []; return; }
     const myId = Auth.currentUser?.uid;
-    if (!myId) return;
+    if (!myId) { myConnections = []; pendingRequests = []; return; }
     try {
-        // Get all connections where I'm involved
-        const snap1 = await db.collection('pulse_connections').where('fromId','==',myId).where('churchId','==',churchId).get();
-        const snap2 = await db.collection('pulse_connections').where('toId','==',myId).where('churchId','==',churchId).get();
-        myConnections = [...snap1.docs.map(d => ({id:d.id,...d.data()})), ...snap2.docs.map(d => ({id:d.id,...d.data()}))];
+        // Get all connections where I'm involved - try compound query first
+        let snap1, snap2;
+        try {
+            snap1 = await db.collection('pulse_connections').where('fromId','==',myId).where('churchId','==',churchId).get();
+            snap2 = await db.collection('pulse_connections').where('toId','==',myId).where('churchId','==',churchId).get();
+        } catch(indexErr) {
+            // Fallback: query by just fromId/toId, filter churchId client-side
+            console.log('Connections: index not ready, using fallback:', indexErr.message);
+            try {
+                snap1 = await db.collection('pulse_connections').where('fromId','==',myId).get();
+                snap2 = await db.collection('pulse_connections').where('toId','==',myId).get();
+            } catch(e2) {
+                // Collection may not exist yet
+                snap1 = { docs: [] }; snap2 = { docs: [] };
+            }
+        }
+        const all = [...snap1.docs.map(d => ({id:d.id,...d.data()})), ...snap2.docs.map(d => ({id:d.id,...d.data()}))];
+        myConnections = all.filter(c => c.churchId === churchId);
         pendingRequests = myConnections.filter(c => c.status === 'pending');
     } catch(e) { console.error('Load connections error:', e); myConnections = []; pendingRequests = []; }
 }
