@@ -278,6 +278,8 @@ input, textarea, select { font-family: inherit; }
     .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
     .welcome-banner { padding: var(--space-lg); }
     .welcome-banner::after { display: none; }
+    .modal-overlay .modal { max-width: calc(100vw - 24px) !important; max-height: 90vh; }
+    .card { max-width: 100%; box-sizing: border-box; overflow: hidden; }
 }
 @media (max-width: 480px) {
     .main-body { padding: var(--space-sm); }
@@ -5541,7 +5543,20 @@ function renderChurchFSO() {
         <!-- Resource Scheduler Section -->
         ${(() => {
             const playlist = getChurchResourcePlaylist(State.current.user?.churchId);
-            if (playlist.length === 0) return '';
+            if (playlist.length === 0) return `
+        <div style="margin-bottom:40px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+                <div>
+                    <h2 style="margin:0 0 4px;display:flex;align-items:center;gap:8px">📅 Resource Scheduler</h2>
+                    <p style="margin:0;color:var(--text-secondary);font-size:0.9rem">Schedule and push resources to your congregation</p>
+                </div>
+            </div>
+            <div class="card" style="text-align:center;padding:40px">
+                <div style="font-size:2.5rem;margin-bottom:12px">📅</div>
+                <p style="font-weight:500;margin:0 0 8px">No resources in your playlist yet</p>
+                <p style="font-size:0.85rem;color:var(--text-tertiary);margin:0">Browse the Partner Resource Libraries below and add resources to your playlist to start scheduling them for your congregation.</p>
+            </div>
+        </div>`;
             
             // Group by scheduled date
             const scheduled = playlist.filter(r => r.scheduledDate);
@@ -7891,7 +7906,7 @@ function renderMembersList(container, members) {
                     </div>`;
                 
                 return `
-                <div class="member-row" onclick="showMemberDetail('${member.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card-bg);border-radius:var(--radius-md);cursor:pointer;transition:all 0.2s;border:1px solid var(--border-color)" onmouseover="this.style.background='var(--hover-bg)';this.style.transform='translateX(4px)'" onmouseout="this.style.background='var(--card-bg)';this.style.transform='none'">
+                <div class="member-row" onclick="showMemberDetail('${member.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 12px;background:var(--card-bg);border-radius:var(--radius-md);cursor:pointer;max-width:100%;box-sizing:border-box;overflow:hidden;transition:all 0.2s;border:1px solid var(--border-color)" onmouseover="this.style.background='var(--hover-bg)';this.style.transform='translateX(4px)'" onmouseout="this.style.background='var(--card-bg)';this.style.transform='none'">
                     ${avatarHTML}
                     <div style="flex:1;min-width:0">
                         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -12967,6 +12982,9 @@ function renderAdminPulse() {
 }
 
 // ---- USER PULSE ----
+let pulseUnreadCount = 0;
+let pulseMuted = JSON.parse(localStorage.getItem('pulse_muted') || 'false');
+
 function renderPulse() {
     const churchId = pulseGetChurchId();
     if (!churchId) return '<div class="card" style="text-align:center;padding:40px"><p>Join a church first to use Pulse</p></div>';
@@ -12975,28 +12993,150 @@ function renderPulse() {
     setTimeout(() => {
         if (pulseTab === 'inbox') pulseLoadConversations(churchId, false);
         else if (pulseTab === 'people') pulseLoadPeople(churchId);
+        else if (pulseTab === 'requests') { pulseLoadConnections(churchId).then(() => pulseRenderRequests()); }
         else if (pulseTab === 'privacy') pulseLoadPrivacy();
     }, 50);
 
+    const pendingCount = pulsePendingRequests.filter(r => r.toId === Auth.currentUser?.uid && r.status === 'pending').length;
+
     return `
     <div class="fade-up">
-        <div style="display:flex;gap:6px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px">
-            <button class="btn ${pulseTab==='inbox'?'btn-primary':'btn-ghost'} btn-sm" onclick="pulseTab='inbox';navigate('pulse')" style="white-space:nowrap">
-                Inbox
-            </button>
-            <button class="btn ${pulseTab==='people'?'btn-primary':'btn-ghost'} btn-sm" onclick="pulseTab='people';navigate('pulse')" style="white-space:nowrap">
-                Find People
-            </button>
-            <button class="btn ${pulseTab==='privacy'?'btn-primary':'btn-ghost'} btn-sm" onclick="pulseTab='privacy';navigate('pulse')" style="white-space:nowrap">
-                Privacy
-            </button>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;max-width:calc(100% - 50px);box-sizing:border-box;flex:1">
+                <button class="btn ${pulseTab==='inbox'?'btn-primary':'btn-ghost'} btn-sm" onclick="pulseTab='inbox';navigate('pulse')" style="white-space:nowrap">
+                    Inbox
+                </button>
+                <button class="btn ${pulseTab==='people'?'btn-primary':'btn-ghost'} btn-sm" onclick="pulseTab='people';navigate('pulse')" style="white-space:nowrap">
+                    Find People
+                </button>
+                <button class="btn ${pulseTab==='requests'?'btn-primary':'btn-ghost'} btn-sm" onclick="pulseTab='requests';navigate('pulse')" style="white-space:nowrap;position:relative">
+                    Requests${pendingCount > 0 ? '<span style="background:#ef4444;color:white;font-size:0.55rem;padding:1px 5px;border-radius:8px;margin-left:4px">' + pendingCount + '</span>' : ''}
+                </button>
+                <button class="btn ${pulseTab==='privacy'?'btn-primary':'btn-ghost'} btn-sm" onclick="pulseTab='privacy';navigate('pulse')" style="white-space:nowrap">
+                    Privacy
+                </button>
+            </div>
+            <button onclick="pulseToggleMute()" title="${pulseMuted ? 'Unmute notifications' : 'Mute notifications'}" style="background:none;border:none;font-size:1.3rem;cursor:pointer;padding:4px 8px;opacity:0.7">${pulseMuted ? '🔇' : '🔔'}</button>
         </div>
         <div id="pulseContent">
             ${pulseTab === 'inbox' ? pulseInboxHTML() : ''}
             ${pulseTab === 'people' ? pulsePeopleHTML() : ''}
+            ${pulseTab === 'requests' ? pulseRequestsHTML() : ''}
             ${pulseTab === 'privacy' ? pulsePrivacyHTML() : ''}
         </div>
     </div>`;
+}
+
+function pulseToggleMute() {
+    pulseMuted = !pulseMuted;
+    localStorage.setItem('pulse_muted', JSON.stringify(pulseMuted));
+    toast(pulseMuted ? 'Notifications muted' : 'Notifications on', 'info');
+    navigate('pulse');
+}
+
+// Notification sound using Web Audio API
+let _pulseAudioCtx = null;
+function pulsePlayDing() {
+    if (pulseMuted) return;
+    try {
+        if (!_pulseAudioCtx) _pulseAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = _pulseAudioCtx;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.08);
+        osc.frequency.setValueAtTime(880, ctx.currentTime + 0.16);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.4);
+    } catch(e) {}
+}
+
+function pulseUpdateNavBadge() {
+    const badge = document.getElementById('userPulseBadge');
+    if (!badge) return;
+    const count = pulseConversations.length;
+    if (count > 0) {
+        badge.style.display = 'inline-block';
+        badge.textContent = count;
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+// Connection Requests tab HTML
+function pulseRequestsHTML() {
+    return `
+    <div id="pulseRequestsList">
+        <div style="text-align:center;padding:40px;color:var(--text-tertiary)">
+            <div class="loading-spinner" style="width:28px;height:28px;margin:0 auto 12px"></div>
+            <p style="margin:0">Loading requests...</p>
+        </div>
+    </div>`;
+}
+
+function pulseRenderRequests() {
+    const container = document.getElementById('pulseRequestsList');
+    if (!container) return;
+    const myId = Auth.currentUser?.uid;
+    const incoming = pulseConnections.filter(c => c.toId === myId && c.status === 'pending');
+    const outgoing = pulseConnections.filter(c => c.fromId === myId && c.status === 'pending');
+    const accepted = pulseConnections.filter(c => c.status === 'accepted');
+    
+    if (!incoming.length && !outgoing.length && !accepted.length) {
+        container.innerHTML = '<div class="card" style="text-align:center;padding:40px;color:var(--text-tertiary)">' +
+            '<div style="font-size:2.5rem;margin-bottom:12px">🤝</div>' +
+            '<p style="margin:0 0 8px;font-weight:500">No connection requests</p>' +
+            '<p style="margin:0;font-size:0.85rem">Go to Find People to connect with your church family</p></div>';
+        return;
+    }
+    
+    let html = '';
+    
+    if (incoming.length) {
+        html += '<div class="card" style="margin-bottom:16px"><h3 style="margin:0 0 12px">Incoming Requests (' + incoming.length + ')</h3><div style="display:grid;gap:8px">';
+        html += incoming.map(c => {
+            return '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--hover-bg);border-radius:8px">' +
+                '<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#60a5fa);display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:0.85rem">' + (c.fromName?.[0] || '?') + '</div>' +
+                '<div style="flex:1"><strong>' + (c.fromName || 'User') + '</strong><p style="margin:2px 0 0;font-size:0.75rem;color:var(--text-tertiary)">Wants to connect</p></div>' +
+                '<div style="display:flex;gap:6px">' +
+                    '<button class="btn btn-primary btn-sm" onclick="pulseRespondConn(\'' + c.id + '\',\'accepted\')" style="font-size:0.75rem">Accept</button>' +
+                    '<button class="btn btn-ghost btn-sm" onclick="pulseRespondConn(\'' + c.id + '\',\'declined\')" style="font-size:0.75rem">Decline</button>' +
+                '</div></div>';
+        }).join('');
+        html += '</div></div>';
+    }
+    
+    if (outgoing.length) {
+        html += '<div class="card" style="margin-bottom:16px"><h3 style="margin:0 0 12px">Sent Requests (' + outgoing.length + ')</h3><div style="display:grid;gap:8px">';
+        html += outgoing.map(c => {
+            return '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--hover-bg);border-radius:8px">' +
+                '<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--root-green),var(--leaf-green));display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:0.85rem">' + (c.toName?.[0] || '?') + '</div>' +
+                '<div style="flex:1"><strong>' + (c.toName || 'User') + '</strong><p style="margin:2px 0 0;font-size:0.75rem;color:var(--text-tertiary)">Pending</p></div>' +
+                '<span style="font-size:0.75rem;color:var(--text-tertiary)">⏳ Waiting</span></div>';
+        }).join('');
+        html += '</div></div>';
+    }
+    
+    if (accepted.length) {
+        html += '<div class="card"><h3 style="margin:0 0 12px">Connected (' + accepted.length + ')</h3><div style="display:grid;gap:8px">';
+        html += accepted.map(c => {
+            const otherName = c.fromId === myId ? c.toName : c.fromName;
+            const otherId = c.fromId === myId ? c.toId : c.fromId;
+            const safeName = (otherName || 'User').replace(/'/g, "\\'");
+            return '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--hover-bg);border-radius:8px">' +
+                '<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#22c55e,#4ade80);display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:0.85rem">' + (otherName?.[0] || '?') + '</div>' +
+                '<div style="flex:1"><strong>' + (otherName || 'User') + '</strong></div>' +
+                '<button class="btn btn-primary btn-sm" onclick="pulseStartDM(\'' + otherId + '\',\'' + safeName + '\')" style="font-size:0.75rem">Message</button></div>';
+        }).join('');
+        html += '</div></div>';
+    }
+    
+    container.innerHTML = html;
 }
 
 function pulseInboxHTML() {
@@ -13132,6 +13272,11 @@ async function pulseLoadConversations(churchId, isAdmin) {
                             const bt = b.lastMessageAt?.toMillis?.() || b.lastMessageAt || 0;
                             return bt - at;
                         });
+                        // Ding + badge update on new messages
+                        const newCount = pulseConversations.length;
+                        if (pulseUnreadCount > 0 && newCount > pulseUnreadCount) pulsePlayDing();
+                        pulseUnreadCount = newCount;
+                        pulseUpdateNavBadge();
                         const c = document.getElementById('pulseList');
                         if (c) pulseRenderConvoList(c, false);
                     }, err => {
@@ -13229,7 +13374,7 @@ function pulseRenderConvoList(container, isAdmin) {
         const icon = isBc ? '📣' : '💬';
         const grad = isBc ? '#8b5cf6,#a78bfa' : '#3b82f6,#60a5fa';
         
-        return '<div onclick="pulseOpenConvo(\'' + c.id + '\')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card-bg);border-radius:var(--radius-md);cursor:pointer;transition:all 0.15s;border:1px solid var(--border-color)" onmouseover="this.style.background=\'var(--hover-bg)\'" onmouseout="this.style.background=\'var(--card-bg)\'">' +
+        return '<div onclick="pulseOpenConvo(\'' + c.id + '\')" style="display:flex;align-items:center;gap:12px;padding:12px 12px;background:var(--card-bg);border-radius:var(--radius-md);cursor:pointer;max-width:100%;box-sizing:border-box;overflow:hidden;transition:all 0.15s;border:1px solid var(--border-color)" onmouseover="this.style.background=\'var(--hover-bg)\'" onmouseout="this.style.background=\'var(--card-bg)\'">' +
             '<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,' + grad + ');display:flex;align-items:center;justify-content:center;color:white;font-size:1.1rem;flex-shrink:0">' + icon + '</div>' +
             '<div style="flex:1;min-width:0">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center"><strong style="font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + title + '</strong><span style="font-size:0.7rem;color:var(--text-tertiary);flex-shrink:0;margin-left:8px">' + timeStr + '</span></div>' +
@@ -13329,7 +13474,7 @@ function pulseRenderPeople(container) {
         return;
     }
     
-    container.innerHTML = '<div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">' +
+    container.innerHTML = '<div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr))">' +
     people.map(m => {
         const initials = getInitials(m);
         const hasPhoto = m.profilePhoto && m.profilePhoto.length > 5;
@@ -13454,7 +13599,7 @@ async function pulseOpenConvo(convoId) {
     }
     
     // Render the conversation shell immediately
-    showModal(`<div class="modal" onclick="event.stopPropagation()" style="max-width:600px;height:80vh;display:flex;flex-direction:column;padding:0">
+    showModal(`<div class="modal" onclick="event.stopPropagation()" style="max-width:600px;width:calc(100vw - 32px);height:80vh;display:flex;flex-direction:column;padding:0;box-sizing:border-box;overflow:hidden">
         <div style="padding:16px 20px;border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:12px">
             <button onclick="closeModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text-primary)">←</button>
             <div style="flex:1">
@@ -13498,7 +13643,7 @@ async function pulseOpenConvo(convoId) {
                     const isMe = m.senderId === myId;
                     const t = m.timestamp?.toMillis ? new Date(m.timestamp.toMillis()).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : m.timestamp ? new Date(m.timestamp).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : '';
                     return '<div style="display:flex;justify-content:' + (isMe?'flex-end':'flex-start') + '">' +
-                        '<div style="max-width:80%;padding:10px 14px;border-radius:16px;' + (isMe?'background:var(--primary);color:white;border-bottom-right-radius:4px':'background:var(--hover-bg);border-bottom-left-radius:4px') + '">' +
+                        '<div style="max-width:min(80%, calc(100vw - 100px));padding:10px 14px;border-radius:16px;word-wrap:break-word;overflow-wrap:break-word;' + (isMe?'background:var(--primary);color:white;border-bottom-right-radius:4px':'background:var(--hover-bg);border-bottom-left-radius:4px') + '">' +
                         (!isMe ? '<div style="font-size:0.7rem;font-weight:600;margin-bottom:4px;opacity:0.7">' + (m.senderName||'Unknown') + '</div>' : '') +
                         (m.imageUrl ? '<img src="' + m.imageUrl + '" style="max-width:100%;border-radius:8px;margin-bottom:6px;cursor:pointer" onclick="window.open(\'' + m.imageUrl + '\',\'_blank\')">' : '') +
                         (m.text ? '<div style="font-size:0.9rem">' + m.text + '</div>' : '') +
@@ -13508,6 +13653,11 @@ async function pulseOpenConvo(convoId) {
                 
                 // Auto-scroll to bottom if user was near bottom (or first load)
                 if (wasAtBottom || !container.dataset.loaded) {
+                    // Play ding on new messages (not on initial load)
+                    if (container.dataset.loaded) {
+                        const lastMsg = messages[messages.length - 1];
+                        if (lastMsg && lastMsg.senderId !== myId) pulsePlayDing();
+                    }
                     container.scrollTop = container.scrollHeight;
                     container.dataset.loaded = 'true';
                 }
@@ -13530,7 +13680,7 @@ async function pulseOpenConvo(convoId) {
                     container.innerHTML = messages.map(m => {
                         const isMe = m.senderId === myId;
                         const t = m.timestamp?.toMillis ? new Date(m.timestamp.toMillis()).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : m.timestamp ? new Date(m.timestamp).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : '';
-                        return '<div style="display:flex;justify-content:' + (isMe?'flex-end':'flex-start') + '"><div style="max-width:80%;padding:10px 14px;border-radius:16px;' + (isMe?'background:var(--primary);color:white;border-bottom-right-radius:4px':'background:var(--hover-bg);border-bottom-left-radius:4px') + '">' +
+                        return '<div style="display:flex;justify-content:' + (isMe?'flex-end':'flex-start') + '"><div style="max-width:min(80%, calc(100vw - 100px));padding:10px 14px;border-radius:16px;word-wrap:break-word;overflow-wrap:break-word;' + (isMe?'background:var(--primary);color:white;border-bottom-right-radius:4px':'background:var(--hover-bg);border-bottom-left-radius:4px') + '">' +
                             (!isMe ? '<div style="font-size:0.7rem;font-weight:600;margin-bottom:4px;opacity:0.7">' + (m.senderName||'Unknown') + '</div>' : '') +
                             (m.imageUrl ? '<img src="' + m.imageUrl + '" style="max-width:100%;border-radius:8px;margin-bottom:6px">' : '') +
                             (m.text ? '<div style="font-size:0.9rem">' + m.text + '</div>' : '') +
@@ -13551,7 +13701,7 @@ async function pulseOpenConvo(convoId) {
                 container.innerHTML = messages.map(m => {
                     const isMe = m.senderId === myId;
                     const t = m.timestamp?.toMillis ? new Date(m.timestamp.toMillis()).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : '';
-                    return '<div style="display:flex;justify-content:' + (isMe?'flex-end':'flex-start') + '"><div style="max-width:80%;padding:10px 14px;border-radius:16px;' + (isMe?'background:var(--primary);color:white;border-bottom-right-radius:4px':'background:var(--hover-bg);border-bottom-left-radius:4px') + '">' +
+                    return '<div style="display:flex;justify-content:' + (isMe?'flex-end':'flex-start') + '"><div style="max-width:min(80%, calc(100vw - 100px));padding:10px 14px;border-radius:16px;word-wrap:break-word;overflow-wrap:break-word;' + (isMe?'background:var(--primary);color:white;border-bottom-right-radius:4px':'background:var(--hover-bg);border-bottom-left-radius:4px') + '">' +
                         (m.text ? '<div style="font-size:0.9rem">' + m.text + '</div>' : '') +
                         '</div></div>';
                 }).join('') || '<p style="text-align:center;color:var(--text-tertiary);margin:auto">Start the conversation!</p>';
@@ -13565,7 +13715,7 @@ async function pulseOpenConvo(convoId) {
         if (container) {
             container.innerHTML = messages.length ? messages.map(m => {
                 const isMe = m.senderId === myId;
-                return '<div style="display:flex;justify-content:' + (isMe?'flex-end':'flex-start') + '"><div style="max-width:80%;padding:10px 14px;border-radius:16px;' + (isMe?'background:var(--primary);color:white;border-bottom-right-radius:4px':'background:var(--hover-bg);border-bottom-left-radius:4px') + '">' +
+                return '<div style="display:flex;justify-content:' + (isMe?'flex-end':'flex-start') + '"><div style="max-width:min(80%, calc(100vw - 100px));padding:10px 14px;border-radius:16px;word-wrap:break-word;overflow-wrap:break-word;' + (isMe?'background:var(--primary);color:white;border-bottom-right-radius:4px':'background:var(--hover-bg);border-bottom-left-radius:4px') + '">' +
                     (m.text ? '<div style="font-size:0.9rem">' + m.text + '</div>' : '') + '</div></div>';
             }).join('') : '<p style="text-align:center;color:var(--text-tertiary);margin:auto">Start the conversation!</p>';
             container.scrollTop = container.scrollHeight;
