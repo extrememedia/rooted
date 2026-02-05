@@ -7592,7 +7592,7 @@ function renderChurchMembers() {
             </div>
             <div class="card" style="text-align:center;padding:12px;border-top:3px solid #f59e0b;cursor:pointer" onclick="filterMembers('checkedin')">
                 <div id="checkedInCount" style="font-size:1.6rem;font-weight:700;color:#f59e0b">-</div>
-                <p style="color:var(--text-secondary);margin:0;font-size:0.7rem">Checked In</p>
+                <p style="color:var(--text-secondary);margin:0;font-size:0.7rem">Checked In Today</p>
             </div>
             <div class="card" style="text-align:center;padding:12px;border-top:3px solid #8b5cf6">
                 <div id="totalCheckInsCount" style="font-size:1.6rem;font-weight:700;color:#8b5cf6">-</div>
@@ -7762,8 +7762,8 @@ function applyMemberFilters() {
         // Everyone who is NOT a member (regardless of check-in status)
         filtered = filtered.filter(m => !m.isMember);
     } else if (currentMemberFilter === 'checkedin') {
-        // Anyone who has checked in (members AND non-members)
-        filtered = filtered.filter(m => (m.checkInCount || 0) > 0);
+        // Anyone who checked in TODAY (members AND non-members)
+        filtered = filtered.filter(m => m.checkedInToday);
     } else if (currentMemberFilter === 'needsAttention') {
         // Low engagement or inactive for 30+ days - needs discipleship attention
         filtered = filtered.filter(m => {
@@ -7863,9 +7863,9 @@ function renderMembersList(container, members) {
                     avatarGradient = '#ef4444,#f87171';
                 }
                 
-                // Add check-in badge if they've attended
-                const checkinBadge = hasCheckins 
-                    ? '<span style="background:#f59e0b;color:white;font-size:0.6rem;padding:2px 6px;border-radius:8px">📍 Checked In</span>'
+                // Add check-in badge only if checked in TODAY
+                const checkinBadge = member.checkedInToday 
+                    ? '<span style="background:#f59e0b;color:white;font-size:0.6rem;padding:2px 6px;border-radius:8px">📍 Checked In Today</span>'
                     : '';
                 
                 // Engagement indicator color
@@ -8102,7 +8102,7 @@ function showMemberDetail(memberId) {
                         ? `<button class="btn btn-ghost" onclick="toggleMemberStatus('${member.id}', false); closeModal();" style="flex:1;color:var(--error)">Remove Membership</button>`
                         : `<button class="btn btn-primary" onclick="toggleMemberStatus('${member.id}', true); closeModal();" style="flex:1">Make Member</button>`
                     }
-                    <button class="btn btn-secondary" onclick="closeModal();startDirectMessage('${member.id}', '${displayName.replace(/'/g, "\\'")}')" title="Send direct message via Pulse">💬 Message</button>
+                    <button class="btn btn-secondary" onclick="closeModal();pulseStartDM('${member.id}', '${displayName.replace(/'/g, "\\'")}')" title="Send direct message via Pulse">💬 Message</button>
                     <button class="btn btn-ghost" onclick="showMemberCheckIns('${member.id}', '${displayName.replace(/'/g, "\\'")}')">View Check-ins</button>
                 </div>
             </div>
@@ -8201,6 +8201,11 @@ async function loadChurchMembers(churchId) {
                         const firstName = nameParts[0] || '';
                         const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
                         
+                        // Check if checked in TODAY
+                        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+                        const todayMs = todayStart.getTime();
+                        const checkedInToday = lastCheckIn ? lastCheckIn >= todayMs : false;
+
                         return {
                             id: doc.id,
                             ...memberData,
@@ -8214,6 +8219,7 @@ async function loadChurchMembers(churchId) {
                             isMember: userData.isMember || false,
                             checkInCount: churchCheckIns.length,
                             lastCheckIn: lastCheckIn,
+                            checkedInToday: checkedInToday,
                             lastLogin: userData.lastLogin?.toMillis?.() || userData.lastLogin || null,
                             toolsUsed: userData.toolHistory?.length || 0,
                             studiesCompleted: userData.completedStudies?.length || 0,
@@ -8263,6 +8269,11 @@ async function loadChurchMembers(churchId) {
                             ? Math.max(...churchCheckIns.map(c => c.timestamp || 0)) 
                             : null;
                         
+                        // Check if checked in TODAY
+                        const todayStart2 = new Date(); todayStart2.setHours(0,0,0,0);
+                        const todayMs2 = todayStart2.getTime();
+                        const checkedInToday2 = lastCheckIn ? lastCheckIn >= todayMs2 : false;
+
                         return {
                             id: doc.id,
                             name: fullName,
@@ -8275,6 +8286,7 @@ async function loadChurchMembers(churchId) {
                             isMember: userData.isMember || false,
                             checkInCount: churchCheckIns.length,
                             lastCheckIn: lastCheckIn,
+                            checkedInToday: checkedInToday2,
                             lastLogin: userData.lastLogin?.toMillis?.() || userData.lastLogin || null,
                             toolsUsed: userData.toolHistory?.length || 0,
                             studiesCompleted: userData.completedStudies?.length || 0,
@@ -8322,8 +8334,8 @@ async function loadChurchMembers(churchId) {
         
         // Calculate stats by category
         const confirmedMembers = members.filter(m => m.isMember).length;
-        const attendees = members.filter(m => !m.isMember && (m.checkInCount || 0) > 0).length;
-        const usersOnly = members.filter(m => !m.isMember && (m.checkInCount || 0) === 0).length;
+        const attendees = members.filter(m => !m.isMember && m.checkedInToday).length;
+        const usersOnly = members.filter(m => !m.isMember && !m.checkedInToday).length;
         const totalCheckIns = members.reduce((sum, m) => sum + (m.checkInCount || 0), 0);
         
         // Calculate active this week (anyone with check-in in last 7 days)
@@ -8340,7 +8352,7 @@ async function loadChurchMembers(churchId) {
         
         // Calculate counts
         const nonMembers = members.filter(m => !m.isMember).length;
-        const checkedInCount = members.filter(m => (m.checkInCount || 0) > 0).length;
+        const checkedInCount = members.filter(m => m.checkedInToday).length;
         
         if (claimedEl) claimedEl.textContent = confirmedMembers.toString();
         if (nonMemberEl) nonMemberEl.textContent = nonMembers.toString();
@@ -12887,31 +12899,31 @@ window.addEventListener('hashchange', () => {
     }
 });
 
+
 // ==========================================
-// PULSE MESSAGING SYSTEM (with The Body + Privacy + Connections)
+// PULSE MESSAGING SYSTEM — COMPLETE REBUILD
 // ==========================================
 
 let pulseConversations = [];
-let currentConversation = null;
 let pulseTab = 'inbox';
-let bodyMembers = [];
-let bodySearchTerm = '';
-let myConnections = [];
-let pendingRequests = [];
-let myPrivacySettings = { visibility: 'everyone', allowMessages: 'everyone' };
+let pulseBodyMembers = [];
+let pulseBodySearch = '';
+let pulseConnections = [];
+let pulsePendingRequests = [];
+let pulsePrivacy = { visibility: 'everyone', allowMessages: 'everyone' };
 
-// ---- ADMIN PULSE (unchanged) ----
+// ---- ADMIN PULSE ----
 function renderAdminPulse() {
     const churchId = State.current.user?.churchId;
-    if (churchId) setTimeout(() => loadPulseConversations(churchId, true), 100);
+    if (churchId) setTimeout(() => pulseLoadConversations(churchId, true), 100);
     return `
     <div class="fade-up">
         <div class="welcome-banner" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6)">
-            <h2 class="welcome-title">📡 Pulse Messaging</h2>
-            <p class="welcome-subtitle">Communicate with your congregation directly</p>
+            <h2 class="welcome-title">Pulse Messaging</h2>
+            <p class="welcome-subtitle">Communicate with your congregation</p>
         </div>
         <div class="card" style="margin-bottom:var(--space-lg)">
-            <h3 style="margin:0 0 12px">📣 Send Broadcast</h3>
+            <h3 style="margin:0 0 12px">Send Broadcast</h3>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <button class="btn btn-primary btn-sm" onclick="showBroadcastModal('all')">Everyone</button>
                 <button class="btn btn-secondary btn-sm" onclick="showBroadcastModal('members')">Members Only</button>
@@ -12920,530 +12932,364 @@ function renderAdminPulse() {
             </div>
         </div>
         <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
-                <h3 style="margin:0">Conversations</h3>
-                <span id="pulseConvoCount" style="font-size:0.8rem;color:var(--text-tertiary)"></span>
-            </div>
-            <div id="pulseConversationsList">
-                <div style="text-align:center;padding:var(--space-xl);color:var(--text-tertiary)">
-                    <div class="loading-spinner" style="width:32px;height:32px;margin:0 auto var(--space-md)"></div>
-                    <p>Loading conversations...</p>
+            <h3 style="margin:0 0 var(--space-md)">Conversations</h3>
+            <div id="pulseList">
+                <div style="text-align:center;padding:40px;color:var(--text-tertiary)">
+                    <div class="loading-spinner" style="width:32px;height:32px;margin:0 auto 12px"></div>
+                    <p>Loading...</p>
                 </div>
             </div>
         </div>
     </div>`;
 }
 
-// ---- USER PULSE (merged with The Body) ----
+// ---- USER PULSE ----
 function renderPulse() {
     const churchId = State.current.user?.churchId;
-    if (churchId) {
-        if (pulseTab === 'inbox' || pulseTab === 'broadcasts') {
-            setTimeout(() => loadPulseConversations(churchId, false), 100);
-        } else if (pulseTab === 'body') {
-            setTimeout(() => loadTheBody(churchId), 100);
-        } else if (pulseTab === 'privacy') {
-            setTimeout(() => loadPrivacySettings(), 100);
-        }
-    }
+    if (!churchId) return '<div class="card" style="text-align:center;padding:40px"><p>Join a church first to use Pulse</p></div>';
 
-    // Pending connection requests badge
-    const pendingCount = pendingRequests.filter(r => r.toId === Auth.currentUser?.uid && r.status === 'pending').length;
+    // Load data based on tab
+    setTimeout(() => {
+        if (pulseTab === 'inbox') pulseLoadConversations(churchId, false);
+        else if (pulseTab === 'people') pulseLoadPeople(churchId);
+        else if (pulseTab === 'privacy') pulseLoadPrivacy();
+    }, 50);
 
     return `
     <div class="fade-up">
-        <!-- Tabs -->
-        <div style="display:flex;gap:6px;margin-bottom:var(--space-lg);flex-wrap:wrap">
-            <button class="btn ${pulseTab === 'inbox' ? 'btn-primary' : 'btn-ghost'} btn-sm" onclick="pulseTab='inbox';navigate('pulse')">💬 Inbox</button>
-            <button class="btn ${pulseTab === 'broadcasts' ? 'btn-primary' : 'btn-ghost'} btn-sm" onclick="pulseTab='broadcasts';navigate('pulse')">📣 From Church</button>
-            <button class="btn ${pulseTab === 'body' ? 'btn-primary' : 'btn-ghost'} btn-sm" onclick="pulseTab='body';navigate('pulse')" style="position:relative">
-                🤝 The Body
-                ${pendingCount > 0 ? `<span style="background:#ef4444;color:white;font-size:0.55rem;padding:1px 5px;border-radius:8px;margin-left:4px">${pendingCount}</span>` : ''}
+        <div style="display:flex;gap:6px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px">
+            <button class="btn ${pulseTab==='inbox'?'btn-primary':'btn-ghost'} btn-sm" onclick="pulseTab='inbox';navigate('pulse')" style="white-space:nowrap">
+                Inbox
             </button>
-            <button class="btn ${pulseTab === 'privacy' ? 'btn-primary' : 'btn-ghost'} btn-sm" onclick="pulseTab='privacy';navigate('pulse')">🔒 Privacy</button>
+            <button class="btn ${pulseTab==='people'?'btn-primary':'btn-ghost'} btn-sm" onclick="pulseTab='people';navigate('pulse')" style="white-space:nowrap">
+                Find People
+            </button>
+            <button class="btn ${pulseTab==='privacy'?'btn-primary':'btn-ghost'} btn-sm" onclick="pulseTab='privacy';navigate('pulse')" style="white-space:nowrap">
+                Privacy
+            </button>
         </div>
-
-        ${pulseTab === 'inbox' ? renderPulseInbox() : ''}
-        ${pulseTab === 'broadcasts' ? renderPulseBroadcasts() : ''}
-        ${pulseTab === 'body' ? renderPulseBody() : ''}
-        ${pulseTab === 'privacy' ? renderPulsePrivacy() : ''}
-    </div>`;
-}
-
-function renderPulseInbox() {
-    return `<div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
-            <h3 style="margin:0">💬 Messages</h3>
-            <span id="pulseConvoCount" style="font-size:0.8rem;color:var(--text-tertiary)"></span>
-        </div>
-        <div id="pulseConversationsList">
-            <div style="text-align:center;padding:var(--space-xl);color:var(--text-tertiary)">
-                <div class="loading-spinner" style="width:32px;height:32px;margin:0 auto var(--space-md)"></div>
-                <p>Loading messages...</p>
-            </div>
+        <div id="pulseContent">
+            ${pulseTab === 'inbox' ? pulseInboxHTML() : ''}
+            ${pulseTab === 'people' ? pulsePeopleHTML() : ''}
+            ${pulseTab === 'privacy' ? pulsePrivacyHTML() : ''}
         </div>
     </div>`;
 }
 
-function renderPulseBroadcasts() {
-    return `<div class="card">
-        <h3 style="margin:0 0 var(--space-md)">📣 Church Announcements</h3>
-        <div id="pulseConversationsList">
-            <div style="text-align:center;padding:var(--space-xl);color:var(--text-tertiary)">
-                <div class="loading-spinner" style="width:32px;height:32px;margin:0 auto var(--space-md)"></div>
-                <p>Loading announcements...</p>
-            </div>
-        </div>
-    </div>`;
-}
-
-function renderPulseBody() {
-    const pendingIncoming = pendingRequests.filter(r => r.toId === Auth.currentUser?.uid && r.status === 'pending');
-    return `
-    ${pendingIncoming.length > 0 ? `
-    <div class="card" style="margin-bottom:var(--space-lg);border-left:4px solid #f59e0b">
-        <h4 style="margin:0 0 12px;color:#f59e0b">🔔 Connection Requests (${pendingIncoming.length})</h4>
-        <div style="display:grid;gap:8px">
-            ${pendingIncoming.map(r => `
-                <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--hover-bg);border-radius:8px">
-                    <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#fbbf24);display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:0.85rem">${(r.fromName||'?')[0]}</div>
-                    <div style="flex:1">
-                        <strong style="font-size:0.9rem">${r.fromName || 'Someone'}</strong>
-                        <p style="margin:0;font-size:0.75rem;color:var(--text-tertiary)">Wants to connect with you</p>
-                    </div>
-                    <button class="btn btn-primary btn-sm" onclick="respondConnection('${r.id}','accepted')">Accept</button>
-                    <button class="btn btn-ghost btn-sm" onclick="respondConnection('${r.id}','declined')" style="font-size:0.8rem">✕</button>
-                </div>
-            `).join('')}
-        </div>
-    </div>` : ''}
-    <div class="card" style="margin-bottom:var(--space-lg)">
-        <input type="text" id="bodySearch" class="input-field" placeholder="Search by name..." oninput="filterTheBody(this.value)" style="margin:0">
-    </div>
-    <div id="theBodyList">
-        <div style="text-align:center;padding:var(--space-xl)">
-            <div class="loading-spinner" style="width:32px;height:32px;margin:0 auto var(--space-md)"></div>
-            <p style="color:var(--text-tertiary)">Loading church family...</p>
-        </div>
-    </div>`;
-}
-
-function renderPulsePrivacy() {
-    const vis = myPrivacySettings.visibility || 'everyone';
-    const msg = myPrivacySettings.allowMessages || 'everyone';
+function pulseInboxHTML() {
     return `
     <div class="card">
-        <h3 style="margin:0 0 8px">🔒 Privacy Settings</h3>
-        <p style="color:var(--text-secondary);font-size:0.85rem;margin:0 0 24px">Control who can find you and message you within your church</p>
-
-        <div style="margin-bottom:24px">
-            <h4 style="margin:0 0 12px;font-size:0.9rem">Who can see me in The Body?</h4>
-            <div style="display:grid;gap:8px">
-                <label style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--hover-bg);border-radius:8px;cursor:pointer;border:2px solid ${vis==='everyone'?'var(--primary)':'transparent'}">
-                    <input type="radio" name="visibility" value="everyone" ${vis==='everyone'?'checked':''} onchange="updatePrivacy('visibility',this.value)" style="accent-color:var(--primary)">
-                    <div><strong>Everyone</strong><p style="margin:0;font-size:0.8rem;color:var(--text-tertiary)">All church members and users can find me</p></div>
-                </label>
-                <label style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--hover-bg);border-radius:8px;cursor:pointer;border:2px solid ${vis==='members_only'?'var(--primary)':'transparent'}">
-                    <input type="radio" name="visibility" value="members_only" ${vis==='members_only'?'checked':''} onchange="updatePrivacy('visibility',this.value)" style="accent-color:var(--primary)">
-                    <div><strong>Confirmed Members Only</strong><p style="margin:0;font-size:0.8rem;color:var(--text-tertiary)">Only admin-confirmed members can see me</p></div>
-                </label>
-                <label style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--hover-bg);border-radius:8px;cursor:pointer;border:2px solid ${vis==='hidden'?'var(--primary)':'transparent'}">
-                    <input type="radio" name="visibility" value="hidden" ${vis==='hidden'?'checked':''} onchange="updatePrivacy('visibility',this.value)" style="accent-color:var(--primary)">
-                    <div><strong>Hidden</strong><p style="margin:0;font-size:0.8rem;color:var(--text-tertiary)">Nobody can find me (I can still message others)</p></div>
-                </label>
+        <h3 style="margin:0 0 16px">Messages & Announcements</h3>
+        <div id="pulseList">
+            <div style="text-align:center;padding:40px;color:var(--text-tertiary)">
+                <div class="loading-spinner" style="width:28px;height:28px;margin:0 auto 12px"></div>
+                <p style="margin:0">Loading messages...</p>
             </div>
         </div>
+    </div>`;
+}
 
+function pulsePeopleHTML() {
+    return `
+    <div class="card" style="margin-bottom:16px">
+        <input type="text" id="pulsePersonSearch" class="input-field" placeholder="Search by name..." oninput="pulseFilterPeople(this.value)" style="margin:0" value="${pulseBodySearch}">
+    </div>
+    <div id="pulsePeopleList">
+        <div style="text-align:center;padding:40px;color:var(--text-tertiary)">
+            <div class="loading-spinner" style="width:28px;height:28px;margin:0 auto 12px"></div>
+            <p style="margin:0">Loading church family...</p>
+        </div>
+    </div>`;
+}
+
+function pulsePrivacyHTML() {
+    const vis = pulsePrivacy.visibility || 'everyone';
+    const msg = pulsePrivacy.allowMessages || 'everyone';
+    
+    function radioOpt(name, value, label, desc, current) {
+        const sel = current === value;
+        return '<label style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--hover-bg);border-radius:8px;cursor:pointer;border:2px solid '+(sel?'var(--primary)':'transparent')+'">' +
+            '<input type="radio" name="'+name+'" value="'+value+'" '+(sel?'checked':'')+' onchange="pulseSetPrivacy(\''+name+'\',this.value)" style="accent-color:var(--primary)">' +
+            '<div><strong>'+label+'</strong><p style="margin:0;font-size:0.8rem;color:var(--text-tertiary)">'+desc+'</p></div></label>';
+    }
+    
+    return `
+    <div class="card">
+        <h3 style="margin:0 0 8px">Privacy Settings</h3>
+        <p style="color:var(--text-secondary);font-size:0.85rem;margin:0 0 24px">Control who can find and message you</p>
+        <div style="margin-bottom:24px">
+            <h4 style="margin:0 0 12px;font-size:0.9rem">Who can see me?</h4>
+            <div style="display:grid;gap:8px">
+                ${radioOpt('visibility','everyone','Everyone','All church users can find me',vis)}
+                ${radioOpt('visibility','members_only','Confirmed Members Only','Only admin-confirmed members can see me',vis)}
+                ${radioOpt('visibility','hidden','Hidden','Nobody can find me in search',vis)}
+            </div>
+        </div>
         <div>
             <h4 style="margin:0 0 12px;font-size:0.9rem">Who can message me?</h4>
             <div style="display:grid;gap:8px">
-                <label style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--hover-bg);border-radius:8px;cursor:pointer;border:2px solid ${msg==='everyone'?'var(--primary)':'transparent'}">
-                    <input type="radio" name="allowMessages" value="everyone" ${msg==='everyone'?'checked':''} onchange="updatePrivacy('allowMessages',this.value)" style="accent-color:var(--primary)">
-                    <div><strong>Everyone</strong><p style="margin:0;font-size:0.8rem;color:var(--text-tertiary)">Anyone in my church can message me directly</p></div>
-                </label>
-                <label style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--hover-bg);border-radius:8px;cursor:pointer;border:2px solid ${msg==='connections_only'?'var(--primary)':'transparent'}">
-                    <input type="radio" name="allowMessages" value="connections_only" ${msg==='connections_only'?'checked':''} onchange="updatePrivacy('allowMessages',this.value)" style="accent-color:var(--primary)">
-                    <div><strong>Connections Only</strong><p style="margin:0;font-size:0.8rem;color:var(--text-tertiary)">Only people I've accepted can message me</p></div>
-                </label>
-                <label style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--hover-bg);border-radius:8px;cursor:pointer;border:2px solid ${msg==='nobody'?'var(--primary)':'transparent'}">
-                    <input type="radio" name="allowMessages" value="nobody" ${msg==='nobody'?'checked':''} onchange="updatePrivacy('allowMessages',this.value)" style="accent-color:var(--primary)">
-                    <div><strong>Nobody</strong><p style="margin:0;font-size:0.8rem;color:var(--text-tertiary)">Only church admin can message me</p></div>
-                </label>
+                ${radioOpt('allowMessages','everyone','Everyone','Anyone in my church can message me',msg)}
+                ${radioOpt('allowMessages','connections_only','Connections Only','Only people I\'ve connected with',msg)}
+                ${radioOpt('allowMessages','nobody','Nobody','Only church admin can message me',msg)}
             </div>
         </div>
-        <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:16px">Note: Church admins can always send you broadcasts and direct messages regardless of these settings.</p>
+        <p style="font-size:0.75rem;color:var(--text-tertiary);margin-top:16px">Church admins can always contact you regardless of these settings.</p>
     </div>`;
 }
 
-// ---- LOAD FUNCTIONS ----
+// ==========================================
+// PULSE DATA LOADING
+// ==========================================
 
-async function loadPulseConversations(churchId, isAdmin) {
-    const container = document.getElementById('pulseConversationsList');
+async function pulseLoadConversations(churchId, isAdmin) {
+    const container = document.getElementById('pulseList');
     if (!container) return;
-    if (!firebaseInitialized) {
-        pulseConversations = JSON.parse(localStorage.getItem('pulse_conversations_' + churchId) || '[]');
-        renderPulseList(container, isAdmin);
-        return;
-    }
+    
     try {
-        const userId = isAdmin ? 'admin_' + churchId : Auth.currentUser?.uid;
-        let snapshot;
-        try {
-            // Try with orderBy (requires composite index in Firestore)
-            snapshot = isAdmin
-                ? await db.collection('pulse_conversations').where('churchId', '==', churchId).orderBy('lastMessageAt', 'desc').limit(50).get()
-                : await db.collection('pulse_conversations').where('churchId', '==', churchId).where('participants', 'array-contains', userId).orderBy('lastMessageAt', 'desc').limit(50).get();
-        } catch (indexErr) {
-            // Fallback: no orderBy (no index needed), sort client-side
-            console.log('Pulse: orderBy index not ready, using fallback:', indexErr.message);
-            try {
-                snapshot = isAdmin
-                    ? await db.collection('pulse_conversations').where('churchId', '==', churchId).limit(50).get()
-                    : await db.collection('pulse_conversations').where('churchId', '==', churchId).where('participants', 'array-contains', userId).limit(50).get();
-            } catch (fallbackErr) {
-                // Collection may not exist yet - that's OK
-                console.log('Pulse: collection may not exist yet:', fallbackErr.message);
-                snapshot = { docs: [] };
+        if (!firebaseInitialized) {
+            pulseConversations = JSON.parse(localStorage.getItem('pulse_convos_' + churchId) || '[]');
+        } else {
+            const userId = isAdmin ? 'admin_' + churchId : Auth.currentUser?.uid;
+            if (!userId) { pulseConversations = []; pulseRenderConvoList(container, isAdmin); return; }
+            
+            let docs = [];
+            if (isAdmin) {
+                // Admin sees all conversations for this church
+                try {
+                    const snap = await db.collection('pulse_conversations').where('churchId','==',churchId).limit(50).get();
+                    docs = snap.docs;
+                } catch(e) { console.log('Admin pulse query error:', e.message); }
+            } else {
+                // User sees: their DMs + ALL broadcasts for this church
+                let dmDocs = [];
+                let bcDocs = [];
+                try {
+                    const dmSnap = await db.collection('pulse_conversations').where('participants','array-contains',userId).limit(50).get();
+                    dmDocs = dmSnap.docs.filter(d => d.data().churchId === churchId);
+                } catch(e) { console.log('DM query error:', e.message); }
+                try {
+                    const bcSnap = await db.collection('pulse_conversations').where('churchId','==',churchId).where('type','==','broadcast').limit(50).get();
+                    bcDocs = bcSnap.docs;
+                } catch(e) {
+                    // Fallback: get all for church, filter client-side
+                    try {
+                        const allSnap = await db.collection('pulse_conversations').where('churchId','==',churchId).limit(50).get();
+                        bcDocs = allSnap.docs.filter(d => d.data().type === 'broadcast');
+                    } catch(e2) { console.log('Broadcast fallback error:', e2.message); }
+                }
+                // Merge and deduplicate
+                const seen = new Set();
+                docs = [...dmDocs, ...bcDocs].filter(d => {
+                    if (seen.has(d.id)) return false;
+                    seen.add(d.id);
+                    return true;
+                });
             }
+            pulseConversations = docs.map(d => ({ id: d.id, ...d.data() }));
         }
-        pulseConversations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // Client-side sort by lastMessageAt descending
+        
+        // Sort client-side (avoids needing composite index)
         pulseConversations.sort((a, b) => {
-            const aTime = a.lastMessageAt?.toMillis?.() || a.lastMessageAt || 0;
-            const bTime = b.lastMessageAt?.toMillis?.() || b.lastMessageAt || 0;
-            return bTime - aTime;
+            const at = a.lastMessageAt?.toMillis?.() || a.lastMessageAt || 0;
+            const bt = b.lastMessageAt?.toMillis?.() || b.lastMessageAt || 0;
+            return bt - at;
         });
-    } catch (e) {
-        console.error('Pulse load error:', e);
+    } catch(e) {
+        console.error('Pulse conversations error:', e);
         pulseConversations = [];
     }
-    renderPulseList(container, isAdmin);
+    
+    pulseRenderConvoList(container, isAdmin);
 }
 
-function renderPulseList(container, isAdmin) {
-    let convos = [...pulseConversations];
-    if (!isAdmin && pulseTab === 'broadcasts') convos = convos.filter(c => c.type === 'broadcast');
-    else if (!isAdmin && pulseTab === 'inbox') convos = convos.filter(c => c.type === 'direct');
-    if (!convos.length) {
-        container.innerHTML = `<div style="text-align:center;padding:var(--space-xl);color:var(--text-tertiary)"><div style="font-size:3rem;margin-bottom:12px">${pulseTab==='broadcasts'?'📣':'📡'}</div><p>${pulseTab==='broadcasts'?'No announcements yet':'No messages yet'}</p><p style="font-size:0.85rem">${isAdmin ? 'Send a broadcast to get started' : pulseTab==='broadcasts'?'Church announcements will appear here':'Go to The Body tab to connect with people'}</p></div>`;
+function pulseRenderConvoList(container, isAdmin) {
+    if (!pulseConversations.length) {
+        container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-tertiary)">
+            <div style="font-size:2.5rem;margin-bottom:12px">💬</div>
+            <p style="margin:0 0 8px;font-weight:500">No messages yet</p>
+            <p style="margin:0;font-size:0.85rem">${isAdmin ? 'Send a broadcast to get started' : 'Go to Find People to start a conversation'}</p>
+        </div>`;
         return;
     }
-    container.innerHTML = `<div style="display:grid;gap:8px">${convos.map(c => {
+    
+    container.innerHTML = '<div style="display:grid;gap:8px">' + pulseConversations.map(c => {
         const timeStr = c.lastMessageAt?.toMillis ? getRelativeTime(c.lastMessageAt.toMillis()) : c.lastMessageAt ? getRelativeTime(c.lastMessageAt) : '';
         const isBc = c.type === 'broadcast';
-        return `<div onclick="openPulseConvo('${c.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card-bg);border-radius:var(--radius-md);cursor:pointer;transition:all 0.2s;border:1px solid var(--border-color)" onmouseover="this.style.background='var(--hover-bg)'" onmouseout="this.style.background='var(--card-bg)'">
-            <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,${isBc ? '#8b5cf6,#a78bfa' : '#3b82f6,#60a5fa'});display:flex;align-items:center;justify-content:center;color:white;font-size:1.2rem;flex-shrink:0">${isBc ? '📣' : '💬'}</div>
-            <div style="flex:1;min-width:0">
-                <div style="display:flex;justify-content:space-between"><strong style="font-size:0.9rem">${c.title || c.participantNames?.join(', ') || 'Message'}</strong><span style="font-size:0.7rem;color:var(--text-tertiary)">${timeStr}</span></div>
-                <p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.lastMessage || 'No messages yet'}</p>
-            </div>
-        </div>`;
-    }).join('')}</div>`;
-    const countEl = document.getElementById('pulseConvoCount');
-    if (countEl) countEl.textContent = convos.length + ' conversation' + (convos.length !== 1 ? 's' : '');
+        const title = c.title || c.participantNames?.filter(n => n !== (Auth.currentUser?.name||'')).join(', ') || 'Message';
+        const icon = isBc ? '📣' : '💬';
+        const grad = isBc ? '#8b5cf6,#a78bfa' : '#3b82f6,#60a5fa';
+        
+        return '<div onclick="pulseOpenConvo(\'' + c.id + '\')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card-bg);border-radius:var(--radius-md);cursor:pointer;transition:all 0.15s;border:1px solid var(--border-color)" onmouseover="this.style.background=\'var(--hover-bg)\'" onmouseout="this.style.background=\'var(--card-bg)\'">' +
+            '<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,' + grad + ');display:flex;align-items:center;justify-content:center;color:white;font-size:1.1rem;flex-shrink:0">' + icon + '</div>' +
+            '<div style="flex:1;min-width:0">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center"><strong style="font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + title + '</strong><span style="font-size:0.7rem;color:var(--text-tertiary);flex-shrink:0;margin-left:8px">' + timeStr + '</span></div>' +
+                '<p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (c.lastMessage || 'No messages yet') + '</p>' +
+            '</div>' +
+        '</div>';
+    }).join('') + '</div>';
 }
 
-// ---- CONVERSATION VIEW ----
+// ==========================================
+// PULSE FIND PEOPLE
+// ==========================================
 
-async function openPulseConvo(convoId) {
-    const convo = pulseConversations.find(c => c.id === convoId);
-    if (!convo) return;
-    let messages = [];
-    if (firebaseInitialized) {
-        try { const snap = await db.collection('pulse_conversations').doc(convoId).collection('messages').orderBy('timestamp', 'asc').limit(100).get(); messages = snap.docs.map(d => ({id:d.id,...d.data()})); } catch(e) { console.error(e); }
-    } else { messages = JSON.parse(localStorage.getItem('pulse_messages_' + convoId) || '[]'); }
-    const isAdmin = State.current.accountType === 'church';
-    const myId = isAdmin ? 'admin_' + State.current.user?.churchId : Auth.currentUser?.uid;
-    showModal(`<div class="modal" onclick="event.stopPropagation()" style="max-width:600px;height:80vh;display:flex;flex-direction:column;padding:0">
-        <div style="padding:16px 20px;border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:12px">
-            <button onclick="closeModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text-primary)">←</button>
-            <div style="flex:1"><strong>${convo.title || convo.participantNames?.join(', ') || 'Conversation'}</strong><p style="margin:0;font-size:0.75rem;color:var(--text-tertiary)">${convo.type === 'broadcast' ? '📣 Broadcast' : '💬 Direct'}</p></div>
-        </div>
-        <div id="pulseMessages" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px">
-            ${!messages.length ? '<p style="text-align:center;color:var(--text-tertiary);margin:auto">Start the conversation!</p>' : messages.map(m => {
-                const isMe = m.senderId === myId;
-                const t = m.timestamp?.toMillis ? new Date(m.timestamp.toMillis()).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : m.timestamp ? new Date(m.timestamp).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : '';
-                return `<div style="display:flex;justify-content:${isMe?'flex-end':'flex-start'}"><div style="max-width:80%;padding:10px 14px;border-radius:16px;${isMe?'background:var(--primary);color:white;border-bottom-right-radius:4px':'background:var(--hover-bg);border-bottom-left-radius:4px'}">${!isMe?`<div style="font-size:0.7rem;font-weight:600;margin-bottom:4px;opacity:0.7">${m.senderName||'Unknown'}</div>`:''}${m.imageUrl?`<img src="${m.imageUrl}" style="max-width:100%;border-radius:8px;margin-bottom:6px" onclick="window.open('${m.imageUrl}','_blank')">`:''}${m.text?`<div style="font-size:0.9rem">${m.text}</div>`:''}${t?`<div style="font-size:0.6rem;opacity:0.6;margin-top:4px;text-align:right">${t}</div>`:''}</div></div>`;
-            }).join('')}
-        </div>
-        <div style="padding:12px 16px;border-top:1px solid var(--border-color);display:flex;gap:8px;align-items:flex-end">
-            <label style="cursor:pointer;font-size:1.3rem;padding:4px" title="Attach image">📎<input type="file" accept="image/*" style="display:none" onchange="handlePulseImage(this,'${convoId}')"></label>
-            <textarea id="pulseInput" class="input-field" style="flex:1;margin:0;resize:none;min-height:40px;max-height:100px" placeholder="Type a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendPulseMsg('${convoId}');}"></textarea>
-            <button class="btn btn-primary btn-sm" onclick="sendPulseMsg('${convoId}')">Send</button>
-        </div>
-    </div>`);
-    setTimeout(() => { const el = document.getElementById('pulseMessages'); if(el) el.scrollTop = el.scrollHeight; }, 100);
-}
-
-async function sendPulseMsg(convoId) {
-    const input = document.getElementById('pulseInput');
-    if (!input || !input.value.trim()) return;
-    const text = input.value.trim(); input.value = '';
-    const isAdmin = State.current.accountType === 'church';
-    const myId = isAdmin ? 'admin_' + State.current.user?.churchId : Auth.currentUser?.uid;
-    const myName = isAdmin ? '⛪ Church Admin' : (Auth.currentUser?.name || 'User');
-    const msg = { senderId: myId, senderName: myName, text, timestamp: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(), type: 'text' };
-    if (firebaseInitialized) {
-        try { await db.collection('pulse_conversations').doc(convoId).collection('messages').add(msg); await db.collection('pulse_conversations').doc(convoId).update({ lastMessage: text.substring(0,100), lastMessageAt: firebase.firestore.FieldValue.serverTimestamp() }); } catch(e) { toast('Failed to send','error'); return; }
-    } else { const msgs = JSON.parse(localStorage.getItem('pulse_messages_'+convoId)||'[]'); msg.timestamp=Date.now(); msgs.push(msg); localStorage.setItem('pulse_messages_'+convoId,JSON.stringify(msgs)); }
-    openPulseConvo(convoId);
-}
-
-async function handlePulseImage(input, convoId) {
-    const file = input.files?.[0]; if(!file) return;
-    const isAdmin = State.current.accountType === 'church';
-    const myId = isAdmin ? 'admin_' + State.current.user?.churchId : Auth.currentUser?.uid;
-    const myName = isAdmin ? '⛪ Church Admin' : (Auth.currentUser?.name || 'User');
-    showUploadOverlay('Sending image...',0,1);
-    try {
-        let url = '';
-        if (firebaseInitialized && firebase.storage) { const ref = firebase.storage().ref(`pulse-images/${State.current.user?.churchId}/${Date.now()}_${file.name}`); await ref.put(file); url = await ref.getDownloadURL(); }
-        else { url = URL.createObjectURL(file); }
-        const msg = { senderId:myId, senderName:myName, text:'', imageUrl:url, timestamp: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(), type:'image' };
-        if (firebaseInitialized) { await db.collection('pulse_conversations').doc(convoId).collection('messages').add(msg); await db.collection('pulse_conversations').doc(convoId).update({ lastMessage:'📷 Image', lastMessageAt: firebase.firestore.FieldValue.serverTimestamp() }); }
-        else { const msgs = JSON.parse(localStorage.getItem('pulse_messages_'+convoId)||'[]'); msg.timestamp=Date.now(); msgs.push(msg); localStorage.setItem('pulse_messages_'+convoId,JSON.stringify(msgs)); }
-        hideUploadOverlay(); openPulseConvo(convoId);
-    } catch(e) { hideUploadOverlay(); toast('Failed to send image','error'); }
-}
-
-// ---- BROADCASTS ----
-
-function showBroadcastModal(audience) {
-    const labels = {all:'Everyone',members:'Members Only',nonmembers:'Non-Members',checkedin:'Checked-In Attendees'};
-    showModal(`<div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
-        <div class="modal-header" style="background:linear-gradient(135deg,#8b5cf6,#a78bfa);color:white;margin:-24px -24px 0;padding:20px 24px;border-radius:var(--radius-lg) var(--radius-lg) 0 0">
-            <h3 class="modal-title" style="margin:0">📣 Broadcast to ${labels[audience]}</h3>
-            <button class="modal-close" onclick="closeModal()" style="color:white">✕</button>
-        </div>
-        <div class="modal-body" style="padding-top:20px">
-            <input type="text" id="bcTitle" class="input-field" placeholder="Subject (optional)" style="margin-bottom:12px">
-            <textarea id="bcMessage" class="input-field" rows="5" placeholder="Type your message..." style="resize:vertical"></textarea>
-            <div style="display:flex;gap:12px;margin-top:16px">
-                <button class="btn btn-primary" style="flex:1" onclick="sendBroadcast('${audience}')">Send Broadcast</button>
-                <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-            </div>
-        </div>
-    </div>`);
-}
-
-async function sendBroadcast(audience) {
-    const title = document.getElementById('bcTitle')?.value?.trim() || 'Church Announcement';
-    const message = document.getElementById('bcMessage')?.value?.trim();
-    if (!message) { toast('Please enter a message','error'); return; }
-    const churchId = State.current.user?.churchId;
-    const convo = { churchId, type:'broadcast', audience, title:'📣 '+title, lastMessage:message.substring(0,100), lastMessageAt: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(), createdBy:'admin_'+churchId, participants:['admin_'+churchId] };
-    if (firebaseInitialized) {
-        try { const ref = await db.collection('pulse_conversations').add(convo); await ref.collection('messages').add({ senderId:'admin_'+churchId, senderName:'⛪ Church Admin', text:message, timestamp:firebase.firestore.FieldValue.serverTimestamp(), type:'text' }); } catch(e) { toast('Failed to send','error'); return; }
-    } else { const id='bc_'+Date.now(); convo.id=id; convo.lastMessageAt=Date.now(); const s=JSON.parse(localStorage.getItem('pulse_conversations_'+churchId)||'[]'); s.unshift(convo); localStorage.setItem('pulse_conversations_'+churchId,JSON.stringify(s)); localStorage.setItem('pulse_messages_'+id,JSON.stringify([{senderId:'admin_'+churchId,senderName:'⛪ Church Admin',text:message,timestamp:Date.now(),type:'text'}])); }
-    closeModal(); toast('Broadcast sent!','success'); navigate('church-pulse');
-}
-
-// ---- DIRECT MESSAGING ----
-
-async function startDirectMessage(userId, userName) {
-    const churchId = State.current.user?.churchId;
-    const isAdmin = State.current.accountType === 'church';
-    const myId = isAdmin ? 'admin_'+churchId : Auth.currentUser?.uid;
-
-    // Check if target allows messages (admin bypasses this)
-    if (!isAdmin) {
-        const target = bodyMembers.find(m => m.id === userId);
-        if (target?.allowMessages === 'nobody') { toast('This person is not accepting messages','info'); return; }
-        if (target?.allowMessages === 'connections_only') {
-            const isConnected = myConnections.some(c => c.status === 'accepted' && (c.fromId === userId || c.toId === userId));
-            if (!isConnected) { toast('You need to connect with this person first','info'); return; }
-        }
-    }
-
-    // Check for existing conversation
-    let existing = null;
-    if (firebaseInitialized) { 
-        try { 
-            // Try compound query first
-            let snap;
-            try {
-                snap = await db.collection('pulse_conversations').where('churchId','==',churchId).where('type','==','direct').where('participants','array-contains',myId).get(); 
-            } catch(indexErr) {
-                // Fallback without type filter
-                snap = await db.collection('pulse_conversations').where('participants','array-contains',myId).get();
-            }
-            const found = snap.docs.find(d => {
-                const data = d.data();
-                return data.churchId === churchId && data.type === 'direct' && data.participants?.includes(userId);
-            }); 
-            if(found) existing = {id:found.id,...found.data()}; 
-        } catch(e){ console.log('DM existing check failed:', e.message); } 
-    }
-    if (existing) { closeModal(); openPulseConvo(existing.id); return; }
-
-    const convo = { churchId, type:'direct', participants:[myId,userId], participantNames:[isAdmin ? '⛪ Church Admin' : (Auth.currentUser?.name||'User'), userName], lastMessage:'', lastMessageAt: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(), createdBy:myId };
-    let convoId;
-    if (firebaseInitialized) { try { const ref = await db.collection('pulse_conversations').add(convo); convoId=ref.id; } catch(e) { toast('Failed to start conversation','error'); return; } }
-    else { convoId='dm_'+Date.now(); convo.id=convoId; convo.lastMessageAt=Date.now(); const s=JSON.parse(localStorage.getItem('pulse_conversations_'+churchId)||'[]'); s.unshift(convo); localStorage.setItem('pulse_conversations_'+churchId,JSON.stringify(s)); }
-    closeModal(); openPulseConvo(convoId);
-}
-
-// ---- THE BODY (merged into Pulse) ----
-
-async function loadTheBody(churchId) {
-    const container = document.getElementById('theBodyList');
+async function pulseLoadPeople(churchId) {
+    const container = document.getElementById('pulsePeopleList');
     if (!container) return;
-
-    // Also load connections and pending requests
-    await loadMyConnections(churchId);
-
+    
+    // Load connections in parallel
+    await pulseLoadConnections(churchId);
+    
     if (!firebaseInitialized) {
-        container.innerHTML = '<p style="text-align:center;color:var(--text-tertiary)">Connect to Firebase to see members.</p>';
+        container.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);padding:20px">Firebase required to find people.</p>';
         return;
     }
+    
     try {
         let allDocs = [];
         
-        // Query 1: users with churches array
-        try { 
-            const snap = await db.collection('users').where('churches','array-contains',churchId).get(); 
-            if (!snap.empty) allDocs = snap.docs;
-        } catch(e) { console.log('Body query 1 failed:', e.message); }
-
-        // Query 2: members subcollection fallback (if first query found nothing)
+        // Primary query: users with this church in their churches array
+        try {
+            const snap = await db.collection('users').where('churches','array-contains',churchId).get();
+            if (!snap.empty) allDocs = [...snap.docs];
+        } catch(e) { console.log('People query 1:', e.message); }
+        
+        // Fallback: members subcollection
         if (allDocs.length === 0) {
             try {
                 const memSnap = await db.collection('churches').doc(churchId).collection('members').get();
                 for (const memDoc of memSnap.docs) {
-                    try { 
-                        const uDoc = await db.collection('users').doc(memDoc.id).get(); 
-                        if (uDoc.exists) allDocs.push(uDoc); 
+                    try {
+                        const uDoc = await db.collection('users').doc(memDoc.id).get();
+                        if (uDoc.exists) allDocs.push(uDoc);
                     } catch(e) {}
                 }
-            } catch(e) { console.log('Body query 2 failed:', e.message); }
+            } catch(e) { console.log('People query 2:', e.message); }
         }
-
-        // Query 3: last resort — check if State has user data from admin's member load
-        if (allDocs.length === 0 && allMembersData && allMembersData.length > 0) {
-            // Use cached admin data to at least show something
-            const myUid = Auth.currentUser?.uid;
-            bodyMembers = allMembersData.filter(m => m.id !== myUid).map(m => ({
-                id: m.id, name: m.name || `${m.firstName} ${m.lastName}`,
-                firstName: m.firstName || '', lastName: m.lastName || '',
-                profilePhoto: m.profilePhoto || '',
-                isMember: m.isMember || false,
-                lastLogin: m.lastLogin || null,
-                visibility: 'everyone',
-                allowMessages: 'everyone'
-            })).sort((a,b) => (a.firstName||'').localeCompare(b.firstName||''));
-            renderBodyList(container, bodyMembers);
-            return;
-        }
-
+        
         const myUid = Auth.currentUser?.uid;
-        const myIsMember = allDocs.find(d => d.id === myUid)?.data()?.isMember || false;
-
-        bodyMembers = allDocs.filter(d => d.id !== myUid).map(d => {
+        const myDoc = allDocs.find(d => d.id === myUid);
+        const myIsMember = myDoc?.data()?.isMember || false;
+        
+        pulseBodyMembers = allDocs.filter(d => d.id !== myUid).map(d => {
             const u = d.data();
             const name = u.profile?.name || u.name || u.displayName || 'User';
             const parts = name.trim().split(' ');
-            const vis = u.pulsePrivacy?.visibility || 'everyone';
-            const msgPref = u.pulsePrivacy?.allowMessages || 'everyone';
             return {
-                id: d.id, name, firstName: parts[0]||'', lastName: parts.length>1 ? parts.slice(1).join(' ') : '',
+                id: d.id,
+                name: name,
+                firstName: parts[0] || '',
+                lastName: parts.length > 1 ? parts.slice(1).join(' ') : '',
                 profilePhoto: u.profilePhoto || u.profile?.photoURL || '',
                 isMember: u.isMember || false,
                 lastLogin: u.lastLogin?.toMillis?.() || u.lastLogin || null,
-                visibility: vis,
-                allowMessages: msgPref
+                visibility: u.pulsePrivacy?.visibility || 'everyone',
+                allowMessages: u.pulsePrivacy?.allowMessages || 'everyone'
             };
         }).filter(m => {
-            // Apply privacy: hidden users not shown, members_only shown only to members
+            // Privacy filter
             if (m.visibility === 'hidden') return false;
             if (m.visibility === 'members_only' && !myIsMember) return false;
             return true;
-        }).sort((a,b) => (a.firstName||'').localeCompare(b.firstName||''));
-
-        renderBodyList(container, bodyMembers);
-    } catch(e) { console.error('loadTheBody error:', e); container.innerHTML='<p style="text-align:center;color:var(--text-tertiary)">Unable to load members.</p>'; }
+        }).sort((a, b) => (a.firstName || '').localeCompare(b.firstName || ''));
+        
+        pulseRenderPeople(container);
+    } catch(e) {
+        console.error('Load people error:', e);
+        container.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);padding:20px">Unable to load members.</p>';
+    }
 }
 
-function filterTheBody(term) {
-    bodySearchTerm = term.toLowerCase().trim();
-    const c = document.getElementById('theBodyList'); if(!c) return;
-    const filtered = bodySearchTerm
-        ? bodyMembers.filter(m => `${m.firstName} ${m.lastName}`.toLowerCase().includes(bodySearchTerm))
-        : bodyMembers;
-    renderBodyList(c, filtered);
+function pulseFilterPeople(term) {
+    pulseBodySearch = term.toLowerCase().trim();
+    const c = document.getElementById('pulsePeopleList');
+    if (c) pulseRenderPeople(c);
 }
 
-function renderBodyList(container, members) {
-    if (!members.length) {
-        container.innerHTML = `<div style="text-align:center;padding:var(--space-xl);color:var(--text-tertiary)">
-            <div style="font-size:3rem;margin-bottom:12px">🤝</div>
-            <p>${bodySearchTerm ? 'No one found matching your search' : 'No church members found yet'}</p>
-        </div>`;
+function pulseRenderPeople(container) {
+    let people = [...pulseBodyMembers];
+    if (pulseBodySearch) {
+        people = people.filter(m => (m.firstName + ' ' + m.lastName).toLowerCase().includes(pulseBodySearch));
+    }
+    
+    if (!people.length) {
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-tertiary)">' +
+            '<div style="font-size:2.5rem;margin-bottom:12px">🤝</div>' +
+            '<p style="margin:0">' + (pulseBodySearch ? 'No one found matching "' + pulseBodySearch + '"' : 'No church members found yet') + '</p></div>';
         return;
     }
-    container.innerHTML = `<div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
-    ${members.map(m => {
+    
+    container.innerHTML = '<div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">' +
+    people.map(m => {
         const initials = getInitials(m);
         const hasPhoto = m.profilePhoto && m.profilePhoto.length > 5;
-        const online = m.lastLogin && (Date.now()-m.lastLogin) < 24*60*60*1000;
-        const connectionStatus = getConnectionStatus(m.id);
-        const canMessage = m.allowMessages === 'everyone' || connectionStatus === 'accepted';
-
+        const online = m.lastLogin && (Date.now() - m.lastLogin) < 24 * 60 * 60 * 1000;
+        const connStatus = pulseGetConnectionStatus(m.id);
+        const canMsg = m.allowMessages === 'everyone' || connStatus === 'accepted';
+        const safeName = (m.firstName + ' ' + m.lastName).replace(/'/g, "\\'");
+        
         let actionBtn;
-        if (canMessage) {
-            actionBtn = `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();startDirectMessage('${m.id}','${(m.firstName+' '+m.lastName).replace(/'/g,"\\'")}')" title="Message" style="font-size:0.75rem">💬 Message</button>`;
-        } else if (connectionStatus === 'pending_sent') {
-            actionBtn = `<button class="btn btn-ghost btn-sm" disabled style="font-size:0.75rem;opacity:0.6">⏳ Pending</button>`;
-        } else if (connectionStatus === 'pending_received') {
-            actionBtn = `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();respondConnectionByUser('${m.id}','accepted')" style="font-size:0.75rem">✓ Accept</button>`;
+        if (canMsg) {
+            actionBtn = '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();pulseStartDM(\'' + m.id + '\',\'' + safeName + '\')" style="font-size:0.75rem">Message</button>';
+        } else if (connStatus === 'pending_sent') {
+            actionBtn = '<button class="btn btn-ghost btn-sm" disabled style="font-size:0.75rem;opacity:0.6">Pending</button>';
+        } else if (connStatus === 'pending_received') {
+            actionBtn = '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();pulseRespondConnByUser(\'' + m.id + '\',\'accepted\')" style="font-size:0.75rem">Accept</button>';
         } else {
-            actionBtn = `<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();sendConnectionRequest('${m.id}','${(m.firstName+' '+m.lastName).replace(/'/g,"\\'")}')" style="font-size:0.75rem">🤝 Connect</button>`;
+            actionBtn = '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();pulseSendConnRequest(\'' + m.id + '\',\'' + safeName + '\')" style="font-size:0.75rem">Connect</button>';
         }
-
-        return `<div class="card" style="padding:14px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'" onclick="showBodyProfile('${m.id}')">
-            <div style="display:flex;align-items:center;gap:12px">
-                <div style="position:relative">
-                    ${hasPhoto ? `<img src="${m.profilePhoto}" style="width:48px;height:48px;border-radius:50%;object-fit:cover">` : `<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,${m.isMember?'var(--root-green),var(--leaf-green)':'#3b82f6,#60a5fa'});display:flex;align-items:center;justify-content:center;color:white;font-weight:600">${initials}</div>`}
-                    ${online ? '<div style="position:absolute;bottom:0;right:0;width:12px;height:12px;background:#22c55e;border-radius:50%;border:2px solid var(--card-bg)"></div>' : ''}
-                </div>
-                <div style="flex:1;min-width:0">
-                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                        <strong style="font-size:0.95rem">${m.firstName} ${m.lastName}</strong>
-                        ${m.isMember ? '<span style="background:#22c55e;color:white;font-size:0.5rem;padding:1px 5px;border-radius:6px">Member</span>' : ''}
-                        ${connectionStatus === 'accepted' ? '<span style="background:#3b82f6;color:white;font-size:0.5rem;padding:1px 5px;border-radius:6px">Connected</span>' : ''}
-                    </div>
-                    <p style="margin:2px 0 0;font-size:0.75rem;color:var(--text-tertiary)">${online ? '🟢 Active' : m.lastLogin ? 'Last seen '+getRelativeTime(m.lastLogin) : ''}</p>
-                </div>
-                ${actionBtn}
-            </div>
-        </div>`;
-    }).join('')}</div>`;
+        
+        const avatarHTML = hasPhoto
+            ? '<img src="' + m.profilePhoto + '" style="width:48px;height:48px;border-radius:50%;object-fit:cover">'
+            : '<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,' + (m.isMember ? 'var(--root-green),var(--leaf-green)' : '#3b82f6,#60a5fa') + ');display:flex;align-items:center;justify-content:center;color:white;font-weight:600">' + initials + '</div>';
+        
+        return '<div class="card" style="padding:14px;cursor:pointer;transition:all 0.15s" onclick="pulseShowProfile(\'' + m.id + '\')" onmouseover="this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.transform=\'none\'">' +
+            '<div style="display:flex;align-items:center;gap:12px">' +
+                '<div style="position:relative">' + avatarHTML +
+                    (online ? '<div style="position:absolute;bottom:0;right:0;width:12px;height:12px;background:#22c55e;border-radius:50%;border:2px solid var(--card-bg)"></div>' : '') +
+                '</div>' +
+                '<div style="flex:1;min-width:0">' +
+                    '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
+                        '<strong style="font-size:0.95rem">' + m.firstName + ' ' + m.lastName + '</strong>' +
+                        (m.isMember ? '<span style="background:#22c55e;color:white;font-size:0.5rem;padding:1px 5px;border-radius:6px">Member</span>' : '') +
+                        (connStatus === 'accepted' ? '<span style="background:#3b82f6;color:white;font-size:0.5rem;padding:1px 5px;border-radius:6px">Connected</span>' : '') +
+                    '</div>' +
+                    '<p style="margin:2px 0 0;font-size:0.75rem;color:var(--text-tertiary)">' + (online ? 'Active now' : m.lastLogin ? 'Last seen ' + getRelativeTime(m.lastLogin) : '') + '</p>' +
+                '</div>' +
+                actionBtn +
+            '</div>' +
+        '</div>';
+    }).join('') + '</div>';
 }
 
-function showBodyProfile(userId) {
-    const m = bodyMembers.find(x => x.id === userId); if(!m) return;
+function pulseShowProfile(userId) {
+    const m = pulseBodyMembers.find(x => x.id === userId);
+    if (!m) return;
     const initials = getInitials(m);
     const hasPhoto = m.profilePhoto && m.profilePhoto.length > 5;
-    const connectionStatus = getConnectionStatus(m.id);
-    const canMessage = m.allowMessages === 'everyone' || connectionStatus === 'accepted';
-    const safeName = (m.firstName+' '+m.lastName).replace(/'/g,"\\'");
-
+    const connStatus = pulseGetConnectionStatus(m.id);
+    const canMsg = m.allowMessages === 'everyone' || connStatus === 'accepted';
+    const safeName = (m.firstName + ' ' + m.lastName).replace(/'/g, "\\'");
+    
     let actionBtns;
-    if (canMessage) {
-        actionBtns = `<button class="btn btn-primary" onclick="closeModal();startDirectMessage('${m.id}','${safeName}')">💬 Send Message</button>`;
-    } else if (connectionStatus === 'pending_sent') {
-        actionBtns = `<button class="btn btn-ghost" disabled>⏳ Connection Pending</button>`;
-    } else if (connectionStatus === 'pending_received') {
-        actionBtns = `<button class="btn btn-primary" onclick="respondConnectionByUser('${m.id}','accepted');closeModal();">✓ Accept Connection</button>`;
+    if (canMsg) {
+        actionBtns = `<button class="btn btn-primary" onclick="closeModal();pulseStartDM('${m.id}','${safeName}')">Send Message</button>`;
+    } else if (connStatus === 'pending_sent') {
+        actionBtns = `<button class="btn btn-ghost" disabled>Connection Pending</button>`;
+    } else if (connStatus === 'pending_received') {
+        actionBtns = `<button class="btn btn-primary" onclick="pulseRespondConnByUser('${m.id}','accepted');closeModal();">Accept Connection</button>`;
     } else {
-        actionBtns = `<button class="btn btn-secondary" onclick="sendConnectionRequest('${m.id}','${safeName}');closeModal();">🤝 Connect</button>`;
+        actionBtns = `<button class="btn btn-secondary" onclick="pulseSendConnRequest('${m.id}','${safeName}');closeModal();">Connect</button>`;
     }
-
+    
     showModal(`<div class="modal" onclick="event.stopPropagation()" style="max-width:400px">
         <div style="text-align:center;padding:24px 24px 0">
             ${hasPhoto ? `<img src="${m.profilePhoto}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:12px">` : `<div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--root-green),var(--leaf-green));display:flex;align-items:center;justify-content:center;color:white;font-size:1.8rem;font-weight:700;margin:0 auto 12px">${initials}</div>`}
             <h3 style="margin:0">${m.firstName} ${m.lastName}</h3>
-            ${m.isMember ? '<span style="background:#22c55e;color:white;font-size:0.7rem;padding:2px 8px;border-radius:8px">Church Member</span>' : ''}
-            ${connectionStatus === 'accepted' ? '<span style="background:#3b82f6;color:white;font-size:0.7rem;padding:2px 8px;border-radius:8px;margin-left:4px">Connected</span>' : ''}
+            <div style="margin-top:8px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+                ${m.isMember ? '<span style="background:#22c55e;color:white;font-size:0.7rem;padding:2px 8px;border-radius:8px">Church Member</span>' : ''}
+                ${connStatus === 'accepted' ? '<span style="background:#3b82f6;color:white;font-size:0.7rem;padding:2px 8px;border-radius:8px">Connected</span>' : ''}
+            </div>
         </div>
         <div style="padding:20px 24px 24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
             ${actionBtns}
@@ -13452,38 +13298,257 @@ function showBodyProfile(userId) {
     </div>`);
 }
 
-// ---- CONNECTIONS SYSTEM ----
+// ==========================================
+// PULSE CONVERSATION VIEW
+// ==========================================
 
-async function loadMyConnections(churchId) {
-    if (!firebaseInitialized) { myConnections = []; pendingRequests = []; return; }
-    const myId = Auth.currentUser?.uid;
-    if (!myId) { myConnections = []; pendingRequests = []; return; }
-    try {
-        // Get all connections where I'm involved - try compound query first
-        let snap1, snap2;
+async function pulseOpenConvo(convoId) {
+    const convo = pulseConversations.find(c => c.id === convoId);
+    if (!convo) return;
+    let messages = [];
+    if (firebaseInitialized) {
         try {
-            snap1 = await db.collection('pulse_connections').where('fromId','==',myId).where('churchId','==',churchId).get();
-            snap2 = await db.collection('pulse_connections').where('toId','==',myId).where('churchId','==',churchId).get();
-        } catch(indexErr) {
-            // Fallback: query by just fromId/toId, filter churchId client-side
-            console.log('Connections: index not ready, using fallback:', indexErr.message);
-            try {
-                snap1 = await db.collection('pulse_connections').where('fromId','==',myId).get();
-                snap2 = await db.collection('pulse_connections').where('toId','==',myId).get();
-            } catch(e2) {
-                // Collection may not exist yet
-                snap1 = { docs: [] }; snap2 = { docs: [] };
-            }
-        }
-        const all = [...snap1.docs.map(d => ({id:d.id,...d.data()})), ...snap2.docs.map(d => ({id:d.id,...d.data()}))];
-        myConnections = all.filter(c => c.churchId === churchId);
-        pendingRequests = myConnections.filter(c => c.status === 'pending');
-    } catch(e) { console.error('Load connections error:', e); myConnections = []; pendingRequests = []; }
+            let snap;
+            try { snap = await db.collection('pulse_conversations').doc(convoId).collection('messages').orderBy('timestamp','asc').limit(100).get(); }
+            catch(e) { snap = await db.collection('pulse_conversations').doc(convoId).collection('messages').limit(100).get(); }
+            messages = snap.docs.map(d => ({id:d.id,...d.data()}));
+            messages.sort((a,b) => {
+                const at = a.timestamp?.toMillis?.() || a.timestamp || 0;
+                const bt = b.timestamp?.toMillis?.() || b.timestamp || 0;
+                return at - bt;
+            });
+        } catch(e) { console.error('Load messages error:', e); }
+    } else {
+        messages = JSON.parse(localStorage.getItem('pulse_msgs_' + convoId) || '[]');
+    }
+    
+    const isAdmin = State.current.accountType === 'church';
+    const myId = isAdmin ? 'admin_' + State.current.user?.churchId : Auth.currentUser?.uid;
+    const title = convo.title || convo.participantNames?.filter(n => n !== (Auth.currentUser?.name||'')).join(', ') || 'Conversation';
+    const isBc = convo.type === 'broadcast';
+    
+    let msgsHTML;
+    if (!messages.length) {
+        msgsHTML = '<p style="text-align:center;color:var(--text-tertiary);margin:auto">Start the conversation!</p>';
+    } else {
+        msgsHTML = messages.map(m => {
+            const isMe = m.senderId === myId;
+            const t = m.timestamp?.toMillis ? new Date(m.timestamp.toMillis()).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : m.timestamp ? new Date(m.timestamp).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : '';
+            return `<div style="display:flex;justify-content:${isMe?'flex-end':'flex-start'}"><div style="max-width:80%;padding:10px 14px;border-radius:16px;${isMe?'background:var(--primary);color:white;border-bottom-right-radius:4px':'background:var(--hover-bg);border-bottom-left-radius:4px'}">` +
+                (!isMe ? `<div style="font-size:0.7rem;font-weight:600;margin-bottom:4px;opacity:0.7">${m.senderName||'Unknown'}</div>` : '') +
+                (m.imageUrl ? `<img src="${m.imageUrl}" style="max-width:100%;border-radius:8px;margin-bottom:6px;cursor:pointer" onclick="window.open('${m.imageUrl}','_blank')">` : '') +
+                (m.text ? `<div style="font-size:0.9rem">${m.text}</div>` : '') +
+                (t ? `<div style="font-size:0.6rem;opacity:0.6;margin-top:4px;text-align:right">${t}</div>` : '') +
+            '</div></div>';
+        }).join('');
+    }
+    
+    showModal(`<div class="modal" onclick="event.stopPropagation()" style="max-width:600px;height:80vh;display:flex;flex-direction:column;padding:0">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:12px">
+            <button onclick="closeModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text-primary)">←</button>
+            <div style="flex:1">
+                <strong>${title}</strong>
+                <p style="margin:0;font-size:0.75rem;color:var(--text-tertiary)">${isBc ? 'Broadcast' : 'Direct Message'}</p>
+            </div>
+        </div>
+        <div id="pulseMessages" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px">
+            ${msgsHTML}
+        </div>
+        <div style="padding:12px 16px;border-top:1px solid var(--border-color);display:flex;gap:8px;align-items:flex-end">
+            <label style="cursor:pointer;font-size:1.2rem;padding:4px" title="Attach image">📎<input type="file" accept="image/*" style="display:none" onchange="pulseSendImage(this,'${convoId}')"></label>
+            <textarea id="pulseInput" class="input-field" style="flex:1;margin:0;resize:none;min-height:40px;max-height:100px" placeholder="Type a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();pulseSendMsg('${convoId}');}"></textarea>
+            <button class="btn btn-primary btn-sm" onclick="pulseSendMsg('${convoId}')">Send</button>
+        </div>
+    </div>`);
+    setTimeout(() => { const el = document.getElementById('pulseMessages'); if(el) el.scrollTop = el.scrollHeight; }, 100);
 }
 
-function getConnectionStatus(userId) {
+async function pulseSendMsg(convoId) {
+    const input = document.getElementById('pulseInput');
+    if (!input || !input.value.trim()) return;
+    const text = input.value.trim(); input.value = '';
+    const isAdmin = State.current.accountType === 'church';
+    const myId = isAdmin ? 'admin_' + State.current.user?.churchId : Auth.currentUser?.uid;
+    const myName = isAdmin ? 'Church Admin' : (Auth.currentUser?.name || 'User');
+    const msg = { senderId: myId, senderName: myName, text, timestamp: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(), type: 'text' };
+    
+    if (firebaseInitialized) {
+        try {
+            await db.collection('pulse_conversations').doc(convoId).collection('messages').add(msg);
+            await db.collection('pulse_conversations').doc(convoId).set({ lastMessage: text.substring(0,100), lastMessageAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        } catch(e) { toast('Failed to send','error'); return; }
+    } else {
+        const msgs = JSON.parse(localStorage.getItem('pulse_msgs_'+convoId)||'[]');
+        msg.timestamp = Date.now(); msgs.push(msg);
+        localStorage.setItem('pulse_msgs_'+convoId, JSON.stringify(msgs));
+    }
+    pulseOpenConvo(convoId);
+}
+
+async function pulseSendImage(input, convoId) {
+    const file = input.files?.[0]; if(!file) return;
+    const isAdmin = State.current.accountType === 'church';
+    const myId = isAdmin ? 'admin_' + State.current.user?.churchId : Auth.currentUser?.uid;
+    const myName = isAdmin ? 'Church Admin' : (Auth.currentUser?.name || 'User');
+    showUploadOverlay('Sending image...', 0, 1);
+    try {
+        let url = '';
+        if (firebaseInitialized && firebase.storage) {
+            const ref = firebase.storage().ref('pulse-images/' + State.current.user?.churchId + '/' + Date.now() + '_' + file.name);
+            await ref.put(file); url = await ref.getDownloadURL();
+        } else { url = URL.createObjectURL(file); }
+        const msg = { senderId: myId, senderName: myName, text: '', imageUrl: url, timestamp: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(), type: 'image' };
+        if (firebaseInitialized) {
+            await db.collection('pulse_conversations').doc(convoId).collection('messages').add(msg);
+            await db.collection('pulse_conversations').doc(convoId).set({ lastMessage: 'Image', lastMessageAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        } else {
+            const msgs = JSON.parse(localStorage.getItem('pulse_msgs_'+convoId)||'[]');
+            msg.timestamp = Date.now(); msgs.push(msg);
+            localStorage.setItem('pulse_msgs_'+convoId, JSON.stringify(msgs));
+        }
+        hideUploadOverlay(); pulseOpenConvo(convoId);
+    } catch(e) { hideUploadOverlay(); toast('Failed to send image','error'); }
+}
+
+// ==========================================
+// PULSE BROADCASTS
+// ==========================================
+
+function showBroadcastModal(audience) {
+    const labels = {all:'Everyone',members:'Members Only',nonmembers:'Non-Members',checkedin:'Checked-In Attendees'};
+    showModal(`<div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
+        <div class="modal-header" style="background:linear-gradient(135deg,#8b5cf6,#a78bfa);color:white;margin:-24px -24px 0;padding:20px 24px;border-radius:var(--radius-lg) var(--radius-lg) 0 0">
+            <h3 class="modal-title" style="margin:0">Broadcast to ${labels[audience]}</h3>
+            <button class="modal-close" onclick="closeModal()" style="color:white">✕</button>
+        </div>
+        <div class="modal-body" style="padding-top:20px">
+            <input type="text" id="bcTitle" class="input-field" placeholder="Subject (optional)" style="margin-bottom:12px">
+            <textarea id="bcMessage" class="input-field" rows="5" placeholder="Type your message..." style="resize:vertical"></textarea>
+            <div style="display:flex;gap:12px;margin-top:16px">
+                <button class="btn btn-primary" style="flex:1" onclick="pulseSendBroadcast('${audience}')">Send</button>
+                <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>`);
+}
+
+async function pulseSendBroadcast(audience) {
+    const title = document.getElementById('bcTitle')?.value?.trim() || 'Church Announcement';
+    const message = document.getElementById('bcMessage')?.value?.trim();
+    if (!message) { toast('Please enter a message','error'); return; }
+    const churchId = State.current.user?.churchId;
+    const adminId = 'admin_' + churchId;
+    const convo = {
+        churchId, type: 'broadcast', audience,
+        title: title,
+        lastMessage: message.substring(0,100),
+        lastMessageAt: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(),
+        createdBy: adminId,
+        participants: [adminId]
+    };
+    
+    if (firebaseInitialized) {
+        try {
+            const ref = await db.collection('pulse_conversations').add(convo);
+            await ref.collection('messages').add({
+                senderId: adminId, senderName: 'Church Admin',
+                text: message,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                type: 'text'
+            });
+        } catch(e) { toast('Failed to send','error'); return; }
+    } else {
+        const id = 'bc_' + Date.now(); convo.id = id; convo.lastMessageAt = Date.now();
+        const s = JSON.parse(localStorage.getItem('pulse_convos_' + churchId) || '[]');
+        s.unshift(convo);
+        localStorage.setItem('pulse_convos_' + churchId, JSON.stringify(s));
+        localStorage.setItem('pulse_msgs_' + id, JSON.stringify([{senderId: adminId, senderName:'Church Admin', text: message, timestamp: Date.now(), type:'text'}]));
+    }
+    closeModal(); toast('Broadcast sent!','success'); navigate('church-pulse');
+}
+
+// ==========================================
+// PULSE DIRECT MESSAGING
+// ==========================================
+
+async function pulseStartDM(userId, userName) {
+    const churchId = State.current.user?.churchId;
+    const isAdmin = State.current.accountType === 'church';
+    const myId = isAdmin ? 'admin_' + churchId : Auth.currentUser?.uid;
+    
+    // Check message permissions (admin bypasses)
+    if (!isAdmin) {
+        const target = pulseBodyMembers.find(m => m.id === userId);
+        if (target?.allowMessages === 'nobody') { toast('This person is not accepting messages','info'); return; }
+        if (target?.allowMessages === 'connections_only') {
+            const connected = pulseConnections.some(c => c.status === 'accepted' && (c.fromId === userId || c.toId === userId));
+            if (!connected) { toast('Connect with this person first','info'); return; }
+        }
+    }
+    
+    // Check for existing conversation
+    let existingId = null;
+    if (firebaseInitialized) {
+        try {
+            const snap = await db.collection('pulse_conversations').where('participants','array-contains',myId).limit(100).get();
+            const found = snap.docs.find(d => {
+                const data = d.data();
+                return data.churchId === churchId && data.type === 'direct' && data.participants?.includes(userId);
+            });
+            if (found) existingId = found.id;
+        } catch(e) { console.log('DM existing check:', e.message); }
+    }
+    
+    if (existingId) { closeModal(); pulseOpenConvo(existingId); return; }
+    
+    // Create new conversation
+    const myName = isAdmin ? 'Church Admin' : (Auth.currentUser?.name || 'User');
+    const convo = {
+        churchId, type: 'direct',
+        participants: [myId, userId],
+        participantNames: [myName, userName],
+        lastMessage: '', lastMessageAt: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(),
+        createdBy: myId
+    };
+    
+    let convoId;
+    if (firebaseInitialized) {
+        try { const ref = await db.collection('pulse_conversations').add(convo); convoId = ref.id; }
+        catch(e) { toast('Failed to start conversation','error'); return; }
+    } else {
+        convoId = 'dm_' + Date.now(); convo.id = convoId; convo.lastMessageAt = Date.now();
+        const s = JSON.parse(localStorage.getItem('pulse_convos_' + churchId) || '[]');
+        s.unshift(convo);
+        localStorage.setItem('pulse_convos_' + churchId, JSON.stringify(s));
+    }
+    closeModal(); pulseOpenConvo(convoId);
+}
+
+// ==========================================
+// PULSE CONNECTIONS
+// ==========================================
+
+async function pulseLoadConnections(churchId) {
+    if (!firebaseInitialized) { pulseConnections = []; pulsePendingRequests = []; return; }
     const myId = Auth.currentUser?.uid;
-    const conn = myConnections.find(c => (c.fromId === userId && c.toId === myId) || (c.toId === userId && c.fromId === myId));
+    if (!myId) { pulseConnections = []; pulsePendingRequests = []; return; }
+    
+    try {
+        let snap1 = { docs: [] }, snap2 = { docs: [] };
+        try {
+            snap1 = await db.collection('pulse_connections').where('fromId','==',myId).get();
+            snap2 = await db.collection('pulse_connections').where('toId','==',myId).get();
+        } catch(e) { console.log('Connections load fallback:', e.message); }
+        
+        const all = [...snap1.docs.map(d => ({id:d.id,...d.data()})), ...snap2.docs.map(d => ({id:d.id,...d.data()}))];
+        pulseConnections = all.filter(c => c.churchId === churchId);
+        pulsePendingRequests = pulseConnections.filter(c => c.status === 'pending');
+    } catch(e) { console.error('Connections error:', e); pulseConnections = []; pulsePendingRequests = []; }
+}
+
+function pulseGetConnectionStatus(userId) {
+    const myId = Auth.currentUser?.uid;
+    const conn = pulseConnections.find(c => (c.fromId === userId && c.toId === myId) || (c.toId === userId && c.fromId === myId));
     if (!conn) return 'none';
     if (conn.status === 'accepted') return 'accepted';
     if (conn.status === 'pending' && conn.fromId === myId) return 'pending_sent';
@@ -13491,16 +13556,15 @@ function getConnectionStatus(userId) {
     return 'none';
 }
 
-async function sendConnectionRequest(toId, toName) {
+async function pulseSendConnRequest(toId, toName) {
     const churchId = State.current.user?.churchId;
     const myId = Auth.currentUser?.uid;
     const myName = Auth.currentUser?.name || 'User';
     if (!firebaseInitialized) { toast('Requires Firebase','error'); return; }
-
-    // Check if request already exists
-    const existing = myConnections.find(c => (c.fromId === toId || c.toId === toId));
+    
+    const existing = pulseConnections.find(c => c.fromId === toId || c.toId === toId);
     if (existing) { toast('Connection already exists','info'); return; }
-
+    
     try {
         await db.collection('pulse_connections').add({
             churchId, fromId: myId, fromName: myName, toId, toName,
@@ -13508,14 +13572,13 @@ async function sendConnectionRequest(toId, toName) {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         toast('Connection request sent!','success');
-        await loadMyConnections(churchId);
-        // Refresh body list
-        const c = document.getElementById('theBodyList');
-        if (c) renderBodyList(c, bodyMembers);
+        await pulseLoadConnections(churchId);
+        const c = document.getElementById('pulsePeopleList');
+        if (c) pulseRenderPeople(c);
     } catch(e) { toast('Failed to send request','error'); }
 }
 
-async function respondConnection(connectionId, response) {
+async function pulseRespondConn(connectionId, response) {
     if (!firebaseInitialized) return;
     try {
         await db.collection('pulse_connections').doc(connectionId).update({
@@ -13523,44 +13586,44 @@ async function respondConnection(connectionId, response) {
             respondedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         toast(response === 'accepted' ? 'Connected!' : 'Request declined','success');
-        const churchId = State.current.user?.churchId;
-        await loadMyConnections(churchId);
+        await pulseLoadConnections(State.current.user?.churchId);
         navigate('pulse');
     } catch(e) { toast('Failed to respond','error'); }
 }
 
-async function respondConnectionByUser(userId, response) {
-    const conn = myConnections.find(c => c.fromId === userId && c.toId === Auth.currentUser?.uid && c.status === 'pending');
-    if (conn) await respondConnection(conn.id, response);
+async function pulseRespondConnByUser(userId, response) {
+    const conn = pulseConnections.find(c => c.fromId === userId && c.toId === Auth.currentUser?.uid && c.status === 'pending');
+    if (conn) await pulseRespondConn(conn.id, response);
 }
 
-// ---- PRIVACY ----
+// ==========================================
+// PULSE PRIVACY
+// ==========================================
 
-async function loadPrivacySettings() {
+async function pulseLoadPrivacy() {
     if (!firebaseInitialized) return;
     const uid = Auth.currentUser?.uid;
     if (!uid) return;
     try {
         const doc = await db.collection('users').doc(uid).get();
         if (doc.exists) {
-            myPrivacySettings = doc.data().pulsePrivacy || { visibility: 'everyone', allowMessages: 'everyone' };
+            pulsePrivacy = doc.data().pulsePrivacy || { visibility: 'everyone', allowMessages: 'everyone' };
         }
     } catch(e) {}
 }
 
-async function updatePrivacy(field, value) {
-    myPrivacySettings[field] = value;
+async function pulseSetPrivacy(field, value) {
+    pulsePrivacy[field] = value;
     if (!firebaseInitialized) { toast('Privacy updated','success'); navigate('pulse'); return; }
-    const uid = Auth.currentUser?.uid;
     try {
-        await db.collection('users').doc(uid).update({
-            [`pulsePrivacy.${field}`]: value
-        });
+        await db.collection('users').doc(Auth.currentUser?.uid).set({
+            ['pulsePrivacy']: pulsePrivacy
+        }, { merge: true });
         toast('Privacy updated','success');
-        // Re-render to update radio button highlights
         navigate('pulse');
     } catch(e) { toast('Failed to save','error'); }
 }
+
 
 // ==========================================
 // PROFILE PHOTO UPLOAD  
