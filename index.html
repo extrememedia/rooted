@@ -2611,6 +2611,14 @@ function toggleTheme() {
 let navigationHistory = [];
 
 function navigate(nav) {
+    // Detach Pulse listeners when navigating away from Pulse
+    const leavingPulse = State.current.activeNav === 'pulse' || State.current.activeNav === 'church-pulse';
+    const goingToPulse = nav === 'pulse' || nav === 'church-pulse';
+    if (leavingPulse && !goingToPulse) {
+        if (typeof pulseDetachInboxListener === 'function') pulseDetachInboxListener();
+        if (typeof pulseDetachMsgListener === 'function') pulseDetachMsgListener();
+    }
+    
     // Don't add to history if navigating to same page
     if (State.current.activeNav && State.current.activeNav !== nav) {
         navigationHistory.push(State.current.activeNav);
@@ -2649,6 +2657,8 @@ function showModal(content) {
 }
 
 function closeModal() {
+    // Detach any active Pulse real-time listeners
+    if (typeof pulseDetachMsgListener === 'function') pulseDetachMsgListener();
     document.getElementById('modalContainer').innerHTML = '';
 }
 
@@ -13058,61 +13068,111 @@ async function pulseLoadConversations(churchId, isAdmin) {
     const container = document.getElementById('pulseList');
     if (!container) return;
     
+    // Detach previous inbox listener
+    pulseDetachInboxListener();
+    
     try {
         if (!firebaseInitialized) {
             pulseConversations = JSON.parse(localStorage.getItem('pulse_convos_' + churchId) || '[]');
-        } else {
-            const userId = isAdmin ? 'admin_' + churchId : Auth.currentUser?.uid;
-            if (!userId) { pulseConversations = []; pulseRenderConvoList(container, isAdmin); return; }
-            
-            let docs = [];
-            if (isAdmin) {
-                // Admin sees all conversations for this church
-                try {
-                    const snap = await db.collection('pulse_conversations').where('churchId','==',churchId).limit(50).get();
-                    docs = snap.docs;
-                } catch(e) { console.log('Admin pulse query error:', e.message); }
-            } else {
-                // User sees: their DMs + ALL broadcasts for this church
-                let dmDocs = [];
-                let bcDocs = [];
-                try {
-                    const dmSnap = await db.collection('pulse_conversations').where('participants','array-contains',userId).limit(50).get();
-                    dmDocs = dmSnap.docs.filter(d => d.data().churchId === churchId);
-                } catch(e) { console.log('DM query error:', e.message); }
-                try {
-                    const bcSnap = await db.collection('pulse_conversations').where('churchId','==',churchId).where('type','==','broadcast').limit(50).get();
-                    bcDocs = bcSnap.docs;
-                } catch(e) {
-                    // Fallback: get all for church, filter client-side
-                    try {
-                        const allSnap = await db.collection('pulse_conversations').where('churchId','==',churchId).limit(50).get();
-                        bcDocs = allSnap.docs.filter(d => d.data().type === 'broadcast');
-                    } catch(e2) { console.log('Broadcast fallback error:', e2.message); }
-                }
-                // Merge and deduplicate
-                const seen = new Set();
-                docs = [...dmDocs, ...bcDocs].filter(d => {
-                    if (seen.has(d.id)) return false;
-                    seen.add(d.id);
-                    return true;
-                });
-            }
-            pulseConversations = docs.map(d => ({ id: d.id, ...d.data() }));
+            pulseRenderConvoList(container, isAdmin);
+            return;
         }
         
-        // Sort client-side (avoids needing composite index)
-        pulseConversations.sort((a, b) => {
+        const userId = isAdmin ? 'admin_' + churchId : Auth.currentUser?.uid;
+        if (!userId) { pulseConversations = []; pulseRenderConvoList(container, isAdmin); return; }
+        
+        if (isAdmin) {
+            // Admin: real-time listener on all church conversations
+            try {
+                _pulseInboxListener = db.collection('pulse_conversations').where('churchId','==',churchId).limit(50)
+                    .onSnapshot(snap => {
+                        pulseConversations = snap.docs.map(d => ({id:d.id,...d.data()}));
+                        pulseConversations.sort((a,b) => {
+                            const at = a.lastMessageAt?.toMillis?.() || a.lastMessageAt || 0;
+                            const bt = b.lastMessageAt?.toMillis?.() || b.lastMessageAt || 0;
+                            return bt - at;
+                        });
+                        const c = document.getElementById('pulseList');
+                        if (c) pulseRenderConvoList(c, true);
+                    }, err => {
+                        console.log('Admin inbox listener error:', err.message);
+                        // Fallback to one-time get
+                        pulseLoadConvosFallback(churchId, isAdmin, container);
+                    });
+            } catch(e) { pulseLoadConvosFallback(churchId, isAdmin, container); }
+        } else {
+            // User: listen on conversations where they're a participant
+            try {
+                _pulseInboxListener = db.collection('pulse_conversations').where('participants','array-contains',userId).limit(50)
+                    .onSnapshot(async snap => {
+                        let dmDocs = snap.docs.filter(d => d.data().churchId === churchId);
+                        
+                        // Also get broadcasts (one-time, not listener)
+                        let bcDocs = [];
+                        try {
+                            const bcSnap = await db.collection('pulse_conversations').where('churchId','==',churchId).where('type','==','broadcast').limit(50).get();
+                            bcDocs = bcSnap.docs;
+                        } catch(e) {
+                            try {
+                                const allSnap = await db.collection('pulse_conversations').where('churchId','==',churchId).limit(50).get();
+                                bcDocs = allSnap.docs.filter(d => d.data().type === 'broadcast');
+                            } catch(e2) {}
+                        }
+                        
+                        // Merge and dedup
+                        const seen = new Set();
+                        const allDocs = [...dmDocs, ...bcDocs].filter(d => {
+                            if (seen.has(d.id)) return false;
+                            seen.add(d.id); return true;
+                        });
+                        
+                        pulseConversations = allDocs.map(d => ({id:d.id,...d.data()}));
+                        pulseConversations.sort((a,b) => {
+                            const at = a.lastMessageAt?.toMillis?.() || a.lastMessageAt || 0;
+                            const bt = b.lastMessageAt?.toMillis?.() || b.lastMessageAt || 0;
+                            return bt - at;
+                        });
+                        const c = document.getElementById('pulseList');
+                        if (c) pulseRenderConvoList(c, false);
+                    }, err => {
+                        console.log('User inbox listener error:', err.message);
+                        pulseLoadConvosFallback(churchId, isAdmin, container);
+                    });
+            } catch(e) { pulseLoadConvosFallback(churchId, isAdmin, container); }
+        }
+    } catch(e) {
+        console.error('Pulse conversations error:', e);
+        pulseConversations = [];
+        pulseRenderConvoList(container, isAdmin);
+    }
+}
+
+// Fallback one-time load when listeners fail
+async function pulseLoadConvosFallback(churchId, isAdmin, container) {
+    try {
+        const userId = isAdmin ? 'admin_' + churchId : Auth.currentUser?.uid;
+        let docs = [];
+        if (isAdmin) {
+            const snap = await db.collection('pulse_conversations').where('churchId','==',churchId).limit(50).get();
+            docs = snap.docs;
+        } else {
+            const dmSnap = await db.collection('pulse_conversations').where('participants','array-contains',userId).limit(50).get();
+            docs = dmSnap.docs.filter(d => d.data().churchId === churchId);
+            try {
+                const bcSnap = await db.collection('pulse_conversations').where('churchId','==',churchId).limit(50).get();
+                const bcDocs = bcSnap.docs.filter(d => d.data().type === 'broadcast');
+                const seen = new Set(docs.map(d => d.id));
+                for (const bd of bcDocs) { if (!seen.has(bd.id)) docs.push(bd); }
+            } catch(e) {}
+        }
+        pulseConversations = docs.map(d => ({id:d.id,...d.data()}));
+        pulseConversations.sort((a,b) => {
             const at = a.lastMessageAt?.toMillis?.() || a.lastMessageAt || 0;
             const bt = b.lastMessageAt?.toMillis?.() || b.lastMessageAt || 0;
             return bt - at;
         });
-    } catch(e) {
-        console.error('Pulse conversations error:', e);
-        pulseConversations = [];
-    }
-    
-    pulseRenderConvoList(container, isAdmin);
+    } catch(e) { pulseConversations = []; }
+    if (container) pulseRenderConvoList(container, isAdmin);
 }
 
 function pulseRenderConvoList(container, isAdmin) {
@@ -13315,47 +13375,34 @@ function pulseShowProfile(userId) {
 // PULSE CONVERSATION VIEW
 // ==========================================
 
+// Active real-time listener references
+let _pulseConvoListener = null;
+let _pulseInboxListener = null;
+let _pulseCurrentConvoId = null;
+
+function pulseDetachMsgListener() {
+    if (_pulseConvoListener) { _pulseConvoListener(); _pulseConvoListener = null; }
+    _pulseCurrentConvoId = null;
+}
+
+function pulseDetachInboxListener() {
+    if (_pulseInboxListener) { _pulseInboxListener(); _pulseInboxListener = null; }
+}
+
 async function pulseOpenConvo(convoId) {
+    // Detach previous listener if switching conversations
+    pulseDetachMsgListener();
+    _pulseCurrentConvoId = convoId;
+    
     const convo = pulseConversations.find(c => c.id === convoId);
     if (!convo) return;
-    let messages = [];
-    if (firebaseInitialized) {
-        try {
-            let snap;
-            try { snap = await db.collection('pulse_conversations').doc(convoId).collection('messages').orderBy('timestamp','asc').limit(100).get(); }
-            catch(e) { snap = await db.collection('pulse_conversations').doc(convoId).collection('messages').limit(100).get(); }
-            messages = snap.docs.map(d => ({id:d.id,...d.data()}));
-            messages.sort((a,b) => {
-                const at = a.timestamp?.toMillis?.() || a.timestamp || 0;
-                const bt = b.timestamp?.toMillis?.() || b.timestamp || 0;
-                return at - bt;
-            });
-        } catch(e) { console.error('Load messages error:', e); }
-    } else {
-        messages = JSON.parse(localStorage.getItem('pulse_msgs_' + convoId) || '[]');
-    }
     
     const isAdmin = State.current.accountType === 'church';
     const myId = isAdmin ? 'admin_' + pulseGetChurchId() : Auth.currentUser?.uid;
     const title = convo.title || convo.participantNames?.filter(n => n !== (Auth.currentUser?.name||'')).join(', ') || 'Conversation';
     const isBc = convo.type === 'broadcast';
     
-    let msgsHTML;
-    if (!messages.length) {
-        msgsHTML = '<p style="text-align:center;color:var(--text-tertiary);margin:auto">Start the conversation!</p>';
-    } else {
-        msgsHTML = messages.map(m => {
-            const isMe = m.senderId === myId;
-            const t = m.timestamp?.toMillis ? new Date(m.timestamp.toMillis()).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : m.timestamp ? new Date(m.timestamp).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : '';
-            return `<div style="display:flex;justify-content:${isMe?'flex-end':'flex-start'}"><div style="max-width:80%;padding:10px 14px;border-radius:16px;${isMe?'background:var(--primary);color:white;border-bottom-right-radius:4px':'background:var(--hover-bg);border-bottom-left-radius:4px'}">` +
-                (!isMe ? `<div style="font-size:0.7rem;font-weight:600;margin-bottom:4px;opacity:0.7">${m.senderName||'Unknown'}</div>` : '') +
-                (m.imageUrl ? `<img src="${m.imageUrl}" style="max-width:100%;border-radius:8px;margin-bottom:6px;cursor:pointer" onclick="window.open('${m.imageUrl}','_blank')">` : '') +
-                (m.text ? `<div style="font-size:0.9rem">${m.text}</div>` : '') +
-                (t ? `<div style="font-size:0.6rem;opacity:0.6;margin-top:4px;text-align:right">${t}</div>` : '') +
-            '</div></div>';
-        }).join('');
-    }
-    
+    // Render the conversation shell immediately
     showModal(`<div class="modal" onclick="event.stopPropagation()" style="max-width:600px;height:80vh;display:flex;flex-direction:column;padding:0">
         <div style="padding:16px 20px;border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:12px">
             <button onclick="closeModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text-primary)">←</button>
@@ -13365,7 +13412,10 @@ async function pulseOpenConvo(convoId) {
             </div>
         </div>
         <div id="pulseMessages" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px">
-            ${msgsHTML}
+            <div style="text-align:center;padding:20px;color:var(--text-tertiary)">
+                <div class="loading-spinner" style="width:24px;height:24px;margin:0 auto 8px"></div>
+                <p style="margin:0;font-size:0.85rem">Loading messages...</p>
+            </div>
         </div>
         <div style="padding:12px 16px;border-top:1px solid var(--border-color);display:flex;gap:8px;align-items:flex-end">
             <label style="cursor:pointer;font-size:1.2rem;padding:4px" title="Attach image">📎<input type="file" accept="image/*" style="display:none" onchange="pulseSendImage(this,'${convoId}')"></label>
@@ -13373,13 +13423,111 @@ async function pulseOpenConvo(convoId) {
             <button class="btn btn-primary btn-sm" onclick="pulseSendMsg('${convoId}')">Send</button>
         </div>
     </div>`);
-    setTimeout(() => { const el = document.getElementById('pulseMessages'); if(el) el.scrollTop = el.scrollHeight; }, 100);
+    
+    // Attach real-time listener for messages
+    if (firebaseInitialized) {
+        try {
+            const msgsRef = db.collection('pulse_conversations').doc(convoId).collection('messages').orderBy('timestamp','asc').limit(200);
+            _pulseConvoListener = msgsRef.onSnapshot(snapshot => {
+                // Only update if this is still the active conversation
+                if (_pulseCurrentConvoId !== convoId) return;
+                const container = document.getElementById('pulseMessages');
+                if (!container) return;
+                
+                const messages = snapshot.docs.map(d => ({id:d.id,...d.data()}));
+                
+                if (!messages.length) {
+                    container.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);margin:auto">Start the conversation!</p>';
+                    return;
+                }
+                
+                const wasAtBottom = container.scrollTop >= container.scrollHeight - container.clientHeight - 50;
+                
+                container.innerHTML = messages.map(m => {
+                    const isMe = m.senderId === myId;
+                    const t = m.timestamp?.toMillis ? new Date(m.timestamp.toMillis()).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : m.timestamp ? new Date(m.timestamp).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : '';
+                    return '<div style="display:flex;justify-content:' + (isMe?'flex-end':'flex-start') + '">' +
+                        '<div style="max-width:80%;padding:10px 14px;border-radius:16px;' + (isMe?'background:var(--primary);color:white;border-bottom-right-radius:4px':'background:var(--hover-bg);border-bottom-left-radius:4px') + '">' +
+                        (!isMe ? '<div style="font-size:0.7rem;font-weight:600;margin-bottom:4px;opacity:0.7">' + (m.senderName||'Unknown') + '</div>' : '') +
+                        (m.imageUrl ? '<img src="' + m.imageUrl + '" style="max-width:100%;border-radius:8px;margin-bottom:6px;cursor:pointer" onclick="window.open(\'' + m.imageUrl + '\',\'_blank\')">' : '') +
+                        (m.text ? '<div style="font-size:0.9rem">' + m.text + '</div>' : '') +
+                        (t ? '<div style="font-size:0.6rem;opacity:0.6;margin-top:4px;text-align:right">' + t + '</div>' : '') +
+                        '</div></div>';
+                }).join('');
+                
+                // Auto-scroll to bottom if user was near bottom (or first load)
+                if (wasAtBottom || !container.dataset.loaded) {
+                    container.scrollTop = container.scrollHeight;
+                    container.dataset.loaded = 'true';
+                }
+            }, err => {
+                console.error('Message listener error:', err);
+                // Fallback: try without orderBy
+                const fallbackRef = db.collection('pulse_conversations').doc(convoId).collection('messages').limit(200);
+                _pulseConvoListener = fallbackRef.onSnapshot(snap => {
+                    if (_pulseCurrentConvoId !== convoId) return;
+                    const container = document.getElementById('pulseMessages');
+                    if (!container) return;
+                    const messages = snap.docs.map(d => ({id:d.id,...d.data()}));
+                    messages.sort((a,b) => {
+                        const at = a.timestamp?.toMillis?.() || a.timestamp || 0;
+                        const bt = b.timestamp?.toMillis?.() || b.timestamp || 0;
+                        return at - bt;
+                    });
+                    // Same render logic
+                    if (!messages.length) { container.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);margin:auto">Start the conversation!</p>'; return; }
+                    container.innerHTML = messages.map(m => {
+                        const isMe = m.senderId === myId;
+                        const t = m.timestamp?.toMillis ? new Date(m.timestamp.toMillis()).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : m.timestamp ? new Date(m.timestamp).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : '';
+                        return '<div style="display:flex;justify-content:' + (isMe?'flex-end':'flex-start') + '"><div style="max-width:80%;padding:10px 14px;border-radius:16px;' + (isMe?'background:var(--primary);color:white;border-bottom-right-radius:4px':'background:var(--hover-bg);border-bottom-left-radius:4px') + '">' +
+                            (!isMe ? '<div style="font-size:0.7rem;font-weight:600;margin-bottom:4px;opacity:0.7">' + (m.senderName||'Unknown') + '</div>' : '') +
+                            (m.imageUrl ? '<img src="' + m.imageUrl + '" style="max-width:100%;border-radius:8px;margin-bottom:6px">' : '') +
+                            (m.text ? '<div style="font-size:0.9rem">' + m.text + '</div>' : '') +
+                            (t ? '<div style="font-size:0.6rem;opacity:0.6;margin-top:4px;text-align:right">' + t + '</div>' : '') +
+                            '</div></div>';
+                    }).join('');
+                    container.scrollTop = container.scrollHeight;
+                });
+            });
+        } catch(e) {
+            console.error('Listener setup error:', e);
+            // Ultimate fallback: one-time get
+            const snap = await db.collection('pulse_conversations').doc(convoId).collection('messages').limit(200).get();
+            const messages = snap.docs.map(d => ({id:d.id,...d.data()}));
+            messages.sort((a,b) => (a.timestamp?.toMillis?.() || a.timestamp || 0) - (b.timestamp?.toMillis?.() || b.timestamp || 0));
+            const container = document.getElementById('pulseMessages');
+            if (container) {
+                container.innerHTML = messages.map(m => {
+                    const isMe = m.senderId === myId;
+                    const t = m.timestamp?.toMillis ? new Date(m.timestamp.toMillis()).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : '';
+                    return '<div style="display:flex;justify-content:' + (isMe?'flex-end':'flex-start') + '"><div style="max-width:80%;padding:10px 14px;border-radius:16px;' + (isMe?'background:var(--primary);color:white;border-bottom-right-radius:4px':'background:var(--hover-bg);border-bottom-left-radius:4px') + '">' +
+                        (m.text ? '<div style="font-size:0.9rem">' + m.text + '</div>' : '') +
+                        '</div></div>';
+                }).join('') || '<p style="text-align:center;color:var(--text-tertiary);margin:auto">Start the conversation!</p>';
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+    } else {
+        // localStorage fallback - no real-time
+        const messages = JSON.parse(localStorage.getItem('pulse_msgs_' + convoId) || '[]');
+        const container = document.getElementById('pulseMessages');
+        if (container) {
+            container.innerHTML = messages.length ? messages.map(m => {
+                const isMe = m.senderId === myId;
+                return '<div style="display:flex;justify-content:' + (isMe?'flex-end':'flex-start') + '"><div style="max-width:80%;padding:10px 14px;border-radius:16px;' + (isMe?'background:var(--primary);color:white;border-bottom-right-radius:4px':'background:var(--hover-bg);border-bottom-left-radius:4px') + '">' +
+                    (m.text ? '<div style="font-size:0.9rem">' + m.text + '</div>' : '') + '</div></div>';
+            }).join('') : '<p style="text-align:center;color:var(--text-tertiary);margin:auto">Start the conversation!</p>';
+            container.scrollTop = container.scrollHeight;
+        }
+    }
 }
 
 async function pulseSendMsg(convoId) {
     const input = document.getElementById('pulseInput');
     if (!input || !input.value.trim()) return;
     const text = input.value.trim(); input.value = '';
+    // Refocus the input for rapid typing
+    input.focus();
     const isAdmin = State.current.accountType === 'church';
     const myId = isAdmin ? 'admin_' + pulseGetChurchId() : Auth.currentUser?.uid;
     const myName = isAdmin ? 'Church Admin' : (Auth.currentUser?.name || 'User');
@@ -13387,15 +13535,17 @@ async function pulseSendMsg(convoId) {
     
     if (firebaseInitialized) {
         try {
+            // Just write — the onSnapshot listener handles displaying
             await db.collection('pulse_conversations').doc(convoId).collection('messages').add(msg);
             await db.collection('pulse_conversations').doc(convoId).set({ lastMessage: text.substring(0,100), lastMessageAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-        } catch(e) { toast('Failed to send','error'); return; }
+        } catch(e) { toast('Failed to send','error'); }
     } else {
         const msgs = JSON.parse(localStorage.getItem('pulse_msgs_'+convoId)||'[]');
         msg.timestamp = Date.now(); msgs.push(msg);
         localStorage.setItem('pulse_msgs_'+convoId, JSON.stringify(msgs));
+        // No listener in localStorage mode, manually reopen
+        pulseOpenConvo(convoId);
     }
-    pulseOpenConvo(convoId);
 }
 
 async function pulseSendImage(input, convoId) {
@@ -13412,14 +13562,16 @@ async function pulseSendImage(input, convoId) {
         } else { url = URL.createObjectURL(file); }
         const msg = { senderId: myId, senderName: myName, text: '', imageUrl: url, timestamp: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(), type: 'image' };
         if (firebaseInitialized) {
+            // Just write — the onSnapshot listener handles the display
             await db.collection('pulse_conversations').doc(convoId).collection('messages').add(msg);
-            await db.collection('pulse_conversations').doc(convoId).set({ lastMessage: 'Image', lastMessageAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+            await db.collection('pulse_conversations').doc(convoId).set({ lastMessage: '📷 Image', lastMessageAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
         } else {
             const msgs = JSON.parse(localStorage.getItem('pulse_msgs_'+convoId)||'[]');
             msg.timestamp = Date.now(); msgs.push(msg);
             localStorage.setItem('pulse_msgs_'+convoId, JSON.stringify(msgs));
+            pulseOpenConvo(convoId);
         }
-        hideUploadOverlay(); pulseOpenConvo(convoId);
+        hideUploadOverlay();
     } catch(e) { hideUploadOverlay(); toast('Failed to send image','error'); }
 }
 
