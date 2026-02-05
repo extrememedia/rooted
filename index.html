@@ -13185,10 +13185,33 @@ function pulseRenderConvoList(container, isAdmin) {
         return;
     }
     
+    // Get my identity for name filtering
+    const myId = isAdmin ? 'admin_' + pulseGetChurchId() : Auth.currentUser?.uid;
+    const myName = isAdmin ? (State.current.user?.name || '') : (Auth.currentUser?.name || '');
+    
     container.innerHTML = '<div style="display:grid;gap:8px">' + pulseConversations.map(c => {
         const timeStr = c.lastMessageAt?.toMillis ? getRelativeTime(c.lastMessageAt.toMillis()) : c.lastMessageAt ? getRelativeTime(c.lastMessageAt) : '';
         const isBc = c.type === 'broadcast';
-        const title = c.title || c.participantNames?.filter(n => n !== (Auth.currentUser?.name||'')).join(', ') || 'Message';
+        
+        // Title logic:
+        // Broadcast on USER side → show church name (from stored churchName field)
+        // Broadcast on ADMIN side → show subject/title
+        // DM → show the OTHER person's name
+        let title;
+        if (isBc && !isAdmin) {
+            // User sees church name for broadcasts
+            title = c.churchName || c.senderName || 'Church';
+            if (c.title) title += ': ' + c.title;
+        } else if (isBc && isAdmin) {
+            title = c.title || 'Broadcast';
+        } else {
+            // DM - show the other person's name
+            const otherName = c.participantNames?.find((n, i) => c.participants?.[i] !== myId) 
+                || c.participantNames?.filter(n => n !== myName).join(', ')
+                || 'Message';
+            title = otherName;
+        }
+        
         const icon = isBc ? '📣' : '💬';
         const grad = isBc ? '#8b5cf6,#a78bfa' : '#3b82f6,#60a5fa';
         
@@ -13399,8 +13422,22 @@ async function pulseOpenConvo(convoId) {
     
     const isAdmin = State.current.accountType === 'church';
     const myId = isAdmin ? 'admin_' + pulseGetChurchId() : Auth.currentUser?.uid;
-    const title = convo.title || convo.participantNames?.filter(n => n !== (Auth.currentUser?.name||'')).join(', ') || 'Conversation';
+    const myName = isAdmin ? (State.current.user?.name || '') : (Auth.currentUser?.name || '');
     const isBc = convo.type === 'broadcast';
+    
+    // Title logic - same as inbox
+    let title;
+    if (isBc && !isAdmin) {
+        title = convo.churchName || convo.senderName || 'Church';
+        if (convo.title) title += ': ' + convo.title;
+    } else if (isBc && isAdmin) {
+        title = convo.title || 'Broadcast';
+    } else {
+        const otherName = convo.participantNames?.find((n, i) => convo.participants?.[i] !== myId)
+            || convo.participantNames?.filter(n => n !== myName).join(', ')
+            || 'Conversation';
+        title = otherName;
+    }
     
     // Render the conversation shell immediately
     showModal(`<div class="modal" onclick="event.stopPropagation()" style="max-width:600px;height:80vh;display:flex;flex-direction:column;padding:0">
@@ -13603,9 +13640,12 @@ async function pulseSendBroadcast(audience) {
     if (!message) { toast('Please enter a message','error'); return; }
     const churchId = pulseGetChurchId();
     const adminId = 'admin_' + churchId;
+    const churchName = State.current.user?.name || 'Church';
     const convo = {
         churchId, type: 'broadcast', audience,
         title: title,
+        churchName: churchName,
+        senderName: churchName,
         lastMessage: message.substring(0,100),
         lastMessageAt: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(),
         createdBy: adminId,
@@ -13668,10 +13708,12 @@ async function pulseStartDM(userId, userName) {
     
     // Create new conversation
     const myName = isAdmin ? (State.current.user?.name || 'Church Admin') : (Auth.currentUser?.name || 'User');
+    const churchData = getChurchData(churchId);
     const convo = {
         churchId, type: 'direct',
         participants: [myId, userId],
         participantNames: [myName, userName],
+        churchName: churchData?.name || State.current.user?.name || '',
         lastMessage: '', lastMessageAt: firebaseInitialized ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(),
         createdBy: myId
     };
